@@ -1,8 +1,12 @@
 "use client";
 
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { EmptyBoards } from "./empty-boards";
 import { EmptyFavorites } from "./empty-favorites";
 import { EmptySearch } from "./empty-search";
+import { BoardCard } from "./board-card";
+import { NewBoardButton } from "./new-board-button";
 
 interface BoardListProps {
     orgId: string;
@@ -13,7 +17,25 @@ interface BoardListProps {
 };
 
 export const BoardList = ({ orgId, query }: BoardListProps) => {
-    const data = []; // todo: change to api call
+    const data = useQuery(api.boards.getBoards, { orgId }); 
+
+    if (data === undefined) {
+        // Loading state
+        return (
+            <div className="flex-1 h-[calc(100%-80px)] p-6">
+                <h2 className="text-2xl font-semibold mb-4"> 
+                    {query.favorites ? "Favorite boards" : "Team boards"}
+                </h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mt-8 pb-10">
+                    <NewBoardButton orgId={orgId}/>
+                    <BoardCard.Skeleton/>
+                    <BoardCard.Skeleton/>
+                    <BoardCard.Skeleton/>
+                    <BoardCard.Skeleton/>
+                </div>
+            </div>
+        );
+    };
 
     if (!data?.length && query.search) {
         return (
@@ -35,7 +57,25 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
     
     return (
         <div className="flex-1 h-[calc(100%-80px)] p-6">
-            <pre>{JSON.stringify({ query })}</pre>
+            <h2 className="text-2xl font-semibold mb-4"> 
+                {query.favorites ? "Favorite boards" : "Team boards"}
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 mt-8 pb-10">
+                <NewBoardButton orgId={orgId}/>
+                {data?.map((board) => (
+                    <BoardCard
+                        key={board._id}
+                        id={board._id}
+                        title={board.title}
+                        imageUrl={board.imageUrl}
+                        authorName={board.authorName}
+                        authorId={board.authorId}
+                        createdAt={board._creationTime}
+                        orgId={board.orgId}
+                        isFavorite={false} // todo: make this dynamic
+                    />
+                ))}
+            </div>
         </div>
     );
 };
