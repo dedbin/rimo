@@ -1,4 +1,4 @@
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 const images = [
@@ -12,8 +12,7 @@ const images = [
     "/avatars/avatar_7.svg",
     "/avatars/avatar_8.svg",
     "/avatars/avatar_9.svg",
-]
-
+] // todo: make it auto generated
 export const create = mutation({
     args:{
         orgId: v.string(),
@@ -158,3 +157,11 @@ export const unFavorite = mutation({
     }
 });
 
+export const get = query({
+    args: {
+        id: v.id("boards"),
+    },
+    handler: async (ctx, args) => { 
+        return await ctx.db.get(args.id);
+    }
+});
