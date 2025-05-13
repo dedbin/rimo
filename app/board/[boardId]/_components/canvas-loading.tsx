@@ -1,4 +1,3 @@
-
 import { Loader } from "lucide-react";
 import { BoardInfoSkeleton } from "./info";
 import { BoardParticipantsSkeleton } from "./participants";
