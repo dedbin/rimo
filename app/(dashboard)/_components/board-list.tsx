@@ -17,7 +17,7 @@ interface BoardListProps {
 };
 
 export const BoardList = ({ orgId, query }: BoardListProps) => {
-    const data = useQuery(api.boards.getBoards, { orgId }); 
+    const data = useQuery(api.boards.getBoards, { orgId, ...query }); 
 
     if (data === undefined) {
         // Loading state
@@ -72,7 +72,7 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
                         authorId={board.authorId}
                         createdAt={board._creationTime}
                         orgId={board.orgId}
-                        isFavorite={false} // todo: make this dynamic
+                        isFavorite={board.isFavorite} // todo: make this dynamic
                     />
                 ))}
             </div>

@@ -18,6 +18,12 @@ export const Footer = ({
     disabled,
     onClick,
 }: BoardCardFooterProps) => {
+    const handleClick = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onClick();
+    }
+
     return (
         <div className="relative bg-white p-3">
             <p className="text-[13px] truncate max-w-[calc(100%-20px)]">
@@ -27,10 +33,10 @@ export const Footer = ({
                 {authorLabel} • {timeAgo}
             </p>
             <button
-                onClick={onClick}
+                onClick={handleClick}
                 disabled={disabled}
                 className={cn(
-                    "opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3 hover:text-green-500",
+                    "opacity-0 group-hover:opacity-100 transition-opacity absolute top-3 right-3 hover:text-green-500 cursor-pointer",
                     disabled && "cursor-not-allowed opacity-75" 
                 )}
                 >
