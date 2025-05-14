@@ -5,6 +5,10 @@ import { SignInButton, UserButton } from "@clerk/clerk-react";
 import { ConvexProviderWithClerk } from "convex/react-clerk";
 import { ConvexReactClient, AuthLoading, Authenticated,Unauthenticated } from "convex/react";
 import { Loading } from "@/components/auth/loading";
+import { RimoNavbar } from "@/components/landing-navbar";
+import { RimoHero } from "@/components/landing-hero";
+import { RimoContent } from "@/components/landing-content";
+import { RimoFooter } from "@/components/landing-footer";
 
 interface ConvexClientProviderProps {
   children: React.ReactNode;
@@ -25,7 +29,12 @@ export const ConvexClientProvider = ({ children }: ConvexClientProviderProps) =>
                     <Loading/>
                 </AuthLoading>
                 <Unauthenticated>
-                    <SignInButton />
+                    <div className="bg-zinc-900">
+                    <RimoNavbar/>
+                    <RimoHero/>
+                    <RimoContent/>
+                    <RimoFooter/>
+                    </div>
                 </Unauthenticated>
             </ConvexProviderWithClerk>
         </ClerkProvider>
