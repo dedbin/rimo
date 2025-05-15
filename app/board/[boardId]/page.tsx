@@ -8,10 +8,11 @@ interface BoardIdPageProps {
     };
 };
 
-const BoardIdPage = ({params}: BoardIdPageProps) => {
+async function BoardIdPage ({params}: BoardIdPageProps) {
+    const { boardId } = await params;
     return ( 
-        <Room roomId={params.boardId} fallback={<CanvasLoading/>}>
-            <BoardCanvas boardId={params.boardId}/>
+        <Room roomId={boardId} fallback={<CanvasLoading/>}>
+            <BoardCanvas boardId={boardId}/>
         </Room>
      );
 }
