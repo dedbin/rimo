@@ -6,9 +6,13 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "i18n:extract": "npx i18next -c i18next-parser.config.js",
+    "i18n:translate": "python3 scripts/translate_i18n.py",
+    "i18n": "npm run i18n:extract && npm run i18n:translate"
   },
   "dependencies": {
+    "@clerk/localizations": "^3.16.0",
     "@clerk/nextjs": "^6.19.2",
     "@liveblocks/client": "^2.24.2",
     "@liveblocks/node": "^2.24.2",
@@ -46,6 +50,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.2",
+    "i18next-parser": "^9.3.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.2.9",
     "typescript": "^5"

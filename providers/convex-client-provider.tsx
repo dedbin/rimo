@@ -9,6 +9,7 @@ import { RimoNavbar } from "@/components/landing-navbar";
 import { RimoHero } from "@/components/landing-hero";
 import { RimoContent } from "@/components/landing-content";
 import { RimoFooter } from "@/components/landing-footer";
+import { ruRU } from '@clerk/localizations';
 
 interface ConvexClientProviderProps {
   children: React.ReactNode;
@@ -20,7 +21,7 @@ const convex = new ConvexReactClient(convexUrl);
 
 export const ConvexClientProvider = ({ children }: ConvexClientProviderProps) => {
     return (
-        <ClerkProvider>
+        <ClerkProvider localization={ruRU}>
             <ConvexProviderWithClerk useAuth={useAuth} client={convex}>
                 <Authenticated>
                     {children}
