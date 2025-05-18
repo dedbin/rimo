@@ -22,12 +22,15 @@ export const RimoNavbar = () => {
   return (
     <nav className="p-4 bg-transparent flex items-center justify-between">
       <Link href="/" className="flex items-center">
-        <div className="relative h-10 w-10 mr-4">
+        <div className="relative h-10 w-10 mr-4 text-green-500">
           <Image
             src="/logo.svg" 
             alt="Логотип Rimo"
             fill
-            className="object-contain"
+              className="object-contain
+             [filter:invert(52%)_sepia(93%)_saturate(4276%)_hue-rotate(136deg)_brightness(102%)_contrast(94%)]"
+
+
           />
         </div>
         <h1 className={cn("text-2xl font-bold text-white")}>Rimo</h1>
