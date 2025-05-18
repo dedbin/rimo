@@ -1,6 +1,7 @@
 
 import Link from "next/link";
 import { GithubIcon  } from "lucide-react";
+import { Send } from 'lucide-react';
 // TODO: добавьте другие иконки соцсетей при необходимости
 
 export const RimoFooter = () => (
@@ -16,8 +17,13 @@ export const RimoFooter = () => (
         < GithubIcon className="w-8 h-8" />
         <p className="text-zinc-400 text-sm font-medium pl-1">rimo</p>
       </Link>
+      <Link href="https://t.me/argtg_not_arctg">
+        < Send className="w-8 h-8 " />
+        <p className="text-zinc-400 text-sm font-medium pl-1">goga</p>
+      </Link>
       {/* TODO: добавьте ссылки на другие соцсети */}
     </div>
+    
     <p className="text-white text-center py-10">Создано с ❤️, Rimo</p>
   </div>
 );
