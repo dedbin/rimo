@@ -1,4 +1,4 @@
-import { Camera, Color } from "@/types/board-canvas"
+import { Camera, Color, Point, side, XYWH } from "@/types/board-canvas"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -29,4 +29,31 @@ export function rgbToCss(color: Color) {
   const g = rgb[1].toString(16).padStart(2, "0")
   const b = rgb[2].toString(16).padStart(2, "0")
   return `#${r}${g}${b}`
+}
+
+
+export function resizeBounds(bounds: XYWH, corner: side, point: Point): XYWH {
+    const result = { ...bounds };
+
+    if ((corner & side.left) === side.left) {
+        result.x = Math.min(bounds.x + bounds.width, point.x);
+        result.width = Math.abs(bounds.x + bounds.width - point.x);
+    }
+
+    if ((corner & side.right) === side.right) {
+        result.x = Math.min(bounds.x, point.x);
+        result.width = Math.abs(bounds.x - point.x);
+    }
+
+    if ((corner & side.top) === side.top) {
+        result.y = Math.min(bounds.y + bounds.height, point.y);
+        result.height = Math.abs(bounds.y + bounds.height - point.y);
+    }
+
+    if ((corner & side.bottom) === side.bottom) {
+        result.y = Math.min(bounds.y, point.y);
+        result.height = Math.abs(bounds.y - point.y);
+    }
+
+    return result;
 }
