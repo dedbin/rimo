@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -27,11 +28,12 @@ import {
   useStorage
 } from "@liveblocks/react/suspense";
 import { CursorsPresence } from "./cursors-presence";
-import { pointerEventToCanvasPoint } from "@/lib/utils";
+import { connectionIdToColor, pointerEventToCanvasPoint } from "@/lib/utils";
 import { nanoid } from "nanoid";
 import { LiveObject } from "@liveblocks/client";
 import { set } from "date-fns";
 import { LayerPreview } from "./layer-preview";
+import { useOthersMapped } from "@liveblocks/react";
 
 const MAX_LAYERS = 100;
 
@@ -80,7 +82,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       x: position.x,
       y: position.y,
       height: 100,
-      width: 100, // todo: maybe make this variable depending on layer type
+      width: 100, // TODO: maybe make this variable depending on layer type
       fill: lastUsedColor,
     });
 
@@ -144,6 +146,41 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     history.resume();
   }, [canvasState, camera, history, insertLayer]);
 
+  const selections = useOthersMapped((other) => other.presence.selection);
+
+  const layersIdsToColorSelect = useMemo(() => {
+    const layersIdsToColorSelect: Record<string,string> = {}
+    for (const user of selections) {
+      const [connectionId, selection] = user;
+
+      for (const layerId of selection) {
+        layersIdsToColorSelect[layerId] = connectionIdToColor(connectionId);
+      }
+    }
+
+    return layersIdsToColorSelect
+  }, [layerIds, selections]);
+
+  const onLayerPointerDown = useMutation((
+    { self, setMyPresence },
+    e: React.PointerEvent,
+    layerId: string
+  ) => {
+    if (canvasState.mode === BoardCanvasMode.Pencil || canvasState.mode === BoardCanvasMode.Inserting) {
+      return;
+    } 
+
+    history.pause();
+    e.stopPropagation();
+
+    const point = pointerEventToCanvasPoint(e, camera);
+
+    if (!self.presence.selection.includes(layerId)) {
+      setMyPresence({ selection: [layerId] }, { addToHistory: true });
+    }
+
+    setCanvasState({ mode: BoardCanvasMode.Translating, current: point });
+  }, [setCanvasState, camera, history, canvasState.mode]);
 
   return (
     <main className="h-full w-full relative bg-neutral touch-none">
@@ -172,8 +209,8 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
             <LayerPreview 
               key={layerId} 
               id={layerId}
-              onLayerPointerDown={() => {}}
-              selectionColor={"#000"}
+              onLayerPointerDown={onLayerPointerDown}
+              selectionColor={layersIdsToColorSelect[layerId]}
             />
           ))}
           <CursorsPresence />
