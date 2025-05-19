@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// todo: make in a better way
+// TODO: make in a better way
 export function connectionIdToColor(connectionId: number): string {
   return COLORS[connectionId % COLORS.length]
 }

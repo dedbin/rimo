@@ -12,7 +12,7 @@ const images = [
     "/avatars/avatar_7.svg",
     "/avatars/avatar_8.svg",
     "/avatars/avatar_9.svg",
-] // todo: make it auto generated
+] // TODO: make it auto generated
 export const create = mutation({
     args:{
         orgId: v.string(),
