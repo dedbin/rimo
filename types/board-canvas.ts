@@ -94,6 +94,7 @@ export type EllipseLayer = {
     value?: string;
 }
 
+export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer
 
 export enum BoardCanvasMode {
     None,
