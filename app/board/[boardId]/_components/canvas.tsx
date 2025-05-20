@@ -37,6 +37,7 @@ import { set } from "date-fns";
 import { LayerPreview } from "./layer-preview";
 import { useOthersMapped } from "@liveblocks/react";
 import { SelectionBox } from "./selection-box";
+import { SelectionTools } from "./selection-tools";
 
 const MAX_LAYERS = 100;
 
@@ -97,6 +98,12 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   }, [lastUsedColor]
 );
 
+  const unselectLayer = useMutation(({ self, setMyPresence }) => {
+    if (self.presence.selection.length > 0) {
+      setMyPresence({ selection: [] }, { addToHistory: true });
+    };
+  }, [])
+
   const resizeLayer = useMutation(({ storage, self }, point: Point) => {
     if (canvasState.mode !== BoardCanvasMode.Resizing) return;
 
@@ -109,6 +116,20 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     if (layer) layer.update(bounds);
   }, [canvasState]);
 
+  const translateLayer = useMutation(({ storage, self }, point: Point) => {
+    if (canvasState.mode !== BoardCanvasMode.Translating) return;
+    const offset = { x: point.x - canvasState.current.x, y: point.y - canvasState.current.y };
+
+    const liveLayers = storage.get("layers");
+
+    for (const id of self.presence.selection) {
+      const layer = liveLayers.get(id);
+      if (layer) layer.update({ x: layer.get('x') + offset.x, y: layer.get('y')+ offset.y });
+    }
+
+    setCanvasState({ mode: BoardCanvasMode.Translating, current: point });
+  },[canvasState])
+
   const updateMyPresence = useUpdateMyPresence();
 
   useEffect(() => {
@@ -117,7 +138,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
   const onResizeHandlePointerDown = useCallback(
     (corner: side, initialBounds: XYWH) => {
-      console.log("onResizeHandlePointerDown", { corner, initialBounds });
+      // console.log("onResizeHandlePointerDown", { corner, initialBounds });
       history.pause();
       setCanvasState({ mode: BoardCanvasMode.Resizing, initial: initialBounds, corner });
     },
@@ -137,11 +158,12 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
       if (rafRef.current) return;
 
-      
-
       rafRef.current = requestAnimationFrame(() => {
         const point = pointerEventToCanvasPoint(e, cameraRef.current);
-        if (canvasState.mode === BoardCanvasMode.Resizing) {
+
+        if (canvasState.mode === BoardCanvasMode.Translating) {
+          translateLayer(point)
+        } else if (canvasState.mode === BoardCanvasMode.Resizing) {
         resizeLayer(point)
       }
         updateMyPresence(
@@ -152,7 +174,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         rafRef.current = null;
       });
     },
-    [updateMyPresence, canvasState.mode, resizeLayer]
+    [updateMyPresence, canvasState.mode, resizeLayer, translateLayer]
   );
 
   const onPointerLeave = useMutation((
@@ -161,18 +183,32 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     setMyPresence({ cursor: null });
   }, []);
 
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    const point = pointerEventToCanvasPoint(e, camera);
+
+    if (canvasState.mode === BoardCanvasMode.Inserting) {
+      return
+    }
+    // TODO: add case for draw
+
+    setCanvasState({ origin: point, mode: BoardCanvasMode.Pressing });
+  }, [camera, canvasState.mode, setCanvasState]);
+
   const onPointerUp = useMutation(({}, e) => {
     const point = pointerEventToCanvasPoint(e, camera);
     
-    // console.log("pointer up", {point, mode: canvasState.mode});
-    if (canvasState.mode === BoardCanvasMode.Inserting) {
+    if (canvasState.mode === BoardCanvasMode.None || canvasState.mode === BoardCanvasMode.Pressing) {
+      unselectLayer();
+      setCanvasState({ mode: BoardCanvasMode.None });
+      return;
+    } else if (canvasState.mode === BoardCanvasMode.Inserting) {
       insertLayer(canvasState.layerType, point);
     } else {
       setCanvasState({ mode: BoardCanvasMode.None });
     }
 
     history.resume();
-  }, [canvasState, camera, history, insertLayer]);
+  }, [canvasState, camera, history, insertLayer, unselectLayer]);
 
   const selections = useOthersMapped((other) => other.presence.selection);
 
@@ -223,13 +259,17 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         canUndo={canUndo}
         canRedo={canRedo}
       />
-
+      <SelectionTools
+        camera={camera}
+        setLastUsedColor={setLastUsedColor}
+      />
       <svg
         className="h-[100vh] w-[100vw]"
         onWheel={onWheel}
         onPointerMove={onPointerMove}
         /* TODO: fix onPointerLeave={onPointerLeave} */
         onPointerLeave={onPointerLeave}
+        onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
       >
         <g style={{ transform: `translate(${camera.x}px, ${camera.y}px)`}}>
