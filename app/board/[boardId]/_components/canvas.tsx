@@ -30,7 +30,7 @@ import {
   useStorage
 } from "@liveblocks/react/suspense";
 import { CursorsPresence } from "./cursors-presence";
-import { connectionIdToColor, pointerEventToCanvasPoint, resizeBounds } from "@/lib/utils";
+import { connectionIdToColor, pickLayersInBox, pointerEventToCanvasPoint, resizeBounds } from "@/lib/utils";
 import { nanoid } from "nanoid";
 import { LiveObject } from "@liveblocks/client";
 import { set } from "date-fns";
@@ -40,7 +40,7 @@ import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
 
 const MAX_LAYERS = 100;
-
+const SELECTION_THRESHOLD = 5;
 interface BoardCanvasProps {
   boardId: string;
 }
@@ -106,15 +106,46 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
   const resizeLayer = useMutation(({ storage, self }, point: Point) => {
     if (canvasState.mode !== BoardCanvasMode.Resizing) return;
-
     const bounds = resizeBounds(canvasState.initial, canvasState.corner, point);
-
     const liveLayers = storage.get("layers");
-
     const layer = liveLayers.get(self.presence.selection[0]);
-
     if (layer) layer.update(bounds);
   }, [canvasState]);
+
+  const updateSelectionNet = useMutation(
+    ({ storage, setMyPresence }, current: Point, origin: Point) => {
+      if (canvasState.mode !== BoardCanvasMode.SelectionNet) return;
+
+      setCanvasState({ mode: BoardCanvasMode.SelectionNet, origin, current });
+      
+      const liveLayerIds = storage.get("layerIds");
+      const layerArray = Array.from(liveLayerIds);
+      const liveLayers = storage.get("layers").toImmutable();
+
+      const ids = pickLayersInBox(
+        layerArray,
+        liveLayers,
+        origin,
+        current
+      );
+
+      setMyPresence({ selection: ids });
+    },
+    [layerIds, canvasState.mode]
+  );
+
+  const startMultiSelect = useCallback(
+    (current: Point, origin: Point) => {
+      if (Math.abs(current.x - origin.x) + Math.abs(current.y - origin.y) > SELECTION_THRESHOLD) {
+        setCanvasState({
+          mode: BoardCanvasMode.SelectionNet,
+          origin,
+          current,
+        });
+      }
+    },
+    []
+  );
 
   const translateLayer = useMutation(({ storage, self }, point: Point) => {
     if (canvasState.mode !== BoardCanvasMode.Translating) return;
@@ -161,7 +192,11 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       rafRef.current = requestAnimationFrame(() => {
         const point = pointerEventToCanvasPoint(e, cameraRef.current);
 
-        if (canvasState.mode === BoardCanvasMode.Translating) {
+        if (canvasState.mode === BoardCanvasMode.Pressing) {
+          startMultiSelect(point, canvasState.origin);
+        } else if (canvasState.mode === BoardCanvasMode.SelectionNet) {
+          updateSelectionNet(point, canvasState.origin);
+        }else if (canvasState.mode === BoardCanvasMode.Translating) {
           translateLayer(point)
         } else if (canvasState.mode === BoardCanvasMode.Resizing) {
         resizeLayer(point)
@@ -194,21 +229,26 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     setCanvasState({ origin: point, mode: BoardCanvasMode.Pressing });
   }, [camera, canvasState.mode, setCanvasState]);
 
-  const onPointerUp = useMutation(({}, e) => {
+  const onPointerUp = useMutation(
+  ({}, e: React.PointerEvent<SVGSVGElement>) => {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+
     const point = pointerEventToCanvasPoint(e, camera);
-    
-    if (canvasState.mode === BoardCanvasMode.None || canvasState.mode === BoardCanvasMode.Pressing) {
+
+    if (
+      canvasState.mode === BoardCanvasMode.None ||
+      canvasState.mode === BoardCanvasMode.Pressing
+    ) {
       unselectLayer();
-      setCanvasState({ mode: BoardCanvasMode.None });
-      return;
     } else if (canvasState.mode === BoardCanvasMode.Inserting) {
-      insertLayer(canvasState.layerType, point);
-    } else {
-      setCanvasState({ mode: BoardCanvasMode.None });
+      insertLayer(canvasState.layerType!, point);
     }
 
+    setCanvasState({ mode: BoardCanvasMode.None });
     history.resume();
-  }, [canvasState, camera, history, insertLayer, unselectLayer]);
+  },
+  [camera, canvasState, history, insertLayer, unselectLayer]
+);
 
   const selections = useOthersMapped((other) => other.presence.selection);
 
@@ -285,6 +325,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         onPointerLeave={onPointerLeave}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
       >
         <g style={{ transform: `translate(${camera.x}px, ${camera.y}px)`}}>
           {layerIds.map((layerId) => (
@@ -298,6 +339,15 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
           <SelectionBox
            onResizeHandlePointerDown={onResizeHandlePointerDown}
           />
+          {canvasState.mode === BoardCanvasMode.SelectionNet && canvasState.current != null&& (
+            <rect
+              className="fill-blue-500/5 stroke-blue-500 stroke-1"
+              x={Math.min(canvasState.origin.x, canvasState.current.x)}
+              y={Math.min(canvasState.origin.y, canvasState.current.y)}
+              width={Math.abs(canvasState.origin.x - canvasState.current.x)}
+              height={Math.abs(canvasState.origin.y - canvasState.current.y)}
+            />
+          )}
           <CursorsPresence />
         </g>
       </svg>

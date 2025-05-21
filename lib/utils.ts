@@ -1,4 +1,4 @@
-import { Camera, Color, Point, side, XYWH } from "@/types/board-canvas"
+import { Camera, Color, Point, side, XYWH, Layer } from "@/types/board-canvas"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -56,4 +56,40 @@ export function resizeBounds(bounds: XYWH, corner: side, point: Point): XYWH {
     }
 
     return result;
+}
+
+function normalizeArea(p1: Point, p2: Point) {
+  const left = Math.min(p1.x, p2.x);
+  const right = Math.max(p1.x, p2.x);
+  const top = Math.min(p1.y, p2.y);
+  const bottom = Math.max(p1.y, p2.y);
+
+  return { left, right, top, bottom };
+}
+
+export function pickLayersInBox(
+  layerIds: readonly string[],
+  layerMap: ReadonlyMap<string, Layer>,
+  corner1: Point,
+  corner2: Point
+): string[] {
+  const box = normalizeArea(corner1, corner2);
+
+  return layerIds.filter((id) => {
+    const layer = layerMap.get(id);
+    if (!layer) return false;
+
+    const layerLeft = layer.x;
+    const layerRight = layer.x + layer.width;
+    const layerTop = layer.y;
+    const layerBottom = layer.y + layer.height;
+
+    
+    return (
+      box.left <= layerLeft &&
+      box.right >= layerRight &&
+      box.top <= layerTop &&
+      box.bottom >= layerBottom
+    );
+  });
 }
