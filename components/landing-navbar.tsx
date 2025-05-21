@@ -11,6 +11,7 @@ export const RimoNavbar = () => {
   const { isSignedIn } = useAuth();
 
   const [coords, setCoords] = useState({ x: "50%", y: "50%" });
+  const [isHover, setIsHover] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -24,13 +25,10 @@ export const RimoNavbar = () => {
       <Link href="/" className="flex items-center">
         <div className="relative h-10 w-10 mr-4 text-green-500">
           <Image
-            src="/logo.svg" 
+            src="/logo.svg"
             alt="Логотип Rimo"
             fill
-              className="object-contain
-             [filter:invert(52%)_sepia(93%)_saturate(4276%)_hue-rotate(136deg)_brightness(102%)_contrast(94%)]"
-
-
+            className="object-contain [filter:invert(52%)_sepia(93%)_saturate(4276%)_hue-rotate(136deg)_brightness(102%)_contrast(94%)]"
           />
         </div>
         <h1 className={cn("text-2xl font-bold text-white")}>Rimo</h1>
@@ -47,10 +45,13 @@ export const RimoNavbar = () => {
           <SignInButton>
             <Button
               className="relative overflow-hidden rounded-full px-8 py-3 text-lg"
+              onMouseEnter={() => setIsHover(true)}
               onMouseMove={handleMouseMove}
+              onMouseLeave={() => setIsHover(false)}
               style={{
-                // градиентный блик, следующий за курсором
-                background: `radial-gradient(circle at ${coords.x} ${coords.y}, rgba(255,255,255,0.1), transparent 30%)`,
+                background: isHover
+                  ? `radial-gradient(circle at ${coords.x} ${coords.y}, rgba(255,255,255,0.1), transparent 30%)`
+                  : 'transparent',
                 transition: "background 0.2s ease-out"
               }}
             >

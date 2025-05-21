@@ -9,6 +9,7 @@ import Link from "next/link";
 export const RimoHero = () => {
   const { isSignedIn } = useAuth();
   const [coords, setCoords] = useState({ x: "50%", y: "50%" });
+  const [isHover, setIsHover] = useState(false);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -17,26 +18,25 @@ export const RimoHero = () => {
     setCoords({ x: `${x}%`, y: `${y}%` });
   };
 
-  //TODO: сделать так чтобы свечение пропадало если курсор не в зоне кнопочки
-  return(
+  return (
     <div className="text-white font-bold py-36 text-center space-y-5">
-        <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl space-y-5 font-extrabold">
+      <div className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl space-y-5 font-extrabold">
         <h1>
-            Лучший инструмент для <span className="text-emerald-500">совместной работы</span> на виртуальной доске для
+          Лучший инструмент для <span className="text-emerald-500">совместной работы</span> на виртуальной доске для
         </h1>
         <div className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-pink-600 py-4">
-            <TypeWriterComponent
+          <TypeWriterComponent
             options={{
-                strings: [
+              strings: [
                 "генерации идей.",
                 "командного планирования.",
                 "дистанционного обучения.",
                 "дизайн-спринтов.",
-                ],
-                autoStart: true,
-                loop: true,
+              ],
+              autoStart: true,
+              loop: true,
             }}
-            />
+          />
         </div>
         <div className="text-sm md:text-xl font-light text-zinc-400">
           Сотрудничайте в режиме реального времени, где угодно
@@ -54,10 +54,13 @@ export const RimoHero = () => {
                 variant="default"
                 size="lg"
                 className="relative overflow-hidden rounded-full px-8 py-3 text-lg font-semibold border-2 border-white"
-
+                onMouseEnter={() => setIsHover(true)}
                 onMouseMove={handleMouseMove}
+                onMouseLeave={() => setIsHover(false)}
                 style={{
-                  background: `radial-gradient(circle at ${coords.x} ${coords.y}, rgba(255,255,255,0.15), transparent 40%)`,
+                  background: isHover
+                    ? `radial-gradient(circle at ${coords.x} ${coords.y}, rgba(255,255,255,0.15), transparent 40%)`
+                    : 'transparent',
                   transition: "background 0.3s ease-out",
                 }}
               >
