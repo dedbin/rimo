@@ -246,6 +246,20 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     setCanvasState({ mode: BoardCanvasMode.Translating, current: point });
   }, [setCanvasState, camera, history, canvasState.mode]);
 
+
+  useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setCanvasState({ mode: BoardCanvasMode.None });
+      unselectLayer();
+    }
+  };
+  window.addEventListener('keydown', handleKeyDown);
+  return () => {
+    window.removeEventListener('keydown', handleKeyDown);
+  };
+}, [unselectLayer, setCanvasState]);
+
   return (
     <main className="h-full w-full relative bg-neutral touch-none">
       <BoardInfo boardId={boardId} />
