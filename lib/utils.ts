@@ -113,3 +113,9 @@ export function getContrastingTextColor(color: Color) {
     const luminance = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b; // Luminance formula
     return luminance > 182 ? "black" : "white";
 }
+
+export function measureText(text: string, fontSize: number): number {
+  const ctx = document.createElement("canvas").getContext("2d")!;
+  ctx.font = `${fontSize}px Poppins`;
+  return ctx.measureText(text).width;
+}

@@ -30,7 +30,7 @@ import {
   useStorage
 } from "@liveblocks/react/suspense";
 import { CursorsPresence } from "./cursors-presence";
-import { connectionIdToColor, pickLayersInBox, pointerEventToCanvasPoint, resizeBounds } from "@/lib/utils";
+import { connectionIdToColor, pickLayersInBox, pointerEventToCanvasPoint, resizeBounds, measureText  } from "@/lib/utils";
 import { nanoid } from "nanoid";
 import { LiveObject } from "@liveblocks/client";
 import { set } from "date-fns";
@@ -41,6 +41,10 @@ import { SelectionTools } from "./selection-tools";
 
 const MAX_LAYERS = 100;
 const SELECTION_THRESHOLD = 5;
+const MIN_FONT_SIZE = 12;
+const PADDING_X = 8;
+const PADDING_Y = 4;
+
 interface BoardCanvasProps {
   boardId: string;
 }
@@ -104,13 +108,42 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     };
   }, [])
 
-  const resizeLayer = useMutation(({ storage, self }, point: Point) => {
+  const resizeLayer = useMutation(
+  ({ storage, self }, point: Point) => {
     if (canvasState.mode !== BoardCanvasMode.Resizing) return;
-    const bounds = resizeBounds(canvasState.initial, canvasState.corner, point);
+
+    const initial = canvasState.initial!;
+    const corner  = canvasState.corner!;
+    let bounds    = resizeBounds(initial, corner, point);
+
     const liveLayers = storage.get("layers");
-    const layer = liveLayers.get(self.presence.selection[0]);
-    if (layer) layer.update(bounds);
-  }, [canvasState]);
+    const layer      = liveLayers.get(self.presence.selection[0]);
+    if (!layer) return;
+
+    if (layer.get("type") === LayerType.Text) {
+      const text = layer.get("value") || "";
+      const minW = measureText(text, MIN_FONT_SIZE) + PADDING_X * 2;
+      const minH = MIN_FONT_SIZE * 1.2 + PADDING_Y * 2;
+
+      if (bounds.width < minW) {
+        if (corner & side.left) {
+          bounds.x = initial.x + initial.width - minW;
+        }
+        bounds.width = minW;
+      }
+      if (bounds.height < minH) {
+        if (corner & side.top) {
+          bounds.y = initial.y + initial.height - minH;
+        }
+        bounds.height = minH;
+      }
+    }
+
+    layer.update(bounds);
+  },
+  [canvasState]
+);
+
 
   const updateSelectionNet = useMutation(
     ({ storage, setMyPresence }, current: Point, origin: Point) => {
