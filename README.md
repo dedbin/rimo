@@ -70,9 +70,6 @@
    NEXT\_PUBLIC\_LIVEBLOCKS\_PUBLIC\_KEY=\<your\_liveblocks\_public\_key>
    NEXT\_PUBLIC\_LIVEBLOCKS\_SECRET\_KEY=\<your\_liveblocks\_secret\_key>
    AITUNNEL\_API\_KEY=\<your\_aitunnel\_api\_key>
-
-
-
 4. **Запустить локально**
    ```bash
    npm run dev
