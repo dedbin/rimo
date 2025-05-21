@@ -3,6 +3,8 @@ import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 const COLORS = ["#DC2626", "#D97706", "#059669", "#3B82F6", "#8B5CF6", "#F472B6"]
+const MIN_WIDTH  = 40;  
+const MIN_HEIGHT = 20; 
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -31,31 +33,44 @@ export function rgbToCss(color: Color) {
   return `#${r}${g}${b}`
 }
 
+export function resizeBounds(
+  orig: XYWH,
+  corner: side,
+  point: Point
+): XYWH {
+  const result: XYWH = { ...orig };
 
-export function resizeBounds(bounds: XYWH, corner: side, point: Point): XYWH {
-    const result = { ...bounds };
+  if (corner & side.left) {
+    result.x      = Math.min(orig.x + orig.width, point.x);
+    result.width  = Math.abs(orig.x + orig.width - point.x);
+  }
+  if (corner & side.right) {
+    result.x      = Math.min(orig.x, point.x);
+    result.width  = Math.abs(orig.x - point.x);
+  }
+  if (corner & side.top) {
+    result.y       = Math.min(orig.y + orig.height, point.y);
+    result.height  = Math.abs(orig.y + orig.height - point.y);
+  }
+  if (corner & side.bottom) {
+    result.y       = Math.min(orig.y, point.y);
+    result.height  = Math.abs(orig.y - point.y);
+  }
 
-    if ((corner & side.left) === side.left) {
-        result.x = Math.min(bounds.x + bounds.width, point.x);
-        result.width = Math.abs(bounds.x + bounds.width - point.x);
+  if (result.width < MIN_WIDTH) {
+    if (corner & side.left) {
+      result.x = orig.x + orig.width - MIN_WIDTH;
     }
-
-    if ((corner & side.right) === side.right) {
-        result.x = Math.min(bounds.x, point.x);
-        result.width = Math.abs(bounds.x - point.x);
+    result.width = MIN_WIDTH;
+  }
+  if (result.height < MIN_HEIGHT) {
+    if (corner & side.top) {
+      result.y = orig.y + orig.height - MIN_HEIGHT;
     }
+    result.height = MIN_HEIGHT;
+  }
 
-    if ((corner & side.top) === side.top) {
-        result.y = Math.min(bounds.y + bounds.height, point.y);
-        result.height = Math.abs(bounds.y + bounds.height - point.y);
-    }
-
-    if ((corner & side.bottom) === side.bottom) {
-        result.y = Math.min(bounds.y, point.y);
-        result.height = Math.abs(bounds.y - point.y);
-    }
-
-    return result;
+  return result;
 }
 
 function normalizeArea(p1: Point, p2: Point) {
@@ -92,4 +107,9 @@ export function pickLayersInBox(
       box.bottom >= layerBottom
     );
   });
+}
+
+export function getContrastingTextColor(color: Color) {
+    const luminance = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b; // Luminance formula
+    return luminance > 182 ? "black" : "white";
 }

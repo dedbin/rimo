@@ -80,6 +80,7 @@ export type TextLayer = {
     stroke?: Color;
     strokeWidth?: number;
     value?: string;
+    font?: string;
 }
 
 export type EllipseLayer = {
