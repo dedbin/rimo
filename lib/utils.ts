@@ -5,14 +5,28 @@ import { twMerge } from "tailwind-merge"
 const COLORS = ["#DC2626", "#D97706", "#059669", "#3B82F6", "#8B5CF6", "#F472B6"]
 const MIN_WIDTH  = 40;  
 const MIN_HEIGHT = 20; 
+const GOLDEN_ANGLE = 137.508;  
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// TODO: make in a better way
-export function connectionIdToColor(connectionId: number): string {
-  return COLORS[connectionId % COLORS.length]
+function hslToHex(h: number, s: number, l: number): string {
+  l /= 100;
+  const a = s * Math.min(l, 1 - l) / 100;
+  const f = (n: number) => {
+    const k = (n + h / 30) % 12;
+    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+    return Math.round(255 * color).toString(16).padStart(2, "0");
+  };
+  return `#${f(0)}${f(8)}${f(4)}`;
+}
+
+export function connectionIdToColor(id: number): string {            
+  const hue = (id * GOLDEN_ANGLE) % 360;     
+  const saturation = 65;                     
+  const lightness = 55;                      
+  return hslToHex(hue, saturation, lightness);
 }
 
 export function pointerEventToCanvasPoint(
