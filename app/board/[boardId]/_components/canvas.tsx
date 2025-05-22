@@ -40,6 +40,7 @@ import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
 import { Path } from "./path";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
+import { PenSizePicker } from "./pen-size-picker";
 
 const MAX_LAYERS = 100;
 const SELECTION_THRESHOLD = 5;
@@ -67,6 +68,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0 });
   const [lastUsedColor, setLastUsedColor] = useState<Color>({r: 0, g: 0, b: 0,}); 
+  const [lastUsedSize, setLastUsedSize] = useState<number>(16);
 
   const cameraRef = useRef<Camera>(camera);
   const rafRef = useRef<number | null>(null);
@@ -222,6 +224,7 @@ const startDrawing = useMutation(
     setMyPresence({
       pencilDraft: [[point.x, point.y, pressure] as [number, number, number]],
       penColor: lastUsedColor,
+      penSize: lastUsedSize,
     });
   },
   [canvasState.mode, lastUsedColor]
@@ -239,13 +242,13 @@ const insertPath = useMutation(
     }
 
     const id = nanoid();
-    layers.set(id, new LiveObject(makePathLayer(draft, lastUsedColor)));
+    layers.set(id, new LiveObject(makePathLayer(draft, lastUsedColor, lastUsedSize)));
     layerIds.push(id);
 
     setMyPresence({ pencilDraft: null });
     setCanvasState({ mode: BoardCanvasMode.Pencil });
   },
-  [lastUsedColor]
+  [lastUsedColor, lastUsedSize]
 );
 
 
@@ -492,11 +495,17 @@ useEffect(() => {
         redo={history.redo}
         canUndo={canUndo}
         canRedo={canRedo}
+        selectedPenSize={lastUsedSize} 
+        onPenSizeChange={(size) => {
+        setLastUsedSize(size);
+        setCanvasState({ mode: BoardCanvasMode.Pencil });
+      }}
       />
       <SelectionTools
         camera={camera}
         setLastUsedColor={setLastUsedColor}
       />
+       
       <svg
         className="h-[100vh] w-[100vw]"
         onWheel={onWheel}
@@ -535,6 +544,7 @@ useEffect(() => {
                 x={0}
                 y={0}
                 fill={rgbToCss(lastUsedColor)}
+                size={lastUsedSize}
             />
           )}
         </g>
