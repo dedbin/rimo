@@ -39,6 +39,7 @@ import { LayerPreview } from "./layer-preview";
 import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
 import { Path } from "./path";
+import { useDeleteLayers } from "@/hooks/use-delete-layers";
 
 const MAX_LAYERS = 100;
 const SELECTION_THRESHOLD = 5;
@@ -408,33 +409,76 @@ const insertPath = useMutation(
     setCanvasState({ mode: BoardCanvasMode.Translating, current: point });
   }, [setCanvasState, camera, history, canvasState.mode]);
 
-
-  useEffect(() => {
+  const deleteLayers = useDeleteLayers();
+useEffect(() => {
   const handleKeyDown = (e: KeyboardEvent) => {
-    const key = e.key.toLowerCase();
+    const target = e.target as HTMLElement;
+    if (
+      target.isContentEditable ||
+      ["INPUT", "TEXTAREA"].includes(target.tagName)
+    ) {
+      return;
+    }
 
+    // только когда Ctrl и без других модификаторов
     if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-      if (key === "z" || key === "я") {
-        e.preventDefault();
-        history.undo();
-      } else if (key === "y" || key === "н") {
-        e.preventDefault();
-        history.redo();
-      } else if (key === "p" || key === "з") {
-        e.preventDefault();
-        setCanvasState(s => ({ ...s, mode: BoardCanvasMode.Pencil }));
+      switch (e.code) {
+        case "KeyZ":
+          e.preventDefault();
+          history.undo();
+          break;
+        case "KeyY":
+          e.preventDefault();
+          history.redo();
+          break;
+        case "KeyP":
+          e.preventDefault();
+          setCanvasState((s) => ({ ...s, mode: BoardCanvasMode.Pencil }));
+          break;
+        case "KeyT":
+          e.preventDefault();
+          setCanvasState({
+            mode: BoardCanvasMode.Inserting,
+            layerType: LayerType.Text,
+          });
+          break;
+        case "KeyS":
+          e.preventDefault();
+          setCanvasState({
+            mode: BoardCanvasMode.Inserting,
+            layerType: LayerType.Sticker,
+          });
+          break;
+        case "KeyR":
+          e.preventDefault();
+          setCanvasState({
+            mode: BoardCanvasMode.Inserting,
+            layerType: LayerType.Rectangle,
+          });
+          break;
+        case "KeyO":
+          e.preventDefault();
+          setCanvasState({
+            mode: BoardCanvasMode.Inserting,
+            layerType: LayerType.Ellipse,
+          });
+          break;
       }
     } else if (e.key === "Escape") {
       setCanvasState({ mode: BoardCanvasMode.None });
       unselectLayer();
+    } else if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      deleteLayers();
     }
   };
 
-  window.addEventListener("keydown", handleKeyDown);
+  window.addEventListener("keydown", handleKeyDown, true);
   return () => {
-    window.removeEventListener("keydown", handleKeyDown);
+    window.removeEventListener("keydown", handleKeyDown, true);
   };
-}, [history, setCanvasState, unselectLayer]);
+}, [history, setCanvasState, unselectLayer, deleteLayers]);
+
 
   return (
     <main className="h-full w-full relative bg-neutral touch-none">

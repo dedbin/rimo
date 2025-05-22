@@ -51,7 +51,7 @@ export const BoardToolbar = ({
           }
         />
         <ToolButton
-          label="text"
+          label="text (Ctrl+T)"
           icon={Type}
           onClick={() =>
             setCanvasState({
@@ -77,7 +77,7 @@ export const BoardToolbar = ({
           />
         </Hint>
         <ToolButton
-          label="stickers"
+          label="stickers (Ctrl+S)"
           icon={StickyNote}
           onClick={() =>
             setCanvasState({
@@ -91,7 +91,7 @@ export const BoardToolbar = ({
           }
         />
         <ToolButton
-          label="rectangle"
+          label="rectangle (Ctrl+R)"
           icon={Square}
           onClick={() =>
             setCanvasState({
@@ -105,7 +105,7 @@ export const BoardToolbar = ({
           }
         />
         <ToolButton
-          label="ellipse"
+          label="ellipse (Ctrl+O)"
           icon={Circle}
           onClick={() =>
             setCanvasState({
