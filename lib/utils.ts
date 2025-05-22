@@ -134,7 +134,7 @@ export function measureText(text: string, fontSize: number): number {
   return ctx.measureText(text).width;
 }
 
-export function makePathLayer(points: number[][], fillColor: Color): PathLayer {
+export function makePathLayer(points: number[][], fillColor: Color, size: number): PathLayer {
     if (points.length < 2) {
     throw new Error("At least two points are required to build a path");
   }
@@ -167,7 +167,8 @@ export function makePathLayer(points: number[][], fillColor: Color): PathLayer {
     width: maxX - minX,
     height: maxY - minY,
     fill: fillColor,
-    points: offsetPoints
+    points: offsetPoints,
+    size
   };
 };
 

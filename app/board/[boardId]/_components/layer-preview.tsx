@@ -67,6 +67,7 @@ export const LayerPreview: React.FC<LayerPreviewProps> = memo(
                 y={layer.y}
                 fill={layer.fill ? rgbToCss(layer.fill) : "#000"}
                 stroke={selectionColor}
+                size={layer.size ?? 16}
             />
         );
 

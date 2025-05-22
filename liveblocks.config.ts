@@ -14,6 +14,7 @@ declare global {
       selection: string[];
       pencilDraft: [x: number, y: number, pressure: number][] | null;
       penColor: Color | null;
+      penSize: number;
     };
 
     // The Storage tree for the room, for useMutation, useStorage, etc.
