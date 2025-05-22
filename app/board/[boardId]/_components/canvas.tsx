@@ -227,7 +227,7 @@ const startDrawing = useMutation(
       penSize: lastUsedSize,
     });
   },
-  [canvasState.mode, lastUsedColor]
+  [canvasState.mode, lastUsedColor, lastUsedSize]
 );
 
 const insertPath = useMutation(
