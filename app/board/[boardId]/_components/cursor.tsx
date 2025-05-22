@@ -32,7 +32,7 @@ export const Cursor = memo(({connectionId}: CursorProps) => {
                     color: connectionIdToColor(connectionId),
                 }}
             />
-            <span className="absolute px-1.5 py-0.5 left-5 rounded-md text-white  text-xs font-semibold" style={{background: connectionIdToColor(connectionId)}}>{name}</span>
+            <span className="absolute px-1.5 py-0.5 left-5 rounded-md text-white select-none pointer-events-none text-xs font-semibold" style={{background: connectionIdToColor(connectionId)}}>{name}</span>
         </foreignObject>
     )
 })
