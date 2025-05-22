@@ -35,7 +35,6 @@ import { CursorsPresence } from "./cursors-presence";
 import { connectionIdToColor, pickLayersInBox, pointerEventToCanvasPoint, resizeBounds, measureText, makePathLayer, rgbToCss  } from "@/lib/utils";
 import { nanoid } from "nanoid";
 import { LiveObject } from "@liveblocks/client";
-import { set } from "date-fns";
 import { LayerPreview } from "./layer-preview";
 import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
@@ -412,16 +411,30 @@ const insertPath = useMutation(
 
   useEffect(() => {
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
+    const key = e.key.toLowerCase();
+
+    if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+      if (key === "z" || key === "я") {
+        e.preventDefault();
+        history.undo();
+      } else if (key === "y" || key === "н") {
+        e.preventDefault();
+        history.redo();
+      } else if (key === "p" || key === "з") {
+        e.preventDefault();
+        setCanvasState(s => ({ ...s, mode: BoardCanvasMode.Pencil }));
+      }
+    } else if (e.key === "Escape") {
       setCanvasState({ mode: BoardCanvasMode.None });
       unselectLayer();
     }
   };
-  window.addEventListener('keydown', handleKeyDown);
+
+  window.addEventListener("keydown", handleKeyDown);
   return () => {
-    window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener("keydown", handleKeyDown);
   };
-}, [unselectLayer, setCanvasState]);
+}, [history, setCanvasState, unselectLayer]);
 
   return (
     <main className="h-full w-full relative bg-neutral touch-none">
