@@ -81,7 +81,7 @@ export type TextLayer = {
     stroke?: Color;
     strokeWidth?: number;
     value?: string;
-    font?: string;
+    font?: string; // TODO give user ability to select font and size
 }
 
 export type EllipseLayer = {

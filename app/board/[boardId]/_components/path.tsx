@@ -15,7 +15,7 @@ export const Path = ({ x, y, points, fill, onPointerDown, stroke, size }: PathPr
     return (
         <path
             className="drop-shadow-md"
-            d={convertPointsToPath(getStroke(points, { size: size ?? 16, thinning: 0.5, smoothing: 0.5, streamline: 0.5 }))} // TODO: Make this configurable from user side individually for any layer
+            d={convertPointsToPath(getStroke(points, { size: size ?? 16, thinning: 0.5, smoothing: 0.5, streamline: 0.5 }))}
             onPointerDown={(e) => onPointerDown && onPointerDown(e, "path")}
             style={{ transform: `translate(${x}px, ${y}px)` }}
             x = {0}

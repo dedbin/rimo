@@ -72,7 +72,7 @@ export const BoardList = ({ orgId, query }: BoardListProps) => {
                         authorId={board.authorId}
                         createdAt={board._creationTime}
                         orgId={board.orgId}
-                        isFavorite={board.isFavorite} // TODO: make this dynamic
+                        isFavorite={board.isFavorite} 
                     />
                 ))}
             </div>
