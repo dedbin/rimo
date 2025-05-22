@@ -1,4 +1,4 @@
-import { Camera, Color, Point, side, XYWH, Layer } from "@/types/board-canvas"
+import { Camera, Color, Point, side, XYWH, Layer, LayerType, PathLayer } from "@/types/board-canvas"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -132,4 +132,65 @@ export function measureText(text: string, fontSize: number): number {
   const ctx = document.createElement("canvas").getContext("2d")!;
   ctx.font = `${fontSize}px Poppins`;
   return ctx.measureText(text).width;
+}
+
+export function makePathLayer(points: number[][], fillColor: Color): PathLayer {
+    if (points.length < 2) {
+    throw new Error("At least two points are required to build a path");
+  }
+
+  const { minX, minY, maxX, maxY } = points.reduce(
+    (acc, [x, y]) => ({
+      minX: x < acc.minX ? x : acc.minX,
+      minY: y < acc.minY ? y : acc.minY,
+      maxX: x > acc.maxX ? x : acc.maxX,
+      maxY: y > acc.maxY ? y : acc.maxY,
+    }),
+    {
+      minX: Infinity,
+      minY: Infinity,
+      maxX: -Infinity,
+      maxY: -Infinity,
+    }
+  );
+
+  const offsetPoints = points.map(([x, y, pressure]) => [
+    x - minX,
+    y - minY,
+    pressure,
+  ]);
+
+  return {
+    type: LayerType.Path,
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+    fill: fillColor,
+    points: offsetPoints
+  };
+};
+
+  /**
+   * Convert a list of points to a SVG path string.
+   *
+   * @param points - List of points in the format `[x, y, pressure]`.
+   * @returns A SVG path string that can be used in the "d" attribute of a `<path>` element.
+   */
+export function convertPointsToPath(points: number[][]): string {
+  if (points.length === 0) return "";
+
+  const [startX, startY] = points[0];
+  const segments: string[] = [`M${startX},${startY}`];
+
+  for (let i = 0; i < points.length; i++) {
+    const [x0, y0] = points[i];
+    const [x1, y1] = points[(i + 1) % points.length];
+    const midX = (x0 + x1) / 2;
+    const midY = (y0 + y1) / 2;
+    segments.push(`Q${x0},${y0},${midX},${midY}`);
+  }
+
+  segments.push("Z");
+  return segments.join(" ");
 }

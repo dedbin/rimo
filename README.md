@@ -63,13 +63,13 @@
 
    ```text
    CONVEX_DEPLOYMENT=<your_convex_deployment>
-   NEXT\_PUBLIC\_CONVEX\_URL=\<your\_convex\_url>
-   NEXT\_PUBLIC\_CLERK\_PUBLISHABLE\_KEY=\<your\_clerk\_publishable\_key>
-   CLERK\_SECRET\_KEY=\<your\_clerk\_secret\_key>
-   CLERK\_FRONTEND\_API\_URL=\<your\_clerk\_frontend\_api\_url>
-   NEXT\_PUBLIC\_LIVEBLOCKS\_PUBLIC\_KEY=\<your\_liveblocks\_public\_key>
-   NEXT\_PUBLIC\_LIVEBLOCKS\_SECRET\_KEY=\<your\_liveblocks\_secret\_key>
-   AITUNNEL\_API\_KEY=\<your\_aitunnel\_api\_key>
+   NEXT_PUBLIC_CONVEX_URL=<your_convex_url>
+   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=<your_clerk_publishable_key>
+   CLERK_SECRET_KEY=<your_clerk_secret_key>
+   CLERK_FRONTEND_API_URL=<your_clerk_frontend_api_url>
+   NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY=<your_liveblocks_public_key>
+   NEXT_PUBLIC_LIVEBLOCKS_SECRET_KEY=<your_liveblocks_secret_key>
+   AITUNNEL_API_KEY=<your_aitunnel_api_key> (optional, not ready yet)
 
 
 
