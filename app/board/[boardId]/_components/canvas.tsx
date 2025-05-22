@@ -48,6 +48,7 @@ import { Path } from "./path";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { PenSizePicker } from "./pen-size-picker";
 import { ImageUpload } from "./image-upload";
+import { toast } from "sonner";
 
 const MAX_LAYERS = 100;
 const SELECTION_THRESHOLD = 5;
@@ -116,12 +117,14 @@ export function createLayer(
 }
 
 export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
+  const self = useSelf();
+
   const layerIds = useStorage((root) => root.layerIds);
 
   const pencilDraft = useSelf((me) => me.presence.pencilDraft);
 
   if (!layerIds) {
-    console.error("layerIds not found"); // todo: make pretty error screen
+    console.error("layerIds not found"); // TODO: make pretty error screen
     return null;
   }
   
@@ -141,7 +144,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   const canRedo = useCanRedo();
 
   const insertImageLayer = useMutation(
-  ({ storage, setMyPresence }, imageUrl: string) => {
+  ({ storage, setMyPresence }, imageUrl: string, position: Point) => {
     const liveLayers = storage.get("layers");
     const liveLayerIds = storage.get("layerIds");
 
@@ -153,8 +156,8 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     const id = nanoid();
     const layer = new LiveObject<ImageLayer>({
       type: LayerType.Image,
-      x: 100,
-      y: 100,
+      x: position.x,
+      y: position.y,
       width: 300,
       height: 300,
       src: imageUrl,
@@ -440,7 +443,7 @@ const insertPath = useMutation(
       unselectLayer();
       setCanvasState({ mode: BoardCanvasMode.None });
     } else if (canvasState.mode === BoardCanvasMode.Inserting) {
-      insertLayer(canvasState.layerType!, point);
+      insertLayer(canvasState.layerType!, point); // TODO fix this error
       setCanvasState({ mode: BoardCanvasMode.None });
     } else {
       setCanvasState({ mode: BoardCanvasMode.None });
@@ -454,7 +457,7 @@ const insertPath = useMutation(
     history,
     insertLayer,
     unselectLayer,
-    insertPath,  // не забудьте добавить сюда insertPath
+    insertPath,
   ]
 );
 
@@ -564,6 +567,82 @@ useEffect(() => {
   };
 }, [history, setCanvasState, unselectLayer, deleteLayers]);
 
+const insertTextLayer = useMutation(
+  ({ storage, setMyPresence }, value: string, position: Point) => {
+    const liveLayers = storage.get("layers");
+    const liveLayerIds = storage.get("layerIds");
+
+    if (liveLayers.size >= MAX_LAYERS) {
+      console.warn("Max layers reached");
+      return;
+    }
+
+    const id = nanoid();
+    const textLayer = new LiveObject<TextLayer>({
+      type: LayerType.Text,
+      x: position.x,
+      y: position.y,
+      width: 300,
+      height: 100,
+      value,
+      fill: lastUsedColor,
+    });
+
+    liveLayers.set(id, textLayer);
+    liveLayerIds.push(id);
+    setMyPresence({ selection: [id] }, { addToHistory: true });
+    setCanvasState({ mode: BoardCanvasMode.None });
+  },
+  [lastUsedColor]
+);
+
+useEffect(() => {
+  const handlePaste = async (e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    const text = e.clipboardData?.getData("text/plain")?.trim();
+    const cursor = self.presence.cursor ?? { x: 100, y: 100 };
+
+    // ⬇️ Текст
+    if (text) {
+      insertTextLayer(text, cursor);
+      return;
+    }
+
+    // ⬇️ Картинка
+    if (items) {
+      for (const item of items) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile();
+          if (!file) continue;
+
+          const formData = new FormData();
+          formData.append("file", file);
+
+          try {
+            const response = await fetch("/api/upload-image", {
+              method: "POST",
+              body: formData,
+            });
+
+            const data = await response.json();
+            if (data.url) {
+              insertImageLayer(data.url, cursor); // 👈 передаём позицию
+            }
+          } catch (err) {
+            console.error("Paste image upload failed:", err);
+            toast.error("Image upload failed.");
+          }
+        }
+      }
+    }
+  };
+
+  window.addEventListener("paste", handlePaste);
+  return () => {
+    window.removeEventListener("paste", handlePaste);
+  };
+}, [insertTextLayer, insertImageLayer, self.presence.cursor]);
+
 
   return (
     <main className="h-full w-full relative bg-neutral touch-none">
@@ -578,7 +657,10 @@ useEffect(() => {
         canUndo={canUndo}
         canRedo={canRedo}
         selectedPenSize={lastUsedSize} 
-        onImageUpload={(url) => insertImageLayer(url)}
+        onImageUpload={(url) => {
+          const cursor = self.presence.cursor ?? { x: 100, y: 100 };
+          insertImageLayer(url, cursor);
+        }}
         onPenSizeChange={(size) => {
         setLastUsedSize(size);
         setCanvasState({ mode: BoardCanvasMode.Pencil });

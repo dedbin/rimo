@@ -12,6 +12,8 @@
 
 /covers
 
+public/uploads
+
 # testing
 /coverage
 
