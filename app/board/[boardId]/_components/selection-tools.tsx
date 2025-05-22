@@ -23,7 +23,7 @@ export const SelectionTools = memo(
 
 const moveToBack = useMutation(({ storage }) => {
   const liveLayerIds = storage.get("layerIds");
-  const arr = liveLayerIds.toArray();
+  const arr = liveLayerIds.toImmutable();
   const indices = arr
     .map((id, idx) => ({ id, idx }))
     .filter(item => selection.includes(item.id))
@@ -39,7 +39,7 @@ const moveToBack = useMutation(({ storage }) => {
 
 const moveToFront = useMutation(({ storage }) => {
   const liveLayerIds = storage.get("layerIds");
-  const arr = liveLayerIds.toArray();
+  const arr = liveLayerIds.toImmutable();
   
   const indices = arr
     .map((id, idx) => ({ id, idx }))
