@@ -34,7 +34,8 @@ export enum LayerType {
     Ellipse,
     Text,
     Path,
-    Sticker
+    Sticker,
+    Image
 }
 
 export type RectangleLayer = {
@@ -96,7 +97,17 @@ export type EllipseLayer = {
     value?: string;
 }
 
-export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer
+export type ImageLayer = {
+    type: LayerType.Image;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    src: string;
+    value?: string;
+}
+
+export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer
 
 export enum BoardCanvasMode {
     None,
@@ -117,7 +128,7 @@ export type BoardCanvasState =
 
   | { mode: BoardCanvasMode.Translating, current: Point }
 
-  | { mode: BoardCanvasMode.Inserting, layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text }
+  | { mode: BoardCanvasMode.Inserting, layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image }
 
   | { mode: BoardCanvasMode.Resizing, initial: XYWH, corner: side }
 

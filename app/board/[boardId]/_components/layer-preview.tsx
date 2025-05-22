@@ -8,6 +8,7 @@ import { Ellipse } from "./ellipse";
 import { Text } from "./text";
 import { Sticker } from "./sticker";
 import { Path } from "./path";
+import { Image } from "./image";
 import { rgbToCss } from "@/lib/utils";
 
 interface LayerPreviewProps {
@@ -69,6 +70,15 @@ export const LayerPreview: React.FC<LayerPreviewProps> = memo(
                 stroke={selectionColor}
                 size={layer.size ?? 16}
             />
+        );
+      case LayerType.Image:
+        return (
+          <Image
+            id={id}
+            layer={layer}
+            onPointerDown={onLayerPointerDown}
+            selectionColor={selectionColor}
+          />
         );
 
       default:

@@ -16,6 +16,12 @@ import {
   Point,
   side,
   XYWH,
+  ImageLayer,
+  StickerLayer,
+  TextLayer,
+  EllipseLayer,
+  RectangleLayer,
+  Layer,
 } from "@/types/board-canvas";
 
 import { BoardInfo } from "./info";
@@ -41,6 +47,7 @@ import { SelectionTools } from "./selection-tools";
 import { Path } from "./path";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { PenSizePicker } from "./pen-size-picker";
+import { ImageUpload } from "./image-upload";
 
 const MAX_LAYERS = 100;
 const SELECTION_THRESHOLD = 5;
@@ -50,6 +57,62 @@ const PADDING_Y = 4;
 
 interface BoardCanvasProps {
   boardId: string;
+}
+
+export function createLayer(
+  layerType: LayerType,
+  position: Point,
+  lastUsedColor: Color
+): LiveObject<Layer> {
+  switch (layerType) {
+    case LayerType.Rectangle:
+      return new LiveObject<RectangleLayer>({
+        type: LayerType.Rectangle,
+        x: position.x,
+        y: position.y,
+        width: 100,
+        height: 100,
+        fill: lastUsedColor,
+      });
+
+    case LayerType.Ellipse:
+      return new LiveObject<EllipseLayer>({
+        type: LayerType.Ellipse,
+        x: position.x,
+        y: position.y,
+        width: 100,
+        height: 100,
+        fill: lastUsedColor,
+      });
+
+    case LayerType.Text:
+      return new LiveObject<TextLayer>({
+        type: LayerType.Text,
+        x: position.x,
+        y: position.y,
+        width: 100,
+        height: 100,
+        value: "Text",
+        fill: lastUsedColor,
+      });
+
+    case LayerType.Sticker:
+      return new LiveObject<StickerLayer>({
+        type: LayerType.Sticker,
+        fill: lastUsedColor,
+        x: position.x,
+        y: position.y,
+        width: 100,
+        height: 100,
+        value: "Text",
+      });
+
+    case LayerType.Image:
+      throw new Error("Use insertImageLayer for image layers");
+
+    default:
+      throw new Error(`Unsupported layer type: ${layerType}`);
+  }
 }
 
 export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
@@ -77,36 +140,57 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   const canUndo = useCanUndo();
   const canRedo = useCanRedo();
 
-  const insertLayer = useMutation((
-    { storage, setMyPresence },
-    layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text,
-    position: Point
-  ) => {
+  const insertImageLayer = useMutation(
+  ({ storage, setMyPresence }, imageUrl: string) => {
     const liveLayers = storage.get("layers");
+    const liveLayerIds = storage.get("layerIds");
 
     if (liveLayers.size >= MAX_LAYERS) {
       console.warn("Max layers reached");
       return;
     }
 
-    const liveLayerIds = storage.get("layerIds");
-    const layerId = nanoid();
-    const layer = new LiveObject({
-      type: layerType,
-      x: position.x,
-      y: position.y,
-      height: 100,
-      width: 100, // TODO: maybe make this variable depending on layer type
-      fill: lastUsedColor,
+    const id = nanoid();
+    const layer = new LiveObject<ImageLayer>({
+      type: LayerType.Image,
+      x: 100,
+      y: 100,
+      width: 300,
+      height: 300,
+      src: imageUrl,
     });
 
-    liveLayerIds.push(layerId);
-    liveLayers.set(layerId, layer);
+    liveLayers.set(id, layer);
+    liveLayerIds.push(id);
 
-    setMyPresence({selection: [layerId],}, { addToHistory: true });
+    setMyPresence({ selection: [id] }, { addToHistory: true });
     setCanvasState({ mode: BoardCanvasMode.None });
-  }, [lastUsedColor]
+  },
+  []
 );
+
+  const insertLayer = useMutation((
+  { storage, setMyPresence },
+  layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text,
+  position: Point
+) => {
+  const liveLayers = storage.get("layers");
+
+  if (liveLayers.size >= MAX_LAYERS) {
+    console.warn("Max layers reached");
+    return;
+  }
+
+  const liveLayerIds = storage.get("layerIds");
+  const layerId = nanoid();
+  const layer = createLayer(layerType, position, lastUsedColor);
+
+  liveLayers.set(layerId, layer);
+  liveLayerIds.push(layerId);
+
+  setMyPresence({ selection: [layerId] }, { addToHistory: true });
+  setCanvasState({ mode: BoardCanvasMode.None });
+}, [lastUsedColor]);
 
   const unselectLayer = useMutation(({ self, setMyPresence }) => {
     if (self.presence.selection.length > 0) {
@@ -343,14 +427,12 @@ const insertPath = useMutation(
   ({}, e: React.PointerEvent<SVGSVGElement>) => {
     const point = pointerEventToCanvasPoint(e, camera);
 
-    // Если мы в режиме Pencil — завершаем штрих и остаёмся в Pencil
     if (canvasState.mode === BoardCanvasMode.Pencil) {
       insertPath();
       history.resume();
       return;
     }
 
-    // Иначе — ваша старая логика
     if (
       canvasState.mode === BoardCanvasMode.None ||
       canvasState.mode === BoardCanvasMode.Pressing
@@ -496,6 +578,7 @@ useEffect(() => {
         canUndo={canUndo}
         canRedo={canRedo}
         selectedPenSize={lastUsedSize} 
+        onImageUpload={(url) => insertImageLayer(url)}
         onPenSizeChange={(size) => {
         setLastUsedSize(size);
         setCanvasState({ mode: BoardCanvasMode.Pencil });

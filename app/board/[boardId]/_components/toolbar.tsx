@@ -9,6 +9,7 @@ import {
   StickyNote,
   Type,
   Undo2,
+  Image as ImageIcon
 } from "lucide-react";
 
 import { ToolButton } from "./tool-button";
@@ -21,6 +22,7 @@ import {
 import { PenSizePicker } from "./pen-size-picker";
 import { BoardCanvasMode, BoardCanvasState, LayerType } from "@/types/board-canvas";
 import { useState } from "react";
+import { ImageUpload } from "./image-upload"; // 👈 добавлено
 
 interface BoardToolbarProps {
   canvasState: BoardCanvasState;
@@ -31,6 +33,7 @@ interface BoardToolbarProps {
   canRedo: boolean;
   selectedPenSize: number;
   onPenSizeChange: (size: number) => void;
+  onImageUpload: (url: string) => void; 
 }
 
 export const BoardToolbar = ({
@@ -41,14 +44,13 @@ export const BoardToolbar = ({
   canUndo,
   canRedo,
   onPenSizeChange,
-  selectedPenSize
+  selectedPenSize,
+  onImageUpload,
 }: BoardToolbarProps) => {
-  // состояние открытия менюшки пера
   const [penOpen, setPenOpen] = useState(false);
 
   return (
     <div className="absolute top-1/2 left-2 transform -translate-y-1/2 flex flex-col gap-4 z-10">
-      {/* Основные инструменты */}
       <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col gap-y-1 items-center">
         <ToolButton
           label="select"
@@ -80,7 +82,6 @@ export const BoardToolbar = ({
           }
         />
 
-        {/* === Pen с контролем открытия === */}
         <DropdownMenu open={penOpen} onOpenChange={setPenOpen}>
           <DropdownMenuTrigger asChild>
             <Button
@@ -91,7 +92,6 @@ export const BoardToolbar = ({
               }
               size="icon"
               onClick={() => {
-                // переключаем режим в Pencil и открываем меню
                 setCanvasState({ mode: BoardCanvasMode.Pencil });
                 setPenOpen(true);
               }}
@@ -105,7 +105,6 @@ export const BoardToolbar = ({
             align="center"
             sideOffset={8}
             className="bg-white p-2 shadow rounded-md"
-            // чтобы клики внутри не сбрасывали canvasState
             onPointerDown={(e) => e.stopPropagation()}
             onPointerUp={(e) => e.stopPropagation()}
           >
@@ -113,9 +112,7 @@ export const BoardToolbar = ({
               currentSize={selectedPenSize}
               onChange={(size) => {
                 onPenSizeChange(size);
-                // после выбора — закрываем меню
                 setPenOpen(false);
-                // и остаёмся в Pencil-режиме
                 setCanvasState({ mode: BoardCanvasMode.Pencil });
               }}
             />
@@ -166,6 +163,43 @@ export const BoardToolbar = ({
             canvasState.layerType === LayerType.Ellipse
           }
         />
+
+        <ToolButton
+  label="image"
+  icon={ImageIcon}
+  onClick={() => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+
+    input.onchange = async () => {
+      const file = input.files?.[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const response = await fetch("/api/upload-image", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error("Upload failed");
+        }
+
+        const data = await response.json();
+        onImageUpload(data.url);
+      } catch (err) {
+        console.error("Upload error:", err);
+        alert("Image upload failed.");
+      }
+    };
+
+    input.click();
+  }}
+/>
       </div>
 
       {/* Undo / Redo */}
@@ -186,6 +220,7 @@ export const BoardToolbar = ({
     </div>
   );
 };
+
 export const BoardToolbarSkeleton = () => {
   return (
     <div className="absolute top-1/2 left-2 transform -translate-y-1/2 flex flex-col gap-4">
