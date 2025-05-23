@@ -34,7 +34,8 @@
     "create": "Create board",
     "creating": "Creating...",
     "toastSuccess": "Board created",
-    "toastError": "Failed to create board"
+    "toastError": "Failed to create board",
+    "defaultTitle": "Untitled board"
   },
   "actions": {
     "copyLink": "Copy link",

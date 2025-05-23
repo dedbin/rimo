@@ -34,7 +34,8 @@
     "create": "Создать доску",
     "creating": "Создаем...",
     "toastSuccess": "Доска создана",
-    "toastError": "Не удалось создать доску"
+    "toastError": "Не удалось создать доску",
+    "defaultTitle": "Новая доска"
   },
   "actions": {
     "copyLink": "Скопировать ссылку",

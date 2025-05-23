@@ -16,21 +16,25 @@ export const EmptyBoards = () => {
   const { organization } = useOrganization();
   const { mutate: createBoard, pending } = useApiMutation(api.board.create);
 
-  const onClick = () => {
+  const onClick = async () => {
     if (!organization) return;
 
-    createBoard({
-      title: "Untitled board",
-      orgId: organization.id,
-    })
-      .then((id) => {
-        toast.success(t("emptyBoards.toastSuccess"));
-        router.push(`/board/${id}`);
-      })
-      .catch((error) => {
-        console.error("error creating board:", error);
-        toast.error(t("emptyBoards.toastError"));
+    try {
+      const res = await fetch("/api/generate-cover", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to generate cover");
+      const { imageUrl } = await res.json();
+
+      const id = await createBoard({
+        title: t("emptyBoards.defaultTitle"),
+        orgId: organization.id,
+        imageUrl,
       });
+
+      router.push(`/board/${id}`);
+    } catch (error) {
+      console.error("error creating board:", error);
+      toast.error(t("emptyBoards.toastError"));
+    }
   };
 
   return (
@@ -55,5 +59,5 @@ export const EmptyBoards = () => {
         </Button>
       </div>
     </div>
-);
+  );
 };
