@@ -1,0 +1,94 @@
+{
+  "sidebar": {
+    "language": "Language",
+    "english": "English",
+    "russian": "Russian",
+    "teamBoards": "Team boards",
+    "favBoards": "Fav boards"
+  },
+  "welcome": "Welcome!",
+  "board": {
+    "title": "Board",
+    "add": "Add",
+    "delete": "Delete"
+  },
+  "boardList": {
+    "teamBoards": "Team boards",
+    "favoriteBoards": "Favorite boards"
+  },
+  "navbar": {
+    "searchPlaceholder": "Search boards",
+    "invite": "Invite members"
+  },
+  "emptySearch": {
+    "noResults": "No results found",
+    "tryAgain": "Try searching for something else"
+  },
+  "emptyFavorites": {
+    "noFavorites": "No favorite boards",
+    "tryAdd": "Try adding some boards to your favorites"
+  },
+  "emptyBoards": {
+    "title": "Create your first board",
+    "description": "Create a board to get started with rimo",
+    "create": "Create board",
+    "creating": "Creating...",
+    "toastSuccess": "Board created",
+    "toastError": "Failed to create board"
+  },
+  "actions": {
+    "copyLink": "Copy link",
+    "rename": "Rename",
+    "deleteHeader": "Delete {{title}}?",
+    "deleteDescription": "This action cannot be undone.",
+    "deleteBoard": "Delete board",
+    "toastCopySuccess": "Link copied to clipboard",
+    "toastCopyError": "Failed to copy link",
+    "toastDeleteSuccess": "Board deleted",
+    "toastDeleteError": "Failed to delete board"
+  },
+  "renameModal": {
+    "title": "Rename Board",
+    "description": "Rename your board to something more meaningful.",
+    "placeholder": "Enter board name",
+    "cancel": "Cancel",
+    "save": "Save",
+    "toastSuccess": "Board renamed",
+    "toastError": "Failed to rename board"
+  },
+  "inviteButton": {
+    "label": "Invite members",
+    "title": "Invite members"
+  },
+  "emptyOrg": {
+    "welcome": "Welcome to Rimo",
+    "description": "Create an organization to get started with Rimo",
+    "createButton": "Create organization",
+    "dialogTitle": "New organization"
+  },
+  "newBoard": {
+    "label": "New board",
+    "defaultTitle": "Untitled board",
+    "errorGenerateCover": "Failed to generate cover",
+    "toastSuccess": "Board created",
+    "toastError": "Failed to create board"
+  },
+  "imageUpload": {
+    "error": "Failed to upload image. Please try again."
+  },
+    "loading": "Loading...",
+
+    "confirmModal": {
+    "cancel": "Cancel",
+    "confirm": "Confirm"
+  },
+  "copyLink": {
+    "tooltip": "Copy link",
+    "menuItem": "Copy link",
+    "toastSuccess": "Link copied to clipboard",
+    "toastError": "Failed to copy link"
+  }
+  
+
+  
+}

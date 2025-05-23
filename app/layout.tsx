@@ -4,8 +4,10 @@ import "./globals.css";
 import { ConvexClientProvider } from "@/providers/convex-client-provider";
 import { Toaster } from "sonner"
 import { ModalProvider } from "@/providers/modal-provider";
+import { I18nProvider } from "@/providers/i18n-provider";
 import { Suspense } from "react";
 import { Loading } from "@/components/auth/loading";
+import { LanguageAwareHtml } from "@/components/language-aware-html";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,15 +30,19 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Suspense fallback={<Loading/>}>
           <ConvexClientProvider>
-            <Toaster />
-            <ModalProvider />
-            {children}
+            <I18nProvider>
+              <LanguageAwareHtml>
+                <Toaster />
+                <ModalProvider />
+                {children}
+              </LanguageAwareHtml>
+            </I18nProvider>
           </ConvexClientProvider>
         </Suspense>
       </body>

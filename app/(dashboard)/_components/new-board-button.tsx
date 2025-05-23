@@ -6,6 +6,7 @@ import { useApiMutation } from "@/hooks/use-api-mutation";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface NewBoardButtonProps {
   orgId: string;
@@ -14,28 +15,29 @@ interface NewBoardButtonProps {
 export const NewBoardButton = ({ orgId }: NewBoardButtonProps) => {
   const { mutate: createBoard, pending } = useApiMutation(api.board.create);
   const router = useRouter();
+  const { t } = useTranslation();
 
   const onClick = async () => {
     try {
-      // 1) Генерируем обложку через API
-      const res = await fetch("/api/generate-cover", { method: "POST" });
+      const res = await fetch("/api/generate-cover", { method: "POST" }); 
       if (!res.ok) {
-        throw new Error("Failed to generate cover");
+        throw new Error(t("newBoard.errorGenerateCover"));
       }
       const { imageUrl } = await res.json();
 
-      // 2) Создаём доску с полученным imageUrl
+      const defaultTitle = t("newBoard.defaultTitle");
+
       const id = await createBoard({
         orgId,
-        title: "Untitled board",
+       title: defaultTitle,
         imageUrl,
       });
 
-      toast.success("Board created");
+      toast.success(t("newBoard.toastSuccess"));
       router.push(`/board/${id}`);
     } catch (error) {
       console.error("error creating board:", error);
-      toast.error("Failed to create board");
+      toast.error(t("newBoard.toastError"));
     }
   };
 
@@ -52,7 +54,7 @@ export const NewBoardButton = ({ orgId }: NewBoardButtonProps) => {
         className="h-12 w-12 text-white stroke-2 transition-transform duration-200 ease-out group-hover:rotate-45"
       />
       <p className="text-white text-sm font-semibold mt-2 select-none">
-        New board
+        {t("newBoard.label")}
       </p>
     </button>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -22,18 +23,20 @@ export const BoardCopyLinkAction = ({
   side = "bottom",
   sideOffset = 10,
 }: BoardCopyLinkActionProps) => {
+  const { t } = useTranslation();
+
   const handleCopyLink = () => {
     const url = `${window.location.origin}/board/${boardId}`;
     navigator.clipboard.writeText(url)
-      .then(() => toast.success("Link copied to clipboard"))
-      .catch(() => toast.error("Failed to copy link"));
+      .then(() => toast.success(t("copyLink.toastSuccess")))
+      .catch(() => toast.error(t("copyLink.toastError")));
   };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <div>
-          <Hint label="copy link" side={side} sideOffset={sideOffset}>
+          <Hint label={t("copyLink.tooltip")} side={side} sideOffset={sideOffset}>
             <Button variant="board" size="icon">
               <Menu />
             </Button>
@@ -46,12 +49,9 @@ export const BoardCopyLinkAction = ({
         sideOffset={sideOffset}
         className="w-56"
       >
-        <DropdownMenuItem
-          className="cursor-pointer p-3"
-          onClick={handleCopyLink}
-        >
+        <DropdownMenuItem className="cursor-pointer p-3" onClick={handleCopyLink}>
           <Link2 className="mr-2 h-4 w-4" />
-          copy link
+          {t("copyLink.menuItem")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

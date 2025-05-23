@@ -10,9 +10,10 @@ export const List = () => {
         }
     });
     if (!userMemberships.data?.length) return null;
-
+    console.log("List rendered", userMemberships.data);
+    
     return (
-        <ul className="space-y-4">
+        <ul className="space-y-4 ">
             {userMemberships.data?.map((mem) => (
                 <Item
                     key={mem.organization.id}

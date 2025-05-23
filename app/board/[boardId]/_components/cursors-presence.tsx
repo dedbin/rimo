@@ -18,12 +18,11 @@ const Cursors = () => {
 };
 
 const Drafts = () => {
-  // Теперь подтягиваем и penSize из presence
   const others = useOthersMapped(
     (other) => ({
       pencilDraft: other.presence.pencilDraft,
       penColor: other.presence.penColor,
-      penSize:  other.presence.penSize,    // <-- добавили
+      penSize:  other.presence.penSize, 
     }),
     shallow
   );
@@ -39,7 +38,7 @@ const Drafts = () => {
             x={0}
             y={0}
             fill={other.penColor ? rgbToCss(other.penColor) : "#000"}
-            size={other.penSize ?? 16}        // <-- используем размер пера
+            size={other.penSize ?? 16}    
           />
         );
       })}

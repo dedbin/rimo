@@ -10,9 +10,11 @@ import {
     ChangeEvent
 } from "react";
 import { Input } from "@/components/ui/input";
+import { useTranslation } from "@/hooks/use-translation";
 
 
  export const SearchInput = () => {
+    const { t } = useTranslation();
     const router = useRouter();
     const [value, setValue] = useState("");
     const debouncedValue = useDebounce(value, 500);
@@ -36,7 +38,7 @@ import { Input } from "@/components/ui/input";
             />
             <Input
                 className="w-full max-w-[510px] pl-10"
-                placeholder="Search boards"
+                placeholder={t("navbar.searchPlaceholder")}
                 onChange={handleChange}
                 value={value}
             />

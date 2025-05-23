@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface ImageUploadProps {
   onImageUploaded: (imageUrl: string) => void;
@@ -20,6 +21,7 @@ export const ImageUpload = ({ onImageUploaded }: ImageUploadProps) => {
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { t } = useTranslation();
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -36,19 +38,18 @@ export const ImageUpload = ({ onImageUploaded }: ImageUploadProps) => {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Failed to upload image");
+        throw new Error(error.error || t("imageUpload.error"));
       }
 
       const data = await response.json();
       onImageUploaded(data.url);
       
-      // Reset the file input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
     } catch (error) {
       console.error("Error uploading image:", error);
-      toast.error("Failed to upload image. Please try again.");
+      toast.error(t("imageUpload.error"));
     } finally {
       setIsUploading(false);
     }

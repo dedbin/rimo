@@ -49,6 +49,7 @@ import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { PenSizePicker } from "./pen-size-picker";
 import { ImageUpload } from "./image-upload";
 import { toast } from "sonner";
+import { useTranslation } from "@/hooks/use-translation";
 
 const MAX_LAYERS = 100;
 const SELECTION_THRESHOLD = 5;
@@ -117,6 +118,7 @@ export function createLayer(
 }
 
 export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
+  const { t } = useTranslation();
   const self = useSelf();
 
   const layerIds = useStorage((root) => root.layerIds);
@@ -630,7 +632,7 @@ useEffect(() => {
             }
           } catch (err) {
             console.error("Paste image upload failed:", err);
-            toast.error("Image upload failed.");
+            toast.error(t("canvas.pasteImageError"));
           }
         }
       }

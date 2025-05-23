@@ -1,0 +1,92 @@
+{
+  "sidebar": {
+    "language": "Язык",
+    "english": "Английский",
+    "russian": "Русский",
+    "teamBoards": "Командные доски",
+    "favBoards": "Избранные доски"
+  },
+  "welcome": "Добро пожаловать!",
+  "board": {
+    "title": "Доска",
+    "add": "Добавить",
+    "delete": "Удалить"
+  },
+  "boardList": {
+    "teamBoards": "Командные доски",
+    "favoriteBoards": "Избранные доски"
+  },
+  "navbar": {
+    "searchPlaceholder": "Поиск",
+    "invite": "Пришласите кого-нибудь"
+  },
+  "emptySearch": {
+    "noResults": "Ничего не найдено",
+    "tryAgain": "Попробуйте поискать что-то ещё"
+  },
+  "emptyFavorites": {
+    "noFavorites": "Нет избранных досок",
+    "tryAdd": "Добавьте доски в избранное"
+  },
+  "emptyBoards": {
+    "title": "Создайте вашу первую доску",
+    "description": "Создайте доску, чтобы начать работу с Rimo",
+    "create": "Создать доску",
+    "creating": "Создаем...",
+    "toastSuccess": "Доска создана",
+    "toastError": "Не удалось создать доску"
+  },
+  "actions": {
+    "copyLink": "Скопировать ссылку",
+    "rename": "Переименовать",
+    "deleteHeader": "Удалить {{title}}?",
+    "deleteDescription": "Это действие невозможно отменить.",
+    "deleteBoard": "Удалить доску",
+    "toastCopySuccess": "Ссылка скопирована",
+    "toastCopyError": "Не удалось скопировать ссылку",
+    "toastDeleteSuccess": "Доска удалена",
+    "toastDeleteError": "Не удалось удалить доску"
+  },
+  "renameModal": {
+    "title": "Переименовать доску",
+    "description": "Дайте вашей доске более понятное название.",
+    "placeholder": "Введите название доски",
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "toastSuccess": "Доска переименована",
+    "toastError": "Не удалось переименовать доску"
+  },
+  "inviteButton": {
+    "label": "Пригласить участников",
+    "title": "Пригласить участников"
+  },
+  "emptyOrg": {
+    "welcome": "Добро пожаловать в Rimo",
+    "description": "Создайте организацию, чтобы начать работу с Rimo",
+    "createButton": "Создать организацию",
+    "dialogTitle": "Новая организация"
+  },
+  "newBoard": {
+    "label": "Новая доска",
+    "defaultTitle": "Без названия",
+    "errorGenerateCover": "Не удалось сгенерировать обложку",
+    "toastSuccess": "Доска создана",
+    "toastError": "Не удалось создать доску"
+  },
+  "imageUpload": {
+    "error": "Не удалось загрузить изображение. Пожалуйста, попробуйте ещё раз."
+  },
+    "loading": "Загрузка...",
+
+    "confirmModal": {
+    "cancel": "Отмена",
+    "confirm": "Подтвердить"
+  },
+  "copyLink": {
+    "tooltip": "Скопировать ссылку",
+    "menuItem": "Скопировать ссылку",
+    "toastSuccess": "Ссылка скопирована",
+    "toastError": "Не удалось скопировать ссылку"
+  }
+  
+}

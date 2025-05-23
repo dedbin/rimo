@@ -22,7 +22,7 @@ import {
 import { PenSizePicker } from "./pen-size-picker";
 import { BoardCanvasMode, BoardCanvasState, LayerType } from "@/types/board-canvas";
 import { useState } from "react";
-import { ImageUpload } from "./image-upload"; // 👈 добавлено
+import { ImageUpload } from "./image-upload"; 
 
 interface BoardToolbarProps {
   canvasState: BoardCanvasState;
@@ -202,7 +202,6 @@ export const BoardToolbar = ({
 />
       </div>
 
-      {/* Undo / Redo */}
       <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col items-center">
         <ToolButton
           label="undo (Ctrl+Z)"

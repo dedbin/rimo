@@ -3,14 +3,11 @@
 import { Hint } from "@/components/hint";
 
 interface PenSizePickerProps {
-  /** Вызывается при клике на размер */
   onChange: (size: number) => void;
-  /** Текущий выбранный размер */
   currentSize: number;
 }
 
 export const PenSizePicker = ({ onChange, currentSize }: PenSizePickerProps) => {
-  // Подстраивай под свои нужды
   const sizes = [4, 8, 12, 16, 24, 32];
 
   return (
