@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Circle,
   MousePointer2,
@@ -11,7 +12,6 @@ import {
   Undo2,
   Image as ImageIcon
 } from "lucide-react";
-
 import { ToolButton } from "./tool-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,8 +20,12 @@ import {
   DropdownMenuContent,
 } from "@/components/ui/dropdown-menu";
 import { PenSizePicker } from "./pen-size-picker";
-import { BoardCanvasMode, BoardCanvasState, LayerType } from "@/types/board-canvas";
-import { useState } from "react";
+import {
+  BoardCanvasMode,
+  BoardCanvasState,
+  LayerType
+} from "@/types/board-canvas";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface BoardToolbarProps {
   canvasState: BoardCanvasState;
@@ -32,7 +36,7 @@ interface BoardToolbarProps {
   canRedo: boolean;
   selectedPenSize: number;
   onPenSizeChange: (size: number) => void;
-  onImageUpload: (url: string) => void; 
+  onImageUpload: (url: string) => void;
 }
 
 export const BoardToolbar = ({
@@ -47,12 +51,13 @@ export const BoardToolbar = ({
   onImageUpload,
 }: BoardToolbarProps) => {
   const [penOpen, setPenOpen] = useState(false);
+  const { t } = useTranslation();
 
   return (
     <div className="absolute top-1/2 left-2 transform -translate-y-1/2 flex flex-col gap-4 z-10">
       <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col gap-y-1 items-center">
         <ToolButton
-          label="select"
+          label={t("toolbar.select")}
           icon={MousePointer2}
           onClick={() => setCanvasState({ mode: BoardCanvasMode.None })}
           isActive={
@@ -67,7 +72,7 @@ export const BoardToolbar = ({
         />
 
         <ToolButton
-          label="text (Ctrl+T)"
+          label={`${t("toolbar.text")} (Ctrl+T)`}
           icon={Type}
           onClick={() =>
             setCanvasState({
@@ -119,7 +124,7 @@ export const BoardToolbar = ({
         </DropdownMenu>
 
         <ToolButton
-          label="stickers (Ctrl+S)"
+          label={`${t("toolbar.stickers")} (Ctrl+S)`}
           icon={StickyNote}
           onClick={() =>
             setCanvasState({
@@ -134,7 +139,7 @@ export const BoardToolbar = ({
         />
 
         <ToolButton
-          label="rectangle (Ctrl+R)"
+          label={`${t("toolbar.rectangle")} (Ctrl+R)`}
           icon={Square}
           onClick={() =>
             setCanvasState({
@@ -149,7 +154,7 @@ export const BoardToolbar = ({
         />
 
         <ToolButton
-          label="ellipse (Ctrl+O)"
+          label={`${t("toolbar.ellipse")} (Ctrl+O)`}
           icon={Circle}
           onClick={() =>
             setCanvasState({
@@ -164,52 +169,53 @@ export const BoardToolbar = ({
         />
 
         <ToolButton
-  label="image"
-  icon={ImageIcon}
-  onClick={() => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
+          label={t("toolbar.image")}
+          icon={ImageIcon}
+          onClick={() => {
+            const input = document.createElement("input");
+            input.type = "file";
+            input.accept = "image/*";
 
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
+            input.onchange = async () => {
+              const file = input.files?.[0];
+              if (!file) return;
 
-      const formData = new FormData();
-      formData.append("file", file);
+              const formData = new FormData();
+              formData.append("file", file);
 
-      try {
-        const response = await fetch("/api/upload-image", {
-          method: "POST",
-          body: formData,
-        });
+              try {
+                const response = await fetch("/api/upload-image", {
+                  method: "POST",
+                  body: formData,
+                });
 
-        if (!response.ok) {
-          throw new Error("Upload failed");
-        }
+                if (!response.ok) {
+                  throw new Error("Upload failed");
+                }
 
-        const data = await response.json();
-        onImageUpload(data.url);
-      } catch (err) {
-        console.error("Upload error:", err);
-        alert("Image upload failed.");
-      }
-    };
+                const data = await response.json();
+                onImageUpload(data.url);
+              } catch (err) {
+                console.error("Upload error:", err);
+                // оставляем alert, но локализуем текст
+                alert(t("toolbar.imageUploadError"));
+              }
+            };
 
-    input.click();
-  }}
-/>
+            input.click();
+          }}
+        />
       </div>
 
       <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col items-center">
         <ToolButton
-          label="undo (Ctrl+Z)"
+          label={`${t("toolbar.undo")} (Ctrl+Z)`}
           icon={Undo2}
           onClick={undo}
           isDisabled={!canUndo}
         />
         <ToolButton
-          label="redo (Ctrl+Y)"
+          label={`${t("toolbar.redo")} (Ctrl+Y)`}
           icon={Redo2}
           onClick={redo}
           isDisabled={!canRedo}

@@ -92,6 +92,21 @@
   "newButton": {
     "createOrg": "Создать организацию",
     "dialogTitle": "Новая организация"
+  },
+  "boardInfo": {
+    "goHome": "Домой",
+    "editTitle": "Переименовать"
+  },
+  "toolbar": {
+    "select": "Выделение",
+    "text": "Текст",
+    "stickers": "Стикеры",
+    "rectangle": "Прямоугольник",
+    "ellipse": "Эллипс",
+    "image": "Изображение",
+    "undo": "Отменить",
+    "redo": "Повторить",
+    "imageUploadError": "Ошибка загрузки изображения."
   }
   
 }

@@ -12,6 +12,7 @@ import { useQuery } from "convex/react";
 import { Hint } from "@/components/hint";
 import { useRenameModal } from "@/store/use-rename-modal";
 import { BoardCopyLinkAction } from "@/components/copy-link";
+import { useTranslation } from "@/hooks/use-translation";
 
 const font = Poppins({
   subsets: ["latin"],
@@ -28,6 +29,7 @@ const TabSeparator = () => {
 
 export const BoardInfo = ({ boardId }: BoardInfoProps) => {
   const { handleOpen } = useRenameModal();
+  const { t } = useTranslation();
 
   let data;
   const isValid = typeof boardId === "string" && boardId.length > 0;
@@ -42,7 +44,7 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
 
   return (
     <div className="absolute flex top-2 left-2 h-12 rounded-md px-1.5 items-center shadow-md bg-white p-4">
-      <Hint label="go home" side="bottom" sideOffset={10}>
+      <Hint label={t("boardInfo.goHome")} side="bottom" sideOffset={10}>
         <Button asChild variant="board" className="px-2">
           <Link href="/">
             <div className="flex items-center">
@@ -54,7 +56,10 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
                 className="w-8 h-8 rounded-full"
               />
               <span
-                className={cn("font-semibold text-xl ml-2 text-black", font.className)}
+                className={cn(
+                  "font-semibold text-xl ml-2 text-black",
+                  font.className
+                )}
               >
                 rimo
               </span>
@@ -63,7 +68,11 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
         </Button>
       </Hint>
       <TabSeparator />
-      <Hint label="edit title" side="bottom" sideOffset={10}>
+      <Hint
+        label={t("boardInfo.editTitle")}
+        side="bottom"
+        sideOffset={10}
+      >
         <Button
           variant="board"
           className="px-2 text-base font-normal"

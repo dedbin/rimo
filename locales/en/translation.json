@@ -92,6 +92,21 @@
   "newButton": {
     "createOrg": "Create organization",
     "dialogTitle": "New organization"
+  },
+  "boardInfo": {
+    "goHome": "Go home",
+    "editTitle": "Edit title"
+  },
+  "toolbar": {
+    "select": "Select",
+    "text": "Text",
+    "stickers": "Stickers",
+    "rectangle": "Rectangle",
+    "ellipse": "Ellipse",
+    "image": "Image",
+    "undo": "Undo",
+    "redo": "Redo",
+    "imageUploadError": "Image upload failed."
   }
   
 
