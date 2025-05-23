@@ -7,9 +7,10 @@ interface ImageProps {
     layer: ImageLayer;
     onPointerDown: (e: React.PointerEvent, id: string) => void;
     selectionColor?: string;
+    alt?: string;
 }
 
-export const Image = ({ id, layer, onPointerDown, selectionColor }: ImageProps) => {
+export const Image = ({ id, layer, onPointerDown, selectionColor, alt }: ImageProps) => {
     const { x, y, width, height, src } = layer;
     
     return (
@@ -26,7 +27,7 @@ export const Image = ({ id, layer, onPointerDown, selectionColor }: ImageProps) 
         >
             <img 
                 src={src} 
-                alt="Board image"
+                alt={alt || "image"}
                 style={{
                     width: "100%",
                     height: "100%",

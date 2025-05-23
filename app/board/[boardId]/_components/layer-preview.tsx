@@ -78,6 +78,7 @@ export const LayerPreview: React.FC<LayerPreviewProps> = memo(
             layer={layer}
             onPointerDown={onLayerPointerDown}
             selectionColor={selectionColor}
+            alt={`Превью слоя ${id}`}
           />
         );
 

@@ -11,8 +11,6 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "convex/react";
 import { Hint } from "@/components/hint";
 import { useRenameModal } from "@/store/use-rename-modal";
-import { Actions } from "@/components/actions";
-import { Menu } from "lucide-react";
 import { BoardCopyLinkAction } from "@/components/copy-link";
 
 const font = Poppins({

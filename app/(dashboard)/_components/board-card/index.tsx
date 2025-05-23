@@ -44,10 +44,10 @@ export const BoardCard = ({
   const handleToggleFavorite = () => {
     if (isFavorite) {
       untoggleFavorite({ id })
-      .catch((error) => {toast.error("Failed to unfavorite");});
+      .catch((_error) => {toast.error("Failed to unfavorite");});
     } else {
       toggleFavorite({ id, orgId })
-      .catch((error) => {toast.error("Failed to favorite");});
+      .catch((_error) => {toast.error("Failed to favorite");});
     }
   };
   return (

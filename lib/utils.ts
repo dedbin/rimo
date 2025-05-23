@@ -2,7 +2,6 @@ import { Camera, Color, Point, side, XYWH, Layer, LayerType, PathLayer } from "@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
-const COLORS = ["#DC2626", "#D97706", "#059669", "#3B82F6", "#8B5CF6", "#F472B6"]
 const MIN_WIDTH  = 40;  
 const MIN_HEIGHT = 20; 
 const GOLDEN_ANGLE = 137.508;  

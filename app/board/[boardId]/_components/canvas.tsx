@@ -46,8 +46,6 @@ import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
 import { Path } from "./path";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
-import { PenSizePicker } from "./pen-size-picker";
-import { ImageUpload } from "./image-upload";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 
@@ -176,7 +174,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
   const insertLayer = useMutation((
   { storage, setMyPresence },
-  layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text,
+  layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image,
   position: Point
 ) => {
   const liveLayers = storage.get("layers");
@@ -209,7 +207,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
     const initial = canvasState.initial!;
     const corner  = canvasState.corner!;
-    let bounds    = resizeBounds(initial, corner, point);
+    const bounds    = resizeBounds(initial, corner, point);
 
     const liveLayers = storage.get("layers");
     const layer      = liveLayers.get(self.presence.selection[0]);
@@ -445,7 +443,7 @@ const insertPath = useMutation(
       unselectLayer();
       setCanvasState({ mode: BoardCanvasMode.None });
     } else if (canvasState.mode === BoardCanvasMode.Inserting) {
-      insertLayer(canvasState.layerType!, point); // TODO fix this error
+      insertLayer(canvasState.layerType!, point);
       setCanvasState({ mode: BoardCanvasMode.None });
     } else {
       setCanvasState({ mode: BoardCanvasMode.None });
@@ -719,3 +717,4 @@ useEffect(() => {
     </main>
   );
 };
+

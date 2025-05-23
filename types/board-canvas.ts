@@ -105,6 +105,7 @@ export type ImageLayer = {
     height: number;
     src: string;
     value?: string;
+    fill?: Color;
 }
 
 export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer

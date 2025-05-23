@@ -22,7 +22,6 @@ import {
 import { PenSizePicker } from "./pen-size-picker";
 import { BoardCanvasMode, BoardCanvasState, LayerType } from "@/types/board-canvas";
 import { useState } from "react";
-import { ImageUpload } from "./image-upload"; 
 
 interface BoardToolbarProps {
   canvasState: BoardCanvasState;
