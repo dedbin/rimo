@@ -87,6 +87,10 @@
     "menuItem": "Copy link",
     "toastSuccess": "Link copied to clipboard",
     "toastError": "Failed to copy link"
+  },
+  "newButton": {
+    "createOrg": "Create organization",
+    "dialogTitle": "New organization"
   }
   
 
