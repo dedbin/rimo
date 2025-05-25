@@ -74,14 +74,20 @@ const moveToFront = useMutation(({ storage }) => {
       return null;
     }
 
-    const x = bounds.x + bounds.width / 2 + camera.x;
-    const y = bounds.y + camera.y;
+    const x = bounds.x * camera.scale
+               + (bounds.width * camera.scale) / 2
+               + camera.x;
+     const y = bounds.y * camera.scale
+               + camera.y;
 
     return (
       <div
         className="absolute p-3 rounded-xl bg-white shadow-sm border flex items-center select-none"
         style={{
-          transform: `translate(calc(${x}px - 50%), calc(${y - 10}px - 100%))`,
+         transform: `translate(
+           calc(${x}px - 50%),
+           calc(${(y - 10 * camera.scale)}px - 100%)
+         )`,
         }}
       >
         <ColorPicker onChange={setFill} />
