@@ -109,6 +109,9 @@
     "imageUploadError": "Image upload failed.",
     "zoomIn": "Zoom In",
     "zoomOut": "Zoom Out"
+  },
+  "canvas":{
+    "max-layers-reached": "Maximum layers reached"
   }
   
 

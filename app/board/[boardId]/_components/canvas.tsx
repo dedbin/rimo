@@ -49,7 +49,7 @@ import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 
-const MAX_LAYERS = 100;
+const MAX_LAYERS = 1000;
 const SELECTION_THRESHOLD = 5;
 const MIN_FONT_SIZE = 12;
 const PADDING_X = 8;
@@ -153,6 +153,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
     if (liveLayers.size >= MAX_LAYERS) {
       console.warn("Max layers reached");
+      toast.error(t("canvas.max-layers-reached"));
       return;
     }
 
@@ -184,6 +185,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
     if (liveLayers.size >= MAX_LAYERS) {
       console.warn("Max layers reached");
+      toast.error(t("canvas.max-layers-reached"));
       return;
     }
 
@@ -326,8 +328,15 @@ const insertPath = useMutation(
     const layers = storage.get("layers");
     const layerIds = storage.get("layerIds");
 
-    if (!draft || draft.length < 2 || layers.size >= MAX_LAYERS) {
+    if (layers.size >= MAX_LAYERS) {
+      toast.error(t("canvas.max-layers-reached"));
+      return;
+    }
+
+    if (!draft || draft.length < 2) {
       setMyPresence({ pencilDraft: null });
+      console.error("Failed to insert path");
+
       return;
     }
 
@@ -641,6 +650,7 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
 
       if (liveLayers.size >= MAX_LAYERS) {
         console.warn("Max layers reached");
+        toast.error(t("canvas.max-layers-reached"));
         return;
       }
 
