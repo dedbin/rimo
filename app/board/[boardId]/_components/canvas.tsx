@@ -132,7 +132,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     mode: BoardCanvasMode.None,
   });
 
-  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0 });
+  const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, scale: 1 });
   const [lastUsedColor, setLastUsedColor] = useState<Color>({r: 0, g: 0, b: 0,}); 
   const [lastUsedSize, setLastUsedSize] = useState<number>(16);
 
@@ -142,6 +142,9 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   const history = useHistory();
   const canUndo = useCanUndo();
   const canRedo = useCanRedo();
+
+  const svgRef = useRef<SVGSVGElement | null>(null);
+
 
   const insertImageLayer = useMutation(
   ({ storage, setMyPresence }, imageUrl: string, position: Point) => {
@@ -173,27 +176,27 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 );
 
   const insertLayer = useMutation((
-  { storage, setMyPresence },
-  layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image,
-  position: Point
-) => {
-  const liveLayers = storage.get("layers");
+    { storage, setMyPresence },
+    layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image,
+    position: Point
+  ) => {
+    const liveLayers = storage.get("layers");
 
-  if (liveLayers.size >= MAX_LAYERS) {
-    console.warn("Max layers reached");
-    return;
-  }
+    if (liveLayers.size >= MAX_LAYERS) {
+      console.warn("Max layers reached");
+      return;
+    }
 
-  const liveLayerIds = storage.get("layerIds");
-  const layerId = nanoid();
-  const layer = createLayer(layerType, position, lastUsedColor);
+    const liveLayerIds = storage.get("layerIds");
+    const layerId = nanoid();
+    const layer = createLayer(layerType, position, lastUsedColor);
 
-  liveLayers.set(layerId, layer);
-  liveLayerIds.push(layerId);
+    liveLayers.set(layerId, layer);
+    liveLayerIds.push(layerId);
 
-  setMyPresence({ selection: [layerId] }, { addToHistory: true });
-  setCanvasState({ mode: BoardCanvasMode.None });
-}, [lastUsedColor]);
+    setMyPresence({ selection: [layerId] }, { addToHistory: true });
+    setCanvasState({ mode: BoardCanvasMode.None });
+  }, [lastUsedColor]);
 
   const unselectLayer = useMutation(({ self, setMyPresence }) => {
     if (self.presence.selection.length > 0) {
@@ -369,11 +372,37 @@ const insertPath = useMutation(
   );
 
   const onWheel = useCallback((e: React.WheelEvent) => {
-    setCamera((prev) => ({
-      x: prev.x - e.deltaX,
-      y: prev.y - e.deltaY,
-    }));
-  }, []);
+    if (e.ctrlKey) {
+      e.preventDefault();
+
+      console.log("wheel");
+
+      const { offsetX, offsetY, deltaY } = e.nativeEvent;
+      const svg = e.currentTarget as SVGSVGElement;
+      const rect = svg.getBoundingClientRect();
+
+      const cursorX = (offsetX - camera.x) / camera.scale;
+      const cursorY = (offsetY - camera.y) / camera.scale;
+
+      const scaleFactor = deltaY < 0 ? 1.1 : 0.9;
+      const newScale = Math.max(0.1, Math.min(4, camera.scale * scaleFactor));
+
+      const newCameraX = offsetX - cursorX * newScale;
+      const newCameraY = offsetY - cursorY * newScale;
+
+      setCamera({
+        x: newCameraX,
+        y: newCameraY,
+        scale: newScale,
+      });
+    } else {
+      setCamera((prev) => ({
+        ...prev,
+        x: prev.x - e.deltaX,
+        y: prev.y - e.deltaY,
+      }));
+    }
+  }, [camera]);
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -381,20 +410,28 @@ const insertPath = useMutation(
 
       if (rafRef.current) return;
 
+      const { clientX, clientY } = e;
+      const svg = e.currentTarget as SVGSVGElement;
+      const rect = svg.getBoundingClientRect();
+      const camera = cameraRef.current;
+
       rafRef.current = requestAnimationFrame(() => {
-        const point = pointerEventToCanvasPoint(e, cameraRef.current);
+        const x = (clientX - rect.left - camera.x) / camera.scale;
+        const y = (clientY - rect.top - camera.y) / camera.scale;
+        const point = { x, y };
 
         if (canvasState.mode === BoardCanvasMode.Pressing) {
           startMultiSelect(point, canvasState.origin);
         } else if (canvasState.mode === BoardCanvasMode.SelectionNet) {
           updateSelectionNet(point, canvasState.origin);
-        }else if (canvasState.mode === BoardCanvasMode.Translating) {
-          translateLayer(point)
+        } else if (canvasState.mode === BoardCanvasMode.Translating) {
+          translateLayer(point);
         } else if (canvasState.mode === BoardCanvasMode.Resizing) {
-          resizeLayer(point)
+          resizeLayer(point);
         } else if (canvasState.mode === BoardCanvasMode.Pencil) {
           continueDrawing(point, e);
         }
+
         updateMyPresence(
           { cursor: point },
           { addToHistory: false }
@@ -403,7 +440,16 @@ const insertPath = useMutation(
         rafRef.current = null;
       });
     },
-    [updateMyPresence, canvasState.mode, resizeLayer, translateLayer, continueDrawing, startMultiSelect, updateSelectionNet]
+    [
+      updateMyPresence,
+      canvasState.mode,
+      BoardCanvasMode,
+      resizeLayer,
+      translateLayer,
+      continueDrawing,
+      startMultiSelect,
+      updateSelectionNet,
+    ]
   );
 
   const onPointerLeave = useMutation((
@@ -427,39 +473,39 @@ const insertPath = useMutation(
   }, [camera, canvasState.mode, setCanvasState, startDrawing]);
 
   const onPointerUp = useMutation(
-  ({}, e: React.PointerEvent<SVGSVGElement>) => {
-    const point = pointerEventToCanvasPoint(e, camera);
+    ({}, e: React.PointerEvent<SVGSVGElement>) => {
+      const point = pointerEventToCanvasPoint(e, camera);
 
-    if (canvasState.mode === BoardCanvasMode.Pencil) {
-      insertPath();
+      if (canvasState.mode === BoardCanvasMode.Pencil) {
+        insertPath();
+        history.resume();
+        return;
+      }
+
+      if (
+        canvasState.mode === BoardCanvasMode.None ||
+        canvasState.mode === BoardCanvasMode.Pressing
+      ) {
+        unselectLayer();
+        setCanvasState({ mode: BoardCanvasMode.None });
+      } else if (canvasState.mode === BoardCanvasMode.Inserting) {
+        insertLayer(canvasState.layerType!, point);
+        setCanvasState({ mode: BoardCanvasMode.None });
+      } else {
+        setCanvasState({ mode: BoardCanvasMode.None });
+      }
+
       history.resume();
-      return;
-    }
-
-    if (
-      canvasState.mode === BoardCanvasMode.None ||
-      canvasState.mode === BoardCanvasMode.Pressing
-    ) {
-      unselectLayer();
-      setCanvasState({ mode: BoardCanvasMode.None });
-    } else if (canvasState.mode === BoardCanvasMode.Inserting) {
-      insertLayer(canvasState.layerType!, point);
-      setCanvasState({ mode: BoardCanvasMode.None });
-    } else {
-      setCanvasState({ mode: BoardCanvasMode.None });
-    }
-
-    history.resume();
-  },
-  [
-    canvasState,
-    camera,
-    history,
-    insertLayer,
-    unselectLayer,
-    insertPath,
-  ]
-);
+    },
+    [
+      canvasState,
+      camera,
+      history,
+      insertLayer,
+      unselectLayer,
+      insertPath,
+    ]
+  );
 
   const selections = useOthersMapped((other) => other.presence.selection);
 
@@ -498,150 +544,198 @@ const insertPath = useMutation(
   }, [setCanvasState, camera, history, canvasState.mode]);
 
   const deleteLayers = useDeleteLayers();
-useEffect(() => {
-  const handleKeyDown = (e: KeyboardEvent) => {
-    const target = e.target as HTMLElement;
-    if (
-      target.isContentEditable ||
-      ["INPUT", "TEXTAREA"].includes(target.tagName)
-    ) {
-      return;
-    }
-
-    // только когда Ctrl и без других модификаторов
-    if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-      switch (e.code) {
-        case "KeyZ":
-          e.preventDefault();
-          history.undo();
-          break;
-        case "KeyY":
-          e.preventDefault();
-          history.redo();
-          break;
-        case "KeyP":
-          e.preventDefault();
-          setCanvasState((s) => ({ ...s, mode: BoardCanvasMode.Pencil }));
-          break;
-        case "KeyT":
-          e.preventDefault();
-          setCanvasState({
-            mode: BoardCanvasMode.Inserting,
-            layerType: LayerType.Text,
-          });
-          break;
-        case "KeyS":
-          e.preventDefault();
-          setCanvasState({
-            mode: BoardCanvasMode.Inserting,
-            layerType: LayerType.Sticker,
-          });
-          break;
-        case "KeyR":
-          e.preventDefault();
-          setCanvasState({
-            mode: BoardCanvasMode.Inserting,
-            layerType: LayerType.Rectangle,
-          });
-          break;
-        case "KeyO":
-          e.preventDefault();
-          setCanvasState({
-            mode: BoardCanvasMode.Inserting,
-            layerType: LayerType.Ellipse,
-          });
-          break;
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.isContentEditable ||
+        ["INPUT", "TEXTAREA"].includes(target.tagName)
+      ) {
+        return;
       }
-    } else if (e.key === "Escape") {
-      setCanvasState({ mode: BoardCanvasMode.None });
-      unselectLayer();
-    } else if (e.key === "Delete" || e.key === "Backspace") {
-      e.preventDefault();
-      deleteLayers();
-    }
-  };
 
-  window.addEventListener("keydown", handleKeyDown, true);
-  return () => {
-    window.removeEventListener("keydown", handleKeyDown, true);
-  };
-}, [history, setCanvasState, unselectLayer, deleteLayers]);
-
-const insertTextLayer = useMutation(
-  ({ storage, setMyPresence }, value: string, position: Point) => {
-    const liveLayers = storage.get("layers");
-    const liveLayerIds = storage.get("layerIds");
-
-    if (liveLayers.size >= MAX_LAYERS) {
-      console.warn("Max layers reached");
-      return;
-    }
-
-    const id = nanoid();
-    const textLayer = new LiveObject<TextLayer>({
-      type: LayerType.Text,
-      x: position.x,
-      y: position.y,
-      width: 300,
-      height: 100,
-      value,
-      fill: lastUsedColor,
-    });
-
-    liveLayers.set(id, textLayer);
-    liveLayerIds.push(id);
-    setMyPresence({ selection: [id] }, { addToHistory: true });
-    setCanvasState({ mode: BoardCanvasMode.None });
-  },
-  [lastUsedColor]
-);
-
-useEffect(() => {
-  const handlePaste = async (e: ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    const text = e.clipboardData?.getData("text/plain")?.trim();
-    const cursor = self.presence.cursor ?? { x: 100, y: 100 };
-
-    // ⬇️ Текст
-    if (text) {
-      insertTextLayer(text, cursor);
-      return;
-    }
-
-    // ⬇️ Картинка
-    if (items) {
-      for (const item of items) {
-        if (item.type.startsWith("image/")) {
-          const file = item.getAsFile();
-          if (!file) continue;
-
-          const formData = new FormData();
-          formData.append("file", file);
-
-          try {
-            const response = await fetch("/api/upload-image", {
-              method: "POST",
-              body: formData,
+      // только когда Ctrl и без других модификаторов
+      if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+        switch (e.code) {
+          case "KeyZ":
+            e.preventDefault();
+            history.undo();
+            break;
+          case "KeyY":
+            e.preventDefault();
+            history.redo();
+            break;
+          case "KeyP":
+            e.preventDefault();
+            setCanvasState((s) => ({ ...s, mode: BoardCanvasMode.Pencil }));
+            break;
+          case "KeyT":
+            e.preventDefault();
+            setCanvasState({
+              mode: BoardCanvasMode.Inserting,
+              layerType: LayerType.Text,
             });
+            break;
+          case "KeyS":
+            e.preventDefault();
+            setCanvasState({
+              mode: BoardCanvasMode.Inserting,
+              layerType: LayerType.Sticker,
+            });
+            break;
+          case "KeyR":
+            e.preventDefault();
+            setCanvasState({
+              mode: BoardCanvasMode.Inserting,
+              layerType: LayerType.Rectangle,
+            });
+            break;
+          case "KeyO":
+            e.preventDefault();
+            setCanvasState({
+              mode: BoardCanvasMode.Inserting,
+              layerType: LayerType.Ellipse,
+            });
+            break;
+        }
+      } else if (e.key === "Escape") {
+        setCanvasState({ mode: BoardCanvasMode.None });
+        unselectLayer();
+      } else if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        deleteLayers();
+      }
+    };
 
-            const data = await response.json();
-            if (data.url) {
-              insertImageLayer(data.url, cursor); // 👈 передаём позицию
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [history, setCanvasState, unselectLayer, deleteLayers]);
+
+  const insertTextLayer = useMutation(
+    ({ storage, setMyPresence }, value: string, position: Point) => {
+      const liveLayers = storage.get("layers");
+      const liveLayerIds = storage.get("layerIds");
+
+      if (liveLayers.size >= MAX_LAYERS) {
+        console.warn("Max layers reached");
+        return;
+      }
+
+      const id = nanoid();
+      const textLayer = new LiveObject<TextLayer>({
+        type: LayerType.Text,
+        x: position.x,
+        y: position.y,
+        width: 300,
+        height: 100,
+        value,
+        fill: lastUsedColor,
+      });
+
+      liveLayers.set(id, textLayer);
+      liveLayerIds.push(id);
+      setMyPresence({ selection: [id] }, { addToHistory: true });
+      setCanvasState({ mode: BoardCanvasMode.None });
+    },
+    [lastUsedColor]
+  );
+
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      const text = e.clipboardData?.getData("text/plain")?.trim();
+      const cursor = self.presence.cursor ?? { x: 100, y: 100 };
+
+      // ⬇️ Текст
+      if (text) {
+        insertTextLayer(text, cursor);
+        return;
+      }
+
+      // ⬇️ Картинка
+      if (items) {
+        for (const item of items) {
+          if (item.type.startsWith("image/")) {
+            const file = item.getAsFile();
+            if (!file) continue;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            try {
+              const response = await fetch("/api/upload-image", {
+                method: "POST",
+                body: formData,
+              });
+
+              const data = await response.json();
+              if (data.url) {
+                insertImageLayer(data.url, cursor); // 👈 передаём позицию
+              }
+            } catch (err) {
+              console.error("Paste image upload failed:", err);
+              toast.error(t("canvas.pasteImageError"));
             }
-          } catch (err) {
-            console.error("Paste image upload failed:", err);
-            toast.error(t("canvas.pasteImageError"));
           }
         }
       }
-    }
-  };
+    };
 
-  window.addEventListener("paste", handlePaste);
-  return () => {
-    window.removeEventListener("paste", handlePaste);
-  };
-}, [insertTextLayer, insertImageLayer, self.presence.cursor]);
+    window.addEventListener("paste", handlePaste);
+    return () => {
+      window.removeEventListener("paste", handlePaste);
+    };
+  }, [insertTextLayer, insertImageLayer, self.presence.cursor]);
+
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) {
+      console.warn("❌ svgRef.current is null");
+      return;
+    }
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+
+        const rect = svg.getBoundingClientRect();
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+
+        const camera = cameraRef.current;
+
+        const cursorX = (offsetX - camera.x) / camera.scale;
+        const cursorY = (offsetY - camera.y) / camera.scale;
+
+        const scaleFactor = e.deltaY < 0 ? 1.1 : 0.9;
+        const newScale = Math.max(0.1, Math.min(4, camera.scale * scaleFactor));
+
+        const newCameraX = offsetX - cursorX * newScale;
+        const newCameraY = offsetY - cursorY * newScale;
+
+        setCamera({
+          x: newCameraX,
+          y: newCameraY,
+          scale: newScale,
+        });
+      } else {
+        setCamera((prev) => ({
+          ...prev,
+          x: prev.x - e.deltaX,
+          y: prev.y - e.deltaY,
+        }));
+      }
+    };
+
+    svg.addEventListener("wheel", handleWheel, { passive: false });
+
+    return () => {
+      svg.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
+
 
 
   return (
@@ -672,8 +766,8 @@ useEffect(() => {
       />
        
       <svg
+        ref={svgRef}
         className="h-[100vh] w-[100vw]"
-        onWheel={onWheel}
         onPointerMove={onPointerMove}
         /* TODO: fix onPointerLeave={onPointerLeave} */
         onPointerLeave={onPointerLeave}
@@ -681,7 +775,10 @@ useEffect(() => {
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
       >
-        <g style={{ transform: `translate(${camera.x}px, ${camera.y}px)`}}>
+        <g style={{
+          transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
+          transformOrigin: "0 0",
+        }}>
           {layerIds.map((layerId) => (
             <LayerPreview 
               key={layerId} 
