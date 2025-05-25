@@ -343,31 +343,31 @@ const insertPath = useMutation(
 
 
 const translateLayer = useMutation(({ storage, self }, point: Point) => {
-  if (canvasState.mode !== BoardCanvasMode.Translating) return;
+    if (canvasState.mode !== BoardCanvasMode.Translating) return;
 
-  const deltaX = point.x - canvasState.current.x;
-  const deltaY = point.y - canvasState.current.y;
+    const deltaX = point.x - canvasState.current.x;
+    const deltaY = point.y - canvasState.current.y;
 
-  const liveLayers = storage.get("layers");
+    const liveLayers = storage.get("layers");
 
-  for (const id of self.presence.selection) {
-    const layer = liveLayers.get(id);
-    if (!layer) continue;
+    for (const id of self.presence.selection) {
+      const layer = liveLayers.get(id);
+      if (!layer) continue;
 
-    const prevX = layer.get("x") ?? 0;
-    const prevY = layer.get("y") ?? 0;
+      const prevX = layer.get("x") ?? 0;
+      const prevY = layer.get("y") ?? 0;
 
-    layer.update({
-      x: prevX + deltaX,
-      y: prevY + deltaY,
+      layer.update({
+        x: prevX + deltaX,
+        y: prevY + deltaY,
+      });
+    }
+
+    setCanvasState({
+      ...canvasState,
+      current: point,
     });
-  }
-
-  setCanvasState({
-    ...canvasState,
-    current: point,
-  });
-}, [canvasState]);
+  }, [canvasState]);
 
 
   const updateMyPresence = useUpdateMyPresence();
@@ -454,6 +454,8 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
   }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+
     const svg = svgRef.current!;
     const point = pointerEventToCanvasPoint(e.clientX, e.clientY, cameraRef.current, svg);
 
@@ -483,6 +485,8 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
 
   const onPointerUp = useMutation(
     ({}, e: React.PointerEvent<SVGSVGElement>) => {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+
       const svg = svgRef.current!;
       const point = pointerEventToCanvasPoint(e.clientX, e.clientY, cameraRef.current, svg);
 
@@ -521,6 +525,10 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
     ]
   );
 
+  function onPointerCancel(e: React.PointerEvent) {
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    setCanvasState({ mode: BoardCanvasMode.None });
+  } // TODO fix it (присутствует "залипание при выборе объектов")
 
   const selections = useOthersMapped((other) => other.presence.selection);
 
@@ -557,7 +565,7 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
 
 
   const deleteLayers = useDeleteLayers();
-  useEffect(() => {
+  useEffect(() => { // handle keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (
@@ -655,7 +663,7 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
     [lastUsedColor]
   );
 
-  useEffect(() => {
+  useEffect(() => { // handle clipboard
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       const text = e.clipboardData?.getData("text/plain")?.trim();
@@ -663,7 +671,7 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
 
       // ⬇️ Текст
       if (text) {
-        insertTextLayer(text, cursor);
+        insertTextLayer(text, cursor); // TODO: resize layer to fit text 
         return;
       }
 
@@ -702,7 +710,7 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
     };
   }, [insertTextLayer, insertImageLayer, self.presence.cursor]);
 
-  useEffect(() => {
+  useEffect(() => { // handle wheel
     const svg = svgRef.current;
     if (!svg) {
       console.warn("❌ svgRef.current is null");
@@ -749,8 +757,6 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
     };
   }, []);
 
-  
-
 
   return (
     <main className="h-full w-full relative bg-neutral touch-none">
@@ -788,7 +794,7 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
         onPointerLeave={onPointerLeave}
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
-        onPointerCancel={onPointerUp}
+        onPointerCancel={onPointerCancel}
         style={{
           cursor:
             canvasState.mode === BoardCanvasMode.Pencil
