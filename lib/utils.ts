@@ -29,15 +29,14 @@ export function connectionIdToColor(id: number): string {
 }
 
 export function pointerEventToCanvasPoint(
-  e: React.PointerEvent,
+  clientX: number,
+  clientY: number,
   camera: Camera,
+  svg: SVGSVGElement
 ): Point {
-  const svg = e.currentTarget as SVGSVGElement;
   const rect = svg.getBoundingClientRect();
-
-  const x = (e.clientX - rect.left - camera.x) / camera.scale;
-  const y = (e.clientY - rect.top - camera.y) / camera.scale;
-
+  const x = (clientX - rect.left - camera.x) / camera.scale;
+  const y = (clientY - rect.top - camera.y) / camera.scale;
   return { x, y };
 }
 

@@ -342,19 +342,33 @@ const insertPath = useMutation(
 );
 
 
-  const translateLayer = useMutation(({ storage, self }, point: Point) => {
-    if (canvasState.mode !== BoardCanvasMode.Translating) return;
-    const offset = { x: point.x - canvasState.current.x, y: point.y - canvasState.current.y };
+const translateLayer = useMutation(({ storage, self }, point: Point) => {
+  if (canvasState.mode !== BoardCanvasMode.Translating) return;
 
-    const liveLayers = storage.get("layers");
+  const deltaX = point.x - canvasState.current.x;
+  const deltaY = point.y - canvasState.current.y;
 
-    for (const id of self.presence.selection) {
-      const layer = liveLayers.get(id);
-      if (layer) layer.update({ x: layer.get('x') + offset.x, y: layer.get('y')+ offset.y });
-    }
+  const liveLayers = storage.get("layers");
 
-    setCanvasState({ mode: BoardCanvasMode.Translating, current: point });
-  },[canvasState])
+  for (const id of self.presence.selection) {
+    const layer = liveLayers.get(id);
+    if (!layer) continue;
+
+    const prevX = layer.get("x") ?? 0;
+    const prevY = layer.get("y") ?? 0;
+
+    layer.update({
+      x: prevX + deltaX,
+      y: prevY + deltaY,
+    });
+  }
+
+  setCanvasState({
+    ...canvasState,
+    current: point,
+  });
+}, [canvasState]);
+
 
   const updateMyPresence = useUpdateMyPresence();
 
@@ -371,38 +385,6 @@ const insertPath = useMutation(
     [history]
   );
 
-  const onWheel = useCallback((e: React.WheelEvent) => {
-    if (e.ctrlKey) {
-      e.preventDefault();
-
-      console.log("wheel");
-
-      const { offsetX, offsetY, deltaY } = e.nativeEvent;
-      const svg = e.currentTarget as SVGSVGElement;
-      const rect = svg.getBoundingClientRect();
-
-      const cursorX = (offsetX - camera.x) / camera.scale;
-      const cursorY = (offsetY - camera.y) / camera.scale;
-
-      const scaleFactor = deltaY < 0 ? 1.1 : 0.9;
-      const newScale = Math.max(0.1, Math.min(4, camera.scale * scaleFactor));
-
-      const newCameraX = offsetX - cursorX * newScale;
-      const newCameraY = offsetY - cursorY * newScale;
-
-      setCamera({
-        x: newCameraX,
-        y: newCameraY,
-        scale: newScale,
-      });
-    } else {
-      setCamera((prev) => ({
-        ...prev,
-        x: prev.x - e.deltaX,
-        y: prev.y - e.deltaY,
-      }));
-    }
-  }, [camera]);
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -430,27 +412,40 @@ const insertPath = useMutation(
           resizeLayer(point);
         } else if (canvasState.mode === BoardCanvasMode.Pencil) {
           continueDrawing(point, e);
-        }
+        } else if (canvasState.mode === BoardCanvasMode.Panning) {
+            const dx = clientX - (canvasState.screenX ?? clientX);
+            const dy = clientY - (canvasState.screenY ?? clientY);
 
-        updateMyPresence(
-          { cursor: point },
-          { addToHistory: false }
-        );
+            setCamera((prev) => ({
+              ...prev,
+              x: prev.x + dx,
+              y: prev.y + dy,
+            }));
+
+            setCanvasState({
+              ...canvasState,
+              screenX: clientX,
+              screenY: clientY,
+            });
+          }
+        updateMyPresence({ cursor: point }, { addToHistory: false });
 
         rafRef.current = null;
       });
     },
     [
       updateMyPresence,
-      canvasState.mode,
-      BoardCanvasMode,
+      canvasState,
       resizeLayer,
       translateLayer,
       continueDrawing,
       startMultiSelect,
       updateSelectionNet,
+      setCamera,
+      setCanvasState,
     ]
   );
+
 
   const onPointerLeave = useMutation((
     { setMyPresence }
@@ -459,11 +454,25 @@ const insertPath = useMutation(
   }, []);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
-    const point = pointerEventToCanvasPoint(e, camera);
+    const svg = svgRef.current!;
+    const point = pointerEventToCanvasPoint(e.clientX, e.clientY, cameraRef.current, svg);
 
-    if (canvasState.mode === BoardCanvasMode.Inserting) {
-      return
+
+    if (e.button === 1) {
+      e.preventDefault();
+      setCanvasState({
+        mode: BoardCanvasMode.Panning,
+        origin: point,
+        current: point,
+        screenX: e.clientX,
+        screenY: e.clientY,
+      });
+      return;
     }
+
+
+    if (canvasState.mode === BoardCanvasMode.Inserting) return;
+
     if (canvasState.mode == BoardCanvasMode.Pencil) {
       startDrawing(point, e);
       return
@@ -474,7 +483,8 @@ const insertPath = useMutation(
 
   const onPointerUp = useMutation(
     ({}, e: React.PointerEvent<SVGSVGElement>) => {
-      const point = pointerEventToCanvasPoint(e, camera);
+      const svg = svgRef.current!;
+      const point = pointerEventToCanvasPoint(e.clientX, e.clientY, cameraRef.current, svg);
 
       if (canvasState.mode === BoardCanvasMode.Pencil) {
         insertPath();
@@ -491,9 +501,12 @@ const insertPath = useMutation(
       } else if (canvasState.mode === BoardCanvasMode.Inserting) {
         insertLayer(canvasState.layerType!, point);
         setCanvasState({ mode: BoardCanvasMode.None });
+      } else if (canvasState.mode === BoardCanvasMode.Panning) {
+        setCanvasState({ mode: BoardCanvasMode.None });
+        return;
       } else {
         setCanvasState({ mode: BoardCanvasMode.None });
-      }
+      } 
 
       history.resume();
     },
@@ -504,8 +517,10 @@ const insertPath = useMutation(
       insertLayer,
       unselectLayer,
       insertPath,
+      setCanvasState,
     ]
   );
+
 
   const selections = useOthersMapped((other) => other.presence.selection);
 
@@ -522,26 +537,24 @@ const insertPath = useMutation(
     return layersIdsToColorSelect
   }, [layerIds, selections]);
 
-  const onLayerPointerDown = useMutation((
-    { self, setMyPresence },
-    e: React.PointerEvent,
-    layerId: string
-  ) => {
+  const onLayerPointerDown = useMutation(
+  ({ self, setMyPresence }, e: React.PointerEvent, layerId: string) => {
     if (canvasState.mode === BoardCanvasMode.Pencil || canvasState.mode === BoardCanvasMode.Inserting) {
       return;
-    } 
+    }
 
     history.pause();
     e.stopPropagation();
 
-    const point = pointerEventToCanvasPoint(e, camera);
+    const svg = svgRef.current!;
+    const point = pointerEventToCanvasPoint(e.clientX, e.clientY, cameraRef.current, svg);
 
-    if (!self.presence.selection.includes(layerId)) {
-      setMyPresence({ selection: [layerId] }, { addToHistory: true });
-    }
-
+    setMyPresence({ selection: [layerId] }, { addToHistory: true });
     setCanvasState({ mode: BoardCanvasMode.Translating, current: point });
-  }, [setCanvasState, camera, history, canvasState.mode]);
+  },
+  [history, camera, canvasState.mode]
+);
+
 
   const deleteLayers = useDeleteLayers();
   useEffect(() => {
@@ -736,6 +749,7 @@ const insertPath = useMutation(
     };
   }, []);
 
+  
 
 
   return (
@@ -775,6 +789,16 @@ const insertPath = useMutation(
         onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        style={{
+          cursor:
+            canvasState.mode === BoardCanvasMode.Pencil
+              ? 'url("/cursors/pencil.svg") 2 14, auto'
+              : canvasState.mode === BoardCanvasMode.Inserting
+                ? 'crosshair'
+              : canvasState.mode === BoardCanvasMode.Panning
+                ? 'grabbing'
+              : 'default',
+        }}
       >
         <g style={{
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,

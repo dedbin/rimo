@@ -118,7 +118,8 @@ export enum BoardCanvasMode {
     Translating,
     Inserting,
     Resizing,
-    Pencil
+    Pencil,
+    Panning
 }
 
 export type BoardCanvasState =
@@ -134,4 +135,8 @@ export type BoardCanvasState =
 
   | { mode: BoardCanvasMode.Resizing, initial: XYWH, corner: side }
 
-  | { mode: BoardCanvasMode.Pencil };
+  | { mode: BoardCanvasMode.Pencil }
+  
+  | { mode: BoardCanvasMode.Panning, origin: Point, current: Point,  screenX: number, screenY: number };
+
+
