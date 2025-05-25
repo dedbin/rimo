@@ -42,6 +42,7 @@
 * **Convex**: все операции с базой данных в `convex/schema.ts`, `convex/boards.ts`, `convex/board.ts`.
 * **Liveblocks**: конфигурация в `liveblocks.config.ts`, авторизация через API-роут `app/api/liveblocks-auth/route.ts`.
 
+
 ---
 
 ## 🚀 Быстрый старт
@@ -53,13 +54,19 @@
    cd rimo
    ```
 
-2. **Установить зависимости**
+2. **Выбрать способ запуска** — вручную или через Docker:
+
+---
+
+### 🔧 Вариант 1: Ручной запуск
+
+3. **Установить зависимости**
 
    ```bash
    npm install
    ```
 
-3. **Создать файл окружения**
+4. **Создать файл окружения**
 
    ```text
    CONVEX_DEPLOYMENT=<your_convex_deployment>
@@ -70,15 +77,40 @@
    NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY=<your_liveblocks_public_key>
    NEXT_PUBLIC_LIVEBLOCKS_SECRET_KEY=<your_liveblocks_secret_key>
    AITUNNEL_API_KEY=<your_aitunnel_api_key> (optional, not ready yet)
+   NEXT_PUBLIC_SITE_URL=<your_site_url>
+   ```
 
+5. **Запустить локально**
 
-
-4. **Запустить локально**
    ```bash
    npm run dev
-   ````
+   ```
+
+6. **Открыть в браузере**: [http://localhost:3000](http://localhost:3000)
+
+---
+
+### 🐳 Вариант 2: Запуск через Docker
+
+3. **Создать `.env` файл (как описано выше)**
+
+4. **Запустить с Docker**
+
+   ```bash
+   ./run.sh
+   ```
+
+   Или вручную:
+
+   ```bash
+   docker-compose up --build -d
+   ```
 
 5. **Открыть в браузере**: [http://localhost:3000](http://localhost:3000)
+
+---
+
+Если хочешь, я могу внести это сразу в `README.md`.
 
 ---
 
