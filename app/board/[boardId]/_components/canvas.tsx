@@ -759,6 +759,7 @@ const insertPath = useMutation(
         setLastUsedSize(size);
         setCanvasState({ mode: BoardCanvasMode.Pencil });
       }}
+        setCamera={setCamera}
       />
       <SelectionTools
         camera={camera}

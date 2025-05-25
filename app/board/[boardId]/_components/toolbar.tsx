@@ -10,7 +10,9 @@ import {
   StickyNote,
   Type,
   Undo2,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ZoomIn, 
+  ZoomOut
 } from "lucide-react";
 import { ToolButton } from "./tool-button";
 import { Button } from "@/components/ui/button";
@@ -23,6 +25,7 @@ import { PenSizePicker } from "./pen-size-picker";
 import {
   BoardCanvasMode,
   BoardCanvasState,
+  Camera,
   LayerType
 } from "@/types/board-canvas";
 import { useTranslation } from "@/hooks/use-translation";
@@ -37,6 +40,7 @@ interface BoardToolbarProps {
   selectedPenSize: number;
   onPenSizeChange: (size: number) => void;
   onImageUpload: (url: string) => void;
+  setCamera: React.Dispatch<React.SetStateAction<Camera>>;
 }
 
 export const BoardToolbar = ({
@@ -49,6 +53,7 @@ export const BoardToolbar = ({
   onPenSizeChange,
   selectedPenSize,
   onImageUpload,
+  setCamera
 }: BoardToolbarProps) => {
   const [penOpen, setPenOpen] = useState(false);
   const { t } = useTranslation();
@@ -197,7 +202,6 @@ export const BoardToolbar = ({
                 onImageUpload(data.url);
               } catch (err) {
                 console.error("Upload error:", err);
-                // оставляем alert, но локализуем текст
                 alert(t("toolbar.imageUploadError"));
               }
             };
@@ -208,6 +212,36 @@ export const BoardToolbar = ({
       </div>
 
       <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col items-center">
+        <ToolButton
+          label={`${t("toolbar.zoomIn")}`}
+          icon={ZoomIn}
+          onClick={() =>
+            setCamera((prev) => {
+              const scale = Math.min(prev.scale * 1.1, 4);
+              return {
+                ...prev,
+                scale,
+                x: prev.x - ((window.innerWidth / 2 - prev.x) * (scale / prev.scale - 1)),
+                y: prev.y - ((window.innerHeight / 2 - prev.y) * (scale / prev.scale - 1)),
+              };
+            })
+          }
+        />
+        <ToolButton
+          label={`${t("toolbar.zoomOut")}`}
+          icon={ZoomOut}
+          onClick={() =>
+            setCamera((prev) => {
+              const scale = Math.max(prev.scale * 0.9, 0.1);
+              return {
+                ...prev,
+                scale,
+                x: prev.x - ((window.innerWidth / 2 - prev.x) * (scale / prev.scale - 1)),
+                y: prev.y - ((window.innerHeight / 2 - prev.y) * (scale / prev.scale - 1)),
+              };
+            })
+          }
+        />
         <ToolButton
           label={`${t("toolbar.undo")} (Ctrl+Z)`}
           icon={Undo2}

@@ -106,7 +106,9 @@
     "image": "Image",
     "undo": "Undo",
     "redo": "Redo",
-    "imageUploadError": "Image upload failed."
+    "imageUploadError": "Image upload failed.",
+    "zoomIn": "Zoom In",
+    "zoomOut": "Zoom Out"
   }
   
 
