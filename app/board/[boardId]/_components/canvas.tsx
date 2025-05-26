@@ -49,6 +49,7 @@ import { Path } from "./path";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
+import { GridBackground } from "./grid-background";
 
 const MAX_LAYERS = 1000;
 const SELECTION_THRESHOLD = 5;
@@ -863,6 +864,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
               : 'default',
         }}
       >
+        <GridBackground camera={camera} />
         <g style={{
           transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`,
           transformOrigin: "0 0",
