@@ -112,7 +112,13 @@
   },
   "canvas":{
     "max-layers-reached": "Maximum layers reached"
-  }
+  },
+  "timer": {
+  "defaultLabel": "Session",
+  "timeUp": "⏰ Time's up!",
+  "plusFive": "+5 min",
+  "minusFive": "-5 min"
+}
   
 
   

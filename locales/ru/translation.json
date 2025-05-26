@@ -112,6 +112,12 @@
   },
   "canvas":{
     "max-layers-reached": "Упс... Максимальное количество слоев достигнуто"
-  }
+  },
+  "timer": {
+  "defaultLabel": "Сессия",
+  "timeUp": "⏰ Время вышло!",
+  "plusFive": "+5 мин",
+  "minusFive": "-5 мин"
+}
   
 }

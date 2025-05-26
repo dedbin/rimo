@@ -50,6 +50,7 @@ import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 import { GridBackground } from "./grid-background";
+import { SessionTimer } from "./session-timer";
 
 const MAX_LAYERS = 1000;
 const SELECTION_THRESHOLD = 5;
@@ -819,7 +820,10 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   return (
     <main className="h-full w-full relative bg-neutral touch-none">
       <BoardInfo boardId={boardId} />
-      <BoardParticipants />
+      <div className="absolute top-2 right-2 flex flex-row-reverse items-center gap-2">
+        <BoardParticipants />
+        <SessionTimer />
+      </div>
 
       <BoardToolbar
         canvasState={canvasState}
