@@ -9,6 +9,7 @@ import { Text } from "./text";
 import { Sticker } from "./sticker";
 import { Path } from "./path";
 import { Image } from "./image";
+import { LinkPreview } from "./link-preview";
 import { rgbToCss } from "@/lib/utils";
 
 interface LayerPreviewProps {
@@ -79,6 +80,15 @@ export const LayerPreview: React.FC<LayerPreviewProps> = memo(
             onPointerDown={onLayerPointerDown}
             selectionColor={selectionColor}
             alt={`Превью слоя ${id}`}
+          />
+        );
+      case LayerType.LinkPreview:
+        return (
+          <LinkPreview
+            id={id}
+            layer={layer}
+            onPointerDown={onLayerPointerDown}
+            selectionColor={selectionColor}
           />
         );
 

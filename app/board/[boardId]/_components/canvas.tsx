@@ -22,6 +22,7 @@ import {
   EllipseLayer,
   RectangleLayer,
   Layer,
+  LinkPreviewLayer,
 } from "@/types/board-canvas";
 
 import { BoardInfo } from "./info";
@@ -178,7 +179,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
   const insertLayer = useMutation((
     { storage, setMyPresence },
-    layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image,
+    layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview,
     position: Point
   ) => {
     const liveLayers = storage.get("layers");
@@ -219,7 +220,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     if (!layer) return;
 
     if (layer.get("type") === LayerType.Text) {
-      const text = layer.get("value") || "";
+      const text = layer.get("value")?.toString() || "";
       const minW = measureText(text, MIN_FONT_SIZE) + PADDING_X * 2;
       const minH = MIN_FONT_SIZE * 1.2 + PADDING_Y * 2;
 
@@ -278,105 +279,105 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     []
   );
 
-const continueDrawing = useMutation(
-  ({ self, setMyPresence }, point: Point, e: React.PointerEvent) => {
-    if (canvasState.mode !== BoardCanvasMode.Pencil || e.buttons !== 1) {
-      return;
-    }
+  const continueDrawing = useMutation(
+    ({ self, setMyPresence }, point: Point, e: React.PointerEvent) => {
+      if (canvasState.mode !== BoardCanvasMode.Pencil || e.buttons !== 1) {
+        return;
+      }
 
-    const draft = (self.presence.pencilDraft ?? []) as [number, number, number][];
-    
-    const last = draft[draft.length - 1];
-    const [lastX, lastY] = last ?? [NaN, NaN];
+      const draft = (self.presence.pencilDraft ?? []) as [number, number, number][];
+      
+      const last = draft[draft.length - 1];
+      const [lastX, lastY] = last ?? [NaN, NaN];
 
-    const pressure = e.pressure ?? 0.5;
-    const isSame =
-      lastX === point.x &&
-      lastY === point.y;
+      const pressure = e.pressure ?? 0.5;
+      const isSame =
+        lastX === point.x &&
+        lastY === point.y;
 
-    const newDraft = isSame
-      ? draft
-      : [...draft, [point.x, point.y, pressure] as [number, number, number]];
+      const newDraft = isSame
+        ? draft
+        : [...draft, [point.x, point.y, pressure] as [number, number, number]];
 
-    setMyPresence({
-      cursor: point,
-      pencilDraft: newDraft,
-    });
-  },
-  [canvasState.mode]
-);
-
-const startDrawing = useMutation(
-  ({ setMyPresence }, point: Point, e: React.PointerEvent) => {
-    if (canvasState.mode !== BoardCanvasMode.Pencil || e.buttons !== 1) {
-      return;
-    }
-
-    const pressure = e.pressure ?? 0.5;
-    setMyPresence({
-      pencilDraft: [[point.x, point.y, pressure] as [number, number, number]],
-      penColor: lastUsedColor,
-      penSize: lastUsedSize,
-    });
-  },
-  [canvasState.mode, lastUsedColor, lastUsedSize]
-);
-
-const insertPath = useMutation(
-  ({ storage, self, setMyPresence }) => {
-    const draft = self.presence.pencilDraft as [number, number, number][] | null;
-    const layers = storage.get("layers");
-    const layerIds = storage.get("layerIds");
-
-    if (layers.size >= MAX_LAYERS) {
-      toast.error(t("canvas.max-layers-reached"));
-      return;
-    }
-
-    if (!draft || draft.length < 2) {
-      setMyPresence({ pencilDraft: null });
-      console.error("Failed to insert path");
-
-      return;
-    }
-
-    const id = nanoid();
-    layers.set(id, new LiveObject(makePathLayer(draft, lastUsedColor, lastUsedSize)));
-    layerIds.push(id);
-
-    setMyPresence({ pencilDraft: null });
-    setCanvasState({ mode: BoardCanvasMode.Pencil });
-  },
-  [lastUsedColor, lastUsedSize]
-);
-
-
-const translateLayer = useMutation(({ storage, self }, point: Point) => {
-    if (canvasState.mode !== BoardCanvasMode.Translating) return;
-
-    const deltaX = point.x - canvasState.current.x;
-    const deltaY = point.y - canvasState.current.y;
-
-    const liveLayers = storage.get("layers");
-
-    for (const id of self.presence.selection) {
-      const layer = liveLayers.get(id);
-      if (!layer) continue;
-
-      const prevX = layer.get("x") ?? 0;
-      const prevY = layer.get("y") ?? 0;
-
-      layer.update({
-        x: prevX + deltaX,
-        y: prevY + deltaY,
+      setMyPresence({
+        cursor: point,
+        pencilDraft: newDraft,
       });
-    }
+    },
+    [canvasState.mode]
+  );
 
-    setCanvasState({
-      ...canvasState,
-      current: point,
-    });
-  }, [canvasState]);
+  const startDrawing = useMutation(
+    ({ setMyPresence }, point: Point, e: React.PointerEvent) => {
+      if (canvasState.mode !== BoardCanvasMode.Pencil || e.buttons !== 1) {
+        return;
+      }
+
+      const pressure = e.pressure ?? 0.5;
+      setMyPresence({
+        pencilDraft: [[point.x, point.y, pressure] as [number, number, number]],
+        penColor: lastUsedColor,
+        penSize: lastUsedSize,
+      });
+    },
+    [canvasState.mode, lastUsedColor, lastUsedSize]
+  );
+
+  const insertPath = useMutation(
+    ({ storage, self, setMyPresence }) => {
+      const draft = self.presence.pencilDraft as [number, number, number][] | null;
+      const layers = storage.get("layers");
+      const layerIds = storage.get("layerIds");
+
+      if (layers.size >= MAX_LAYERS) {
+        toast.error(t("canvas.max-layers-reached"));
+        return;
+      }
+
+      if (!draft || draft.length < 2) {
+        setMyPresence({ pencilDraft: null });
+        console.error("Failed to insert path");
+
+        return;
+      }
+
+      const id = nanoid();
+      layers.set(id, new LiveObject(makePathLayer(draft, lastUsedColor, lastUsedSize)));
+      layerIds.push(id);
+
+      setMyPresence({ pencilDraft: null });
+      setCanvasState({ mode: BoardCanvasMode.Pencil });
+    },
+    [lastUsedColor, lastUsedSize]
+  );
+
+
+  const translateLayer = useMutation(({ storage, self }, point: Point) => {
+      if (canvasState.mode !== BoardCanvasMode.Translating) return;
+
+      const deltaX = point.x - canvasState.current.x;
+      const deltaY = point.y - canvasState.current.y;
+
+      const liveLayers = storage.get("layers");
+
+      for (const id of self.presence.selection) {
+        const layer = liveLayers.get(id);
+        if (!layer) continue;
+
+        const prevX = layer.get("x") ?? 0;
+        const prevY = layer.get("y") ?? 0;
+
+        layer.update({
+          x: prevX + deltaX,
+          y: prevY + deltaY,
+        });
+      }
+
+      setCanvasState({
+        ...canvasState,
+        current: point,
+      });
+    }, [canvasState]);
 
 
   const updateMyPresence = useUpdateMyPresence();
@@ -673,19 +674,65 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
     [lastUsedColor]
   );
 
+  const insertLinkPreviewLayer = useMutation(
+  ({ storage, setMyPresence }, url: string, position: Point, previewData: any) => {
+    console.log("Preview data:", previewData);
+
+    const layerIds = storage.get("layerIds");
+    const layers = storage.get("layers");
+
+    if (layers.size >= MAX_LAYERS) {
+      toast.error(t("canvas.max-layers-reached"));
+      return;
+    }
+
+    const id = nanoid();
+
+    const layer = new LiveObject<LinkPreviewLayer>({
+      type: LayerType.LinkPreview,
+      x: position.x,
+      y: position.y,
+      width: 400,
+      height: 150,
+      value: url,
+      title: previewData.title,
+      description: previewData.description,
+      image: previewData.image,
+      favicon: previewData.favicon,
+    });
+
+    layers.set(id, layer);
+    layerIds.push(id);
+    setMyPresence({ selection: [id] }, { addToHistory: true });
+    setCanvasState({ mode: BoardCanvasMode.None });
+  },
+  []
+);
+
+
   useEffect(() => { // handle clipboard
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
       const text = e.clipboardData?.getData("text/plain")?.trim();
       const cursor = self.presence.cursor ?? { x: 100, y: 100 };
 
-      // ⬇️ Текст
+      if (text?.startsWith("http")) {
+        try {
+          const res = await fetch(`/api/fetch-link-preview?url=${encodeURIComponent(text)}`);
+          const data = await res.json();
+
+          insertLinkPreviewLayer(text, cursor, data);
+        } catch (error) {
+          console.error("Link preview fetch failed", error);
+          toast.error("Не удалось получить preview");
+        }
+        return;
+      }
       if (text) {
         insertTextLayer(text, cursor); // TODO: resize layer to fit text 
         return;
       }
 
-      // ⬇️ Картинка
       if (items) {
         for (const item of items) {
           if (item.type.startsWith("image/")) {
@@ -703,7 +750,7 @@ const translateLayer = useMutation(({ storage, self }, point: Point) => {
 
               const data = await response.json();
               if (data.url) {
-                insertImageLayer(data.url, cursor); // 👈 передаём позицию
+                insertImageLayer(data.url, cursor);
               }
             } catch (err) {
               console.error("Paste image upload failed:", err);

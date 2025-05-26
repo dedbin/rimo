@@ -36,7 +36,8 @@ export enum LayerType {
     Text,
     Path,
     Sticker,
-    Image
+    Image,
+    LinkPreview = "link-preview",
 }
 
 export type RectangleLayer = {
@@ -109,7 +110,20 @@ export type ImageLayer = {
     fill?: Color;
 }
 
-export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer
+export type LinkPreviewLayer = {
+  type: LayerType.LinkPreview;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  value: string;
+  title?: string;
+  description?: string;
+  image?: string;
+  favicon?: string;
+};
+
+export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer | LinkPreviewLayer
 
 export enum BoardCanvasMode {
     None,
@@ -131,12 +145,14 @@ export type BoardCanvasState =
 
   | { mode: BoardCanvasMode.Translating, current: Point }
 
-  | { mode: BoardCanvasMode.Inserting, layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image }
+  | { mode: BoardCanvasMode.Inserting, layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview }
 
   | { mode: BoardCanvasMode.Resizing, initial: XYWH, corner: side }
 
   | { mode: BoardCanvasMode.Pencil }
   
   | { mode: BoardCanvasMode.Panning, origin: Point, current: Point,  screenX: number, screenY: number };
+
+
 
 
