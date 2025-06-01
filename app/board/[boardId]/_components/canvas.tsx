@@ -1,5 +1,6 @@
 "use client";
 
+
 import {
   useCallback,
   useEffect,
@@ -7,50 +8,61 @@ import {
   useRef,
   useState,
 } from "react";
+
+import { LiveObject } from "@liveblocks/client";
 import {
-  BoardCanvasState,
+  useCanRedo,
+  useCanUndo,
+  useHistory,
+  useMutation,
+  useOthersMapped,
+  useSelf,
+  useStorage,
+  useUpdateMyPresence,
+} from "@liveblocks/react/suspense";
+import { nanoid } from "nanoid";
+import { toast } from "sonner";
+
+import { useDeleteLayers } from "@/hooks/use-delete-layers";
+import { useTranslation } from "@/hooks/use-translation";
+import {
+  connectionIdToColor,
+  makePathLayer,
+  measureText,
+  pickLayersInBox,
+  pointerEventToCanvasPoint,
+  resizeBounds,
+  rgbToCss,
+} from "@/lib/utils";
+import {
   BoardCanvasMode,
+  BoardCanvasState,
   Camera,
   Color,
-  LayerType,
-  Point,
-  side,
-  XYWH,
+  EllipseLayer,
   ImageLayer,
+  Layer,
+  LayerType,
+  LinkPreviewLayer,
+  Point,
+  RectangleLayer,
+  side,
   StickerLayer,
   TextLayer,
-  EllipseLayer,
-  RectangleLayer,
-  Layer,
-  LinkPreviewLayer,
+  XYWH,
 } from "@/types/board-canvas";
 
 import { BoardInfo } from "./info";
 import { BoardParticipants } from "./participants";
 import { BoardToolbar } from "./toolbar";
-import {
-  useHistory,
-  useCanRedo,
-  useCanUndo,
-  useUpdateMyPresence,
-  useMutation,
-  useStorage,
-  useSelf,
-  useOthersMapped
-} from "@liveblocks/react/suspense";
 import { CursorsPresence } from "./cursors-presence";
-import { connectionIdToColor, pickLayersInBox, pointerEventToCanvasPoint, resizeBounds, measureText, makePathLayer, rgbToCss  } from "@/lib/utils";
-import { nanoid } from "nanoid";
-import { LiveObject } from "@liveblocks/client";
+import { GridBackground } from "./grid-background";
 import { LayerPreview } from "./layer-preview";
+import { Path } from "./path";
 import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
-import { Path } from "./path";
-import { useDeleteLayers } from "@/hooks/use-delete-layers";
-import { toast } from "sonner";
-import { useTranslation } from "@/hooks/use-translation";
-import { GridBackground } from "./grid-background";
 import { SessionTimer } from "./session-timer";
+
 
 const MAX_LAYERS = 1000;
 const SELECTION_THRESHOLD = 5;
@@ -148,7 +160,6 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
   const svgRef = useRef<SVGSVGElement | null>(null);
 
-
   const insertImageLayer = useMutation(
   ({ storage, setMyPresence }, imageUrl: string, position: Point) => {
     const liveLayers = storage.get("layers");
@@ -210,41 +221,40 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   }, [])
 
   const resizeLayer = useMutation(
-  ({ storage, self }, point: Point) => {
-    if (canvasState.mode !== BoardCanvasMode.Resizing) return;
+    ({ storage, self }, point: Point) => {
+      if (canvasState.mode !== BoardCanvasMode.Resizing) return;
 
-    const initial = canvasState.initial!;
-    const corner  = canvasState.corner!;
-    const bounds    = resizeBounds(initial, corner, point);
+      const initial = canvasState.initial!;
+      const corner  = canvasState.corner!;
+      const bounds    = resizeBounds(initial, corner, point);
 
-    const liveLayers = storage.get("layers");
-    const layer      = liveLayers.get(self.presence.selection[0]);
-    if (!layer) return;
+      const liveLayers = storage.get("layers");
+      const layer      = liveLayers.get(self.presence.selection[0]);
+      if (!layer) return;
 
-    if (layer.get("type") === LayerType.Text) {
-      const text = layer.get("value")?.toString() || "";
-      const minW = measureText(text, MIN_FONT_SIZE) + PADDING_X * 2;
-      const minH = MIN_FONT_SIZE * 1.2 + PADDING_Y * 2;
+      if (layer.get("type") === LayerType.Text) {
+        const text = layer.get("value")?.toString() || "";
+        const minW = measureText(text, MIN_FONT_SIZE) + PADDING_X * 2;
+        const minH = MIN_FONT_SIZE * 1.2 + PADDING_Y * 2;
 
-      if (bounds.width < minW) {
-        if (corner & side.left) {
-          bounds.x = initial.x + initial.width - minW;
+        if (bounds.width < minW) {
+          if (corner & side.left) {
+            bounds.x = initial.x + initial.width - minW;
+          }
+          bounds.width = minW;
         }
-        bounds.width = minW;
-      }
-      if (bounds.height < minH) {
-        if (corner & side.top) {
-          bounds.y = initial.y + initial.height - minH;
+        if (bounds.height < minH) {
+          if (corner & side.top) {
+            bounds.y = initial.y + initial.height - minH;
+          }
+          bounds.height = minH;
         }
-        bounds.height = minH;
       }
-    }
 
-    layer.update(bounds);
-  },
-  [canvasState]
-);
-
+      layer.update(bounds);
+    },
+    [canvasState]
+  );
 
   const updateSelectionNet = useMutation(
     ({ storage, setMyPresence }, current: Point, origin: Point) => {
@@ -353,7 +363,6 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     [lastUsedColor, lastUsedSize]
   );
 
-
   const translateLayer = useMutation(({ storage, self }, point: Point) => {
       if (canvasState.mode !== BoardCanvasMode.Translating) return;
 
@@ -381,7 +390,6 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       });
     }, [canvasState]);
 
-
   const updateMyPresence = useUpdateMyPresence();
 
   useEffect(() => {
@@ -396,7 +404,6 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     },
     [history]
   );
-
 
   const onPointerMove = useCallback(
     (e: React.PointerEvent) => {
@@ -457,7 +464,6 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       setCanvasState,
     ]
   );
-
 
   const onPointerLeave = useMutation((
     { setMyPresence }
@@ -575,8 +581,8 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   [history, camera, canvasState.mode]
 );
 
-
   const deleteLayers = useDeleteLayers();
+
   useEffect(() => { // handle keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -677,39 +683,39 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   );
 
   const insertLinkPreviewLayer = useMutation(
-  ({ storage, setMyPresence }, url: string, position: Point, previewData: any) => {
-    console.log("Preview data:", previewData);
+    ({ storage, setMyPresence }, url: string, position: Point, previewData: any) => {
+      console.log("Preview data:", previewData);
 
-    const layerIds = storage.get("layerIds");
-    const layers = storage.get("layers");
+      const layerIds = storage.get("layerIds");
+      const layers = storage.get("layers");
 
-    if (layers.size >= MAX_LAYERS) {
-      toast.error(t("canvas.max-layers-reached"));
-      return;
-    }
+      if (layers.size >= MAX_LAYERS) {
+        toast.error(t("canvas.max-layers-reached"));
+        return;
+      }
 
-    const id = nanoid();
+      const id = nanoid();
 
-    const layer = new LiveObject<LinkPreviewLayer>({
-      type: LayerType.LinkPreview,
-      x: position.x,
-      y: position.y,
-      width: 400,
-      height: 150,
-      value: url,
-      title: previewData.title,
-      description: previewData.description,
-      image: previewData.image,
-      favicon: previewData.favicon,
-    });
+      const layer = new LiveObject<LinkPreviewLayer>({
+        type: LayerType.LinkPreview,
+        x: position.x,
+        y: position.y,
+        width: 400,
+        height: 150,
+        value: url,
+        title: previewData.title,
+        description: previewData.description,
+        image: previewData.image,
+        favicon: previewData.favicon,
+      });
 
-    layers.set(id, layer);
-    layerIds.push(id);
-    setMyPresence({ selection: [id] }, { addToHistory: true });
-    setCanvasState({ mode: BoardCanvasMode.None });
-  },
-  []
-);
+      layers.set(id, layer);
+      layerIds.push(id);
+      setMyPresence({ selection: [id] }, { addToHistory: true });
+      setCanvasState({ mode: BoardCanvasMode.None });
+    },
+    []
+  );
 
 
   useEffect(() => { // handle clipboard
@@ -769,7 +775,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     };
   }, [insertTextLayer, insertImageLayer, self.presence.cursor]);
 
-  useEffect(() => { // handle wheel
+  useEffect(() => { // handle wheel scroll
     const svg = svgRef.current;
     if (!svg) {
       console.warn("❌ svgRef.current is null");
