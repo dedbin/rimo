@@ -375,7 +375,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     },
     [canvasState.mode]
   );
-  const continueErasing = useMutation(
+  const continueErasing = useMutation( // TODO: add trail with delay
   ({ self, setMyPresence, storage }, point: Point, e: React.PointerEvent) => {
     if (canvasState.mode !== BoardCanvasMode.Eraser || e.buttons !== 1) return;
 
