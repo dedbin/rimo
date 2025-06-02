@@ -27,6 +27,9 @@ import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { useTranslation } from "@/hooks/use-translation";
 import {
   connectionIdToColor,
+  doesPointIntersectPath,
+  getLayerBounds,
+  isPointNearBoundingBox,
   makePathLayer,
   measureText,
   pickLayersInBox,
@@ -44,6 +47,7 @@ import {
   Layer,
   LayerType,
   LinkPreviewLayer,
+  PathLayer,
   Point,
   RectangleLayer,
   side,
@@ -363,6 +367,82 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     [lastUsedColor, lastUsedSize]
   );
 
+  const startErasing = useMutation(
+    ({ setMyPresence }, point: Point, e: React.PointerEvent) => {
+      if (canvasState.mode !== BoardCanvasMode.Eraser || e.buttons !== 1) return;
+
+      setMyPresence({ eraserDraft: [point] });
+    },
+    [canvasState.mode]
+  );
+  const continueErasing = useMutation(
+  ({ self, setMyPresence, storage }, point: Point, e: React.PointerEvent) => {
+    if (canvasState.mode !== BoardCanvasMode.Eraser || e.buttons !== 1) return;
+
+    history.pause();
+
+    const draft = (self.presence.eraserDraft ?? []) as Point[];
+    const last = draft[draft.length - 1];
+    const isSame = last?.x === point.x && last?.y === point.y;
+
+    const newDraft = isSame ? draft : [...draft, point];
+    setMyPresence({ cursor: point, eraserDraft: newDraft });
+
+    const layers = storage.get("layers");
+    const layerIds = storage.get("layerIds");
+
+    for (const [id, layer] of layers.entries()) {
+      const type = layer.get("type");
+      if (type === LayerType.Path) continue;
+
+      const bounds = getLayerBounds(layer);
+      if (!bounds) continue;
+
+      const nearAny = newDraft.some(p => isPointNearBoundingBox(p, bounds));
+      if (nearAny) {
+        layers.delete(id);
+        const index = layerIds.indexOf(id);
+        if (index !== -1) {
+          layerIds.delete(index);
+        }
+      }
+    }
+
+    for (const [id, layer] of layers.entries()) {
+      const type = layer.get("type");
+      if (type !== LayerType.Path) continue;
+
+      const pathLayer = layer as LiveObject<PathLayer>;
+      const immutable = pathLayer.toImmutable();
+
+      if (!Array.isArray(immutable.points)) continue;
+
+      const intersects = newDraft.some(p => {
+        const hit = doesPointIntersectPath(p, immutable, id);
+        return hit;
+      });
+
+      if (intersects) {
+        layers.delete(id);
+        const index = layerIds.indexOf(id);
+        if (index !== -1) {
+          layerIds.delete(index);
+        }
+      }
+    }
+  },
+  [canvasState.mode]
+);
+
+
+
+  const stopErasing = useMutation(
+    ({ setMyPresence }) => {
+      setMyPresence({ eraserDraft: null });
+    },
+    []
+  );
+
   const translateLayer = useMutation(({ storage, self }, point: Point) => {
       if (canvasState.mode !== BoardCanvasMode.Translating) return;
 
@@ -431,6 +511,8 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
           resizeLayer(point);
         } else if (canvasState.mode === BoardCanvasMode.Pencil) {
           continueDrawing(point, e);
+        } else if (canvasState.mode === BoardCanvasMode.Eraser) {
+          continueErasing(point, e);
         } else if (canvasState.mode === BoardCanvasMode.Panning) {
             const dx = clientX - (canvasState.screenX ?? clientX);
             const dy = clientY - (canvasState.screenY ?? clientY);
@@ -499,6 +581,10 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       startDrawing(point, e);
       return
     }
+    if (canvasState.mode === BoardCanvasMode.Eraser) {
+      startErasing(point, e);
+      return;
+    }
 
     setCanvasState({ origin: point, mode: BoardCanvasMode.Pressing });
   }, [camera, canvasState.mode, setCanvasState, startDrawing]);
@@ -512,6 +598,11 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
       if (canvasState.mode === BoardCanvasMode.Pencil) {
         insertPath();
+        history.resume();
+        return;
+      }
+      if (canvasState.mode === BoardCanvasMode.Eraser) {
+        stopErasing();
         history.resume();
         return;
       }
@@ -542,6 +633,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       unselectLayer,
       insertPath,
       setCanvasState,
+      stopErasing
     ]
   );
 
@@ -609,6 +701,10 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
           case "KeyP":
             e.preventDefault();
             setCanvasState((s) => ({ ...s, mode: BoardCanvasMode.Pencil }));
+            break;
+          case "KeyE":
+            e.preventDefault();
+            setCanvasState((s) => ({ ...s, mode: BoardCanvasMode.Eraser }));
             break;
           case "KeyT":
             e.preventDefault();
@@ -686,7 +782,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
   const insertLinkPreviewLayer = useMutation(
     ({ storage, setMyPresence }, url: string, position: Point, previewData: any) => {
-      console.log("Preview data:", previewData);
+      // console.log("Preview data:", previewData);
 
       const layerIds = storage.get("layerIds");
       const layers = storage.get("layers");
@@ -869,11 +965,13 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
           cursor:
             canvasState.mode === BoardCanvasMode.Pencil
               ? 'url("/cursors/pencil.svg") 2 14, auto'
-              : canvasState.mode === BoardCanvasMode.Inserting
-                ? 'crosshair'
-              : canvasState.mode === BoardCanvasMode.Panning
-                ? 'grabbing'
-              : 'default',
+            : canvasState.mode === BoardCanvasMode.Eraser
+              ? 'url("/cursors/eraser.svg") 4 4, auto' // ✅ добавлено
+            : canvasState.mode === BoardCanvasMode.Inserting
+              ? 'crosshair'
+            : canvasState.mode === BoardCanvasMode.Panning
+              ? 'grabbing'
+            : 'default',
         }}
       >
         <GridBackground camera={camera} />

@@ -100,6 +100,7 @@
   "toolbar": {
     "select": "Выделение",
     "text": "Текст",
+    "eraser": "Ластик",
     "stickers": "Стикеры",
     "rectangle": "Прямоугольник",
     "ellipse": "Эллипс",

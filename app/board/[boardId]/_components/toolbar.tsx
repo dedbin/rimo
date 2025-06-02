@@ -12,7 +12,9 @@ import {
   Undo2,
   Image as ImageIcon,
   ZoomIn, 
-  ZoomOut
+  ZoomOut,
+  Eraser,
+  EraserIcon
 } from "lucide-react";
 import { ToolButton } from "./tool-button";
 import { Button } from "@/components/ui/button";
@@ -72,6 +74,7 @@ export const BoardToolbar = ({
               BoardCanvasMode.SelectionNet,
               BoardCanvasMode.Pressing,
               BoardCanvasMode.Resizing,
+              BoardCanvasMode.Panning
             ].includes(canvasState.mode)
           }
         />
@@ -127,6 +130,17 @@ export const BoardToolbar = ({
             />
           </DropdownMenuContent>
         </DropdownMenu>
+
+        <ToolButton
+          label={`${t("toolbar.eraser")} (Ctrl+E)`}
+          icon={EraserIcon}
+          isActive={canvasState.mode === BoardCanvasMode.Eraser}
+          onClick={() =>
+            setCanvasState({
+              mode: BoardCanvasMode.Eraser,
+            })
+          }
+        />
 
         <ToolButton
           label={`${t("toolbar.stickers")} (Ctrl+S)`}
