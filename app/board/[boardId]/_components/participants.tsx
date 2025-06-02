@@ -45,7 +45,7 @@ export const BoardParticipants = () => {
 };
 
 export const BoardParticipantsSkeleton = () => (
-  <div className="flex h-12 rounded-md px-1.5 items-center shadow-md bg-white p-4 gap-2">
+  <div className="absolute top-2 right-2 flex h-12 rounded-md px-1.5 items-center shadow-md bg-white p-4 gap-2 pointer-events-none">
     <Skeleton className="h-8 w-8 rounded-full" />
     <Skeleton className="h-4 w-20 rounded" />
   </div>
