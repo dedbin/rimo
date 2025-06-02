@@ -480,12 +480,14 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
     if (e.button === 1) {
       e.preventDefault();
+      const currentMode = canvasState.mode;
       setCanvasState({
         mode: BoardCanvasMode.Panning,
         origin: point,
         current: point,
         screenX: e.clientX,
         screenY: e.clientY,
+        previousState: canvasState,
       });
       return;
     }
@@ -518,16 +520,16 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         canvasState.mode === BoardCanvasMode.None ||
         canvasState.mode === BoardCanvasMode.Pressing
       ) {
-        unselectLayer();
-        setCanvasState({ mode: BoardCanvasMode.None });
+          unselectLayer();
+          setCanvasState({ mode: BoardCanvasMode.None });
       } else if (canvasState.mode === BoardCanvasMode.Inserting) {
-        insertLayer(canvasState.layerType!, point);
-        setCanvasState({ mode: BoardCanvasMode.None });
-      } else if (canvasState.mode === BoardCanvasMode.Panning) {
-        setCanvasState({ mode: BoardCanvasMode.None });
-        return;
+          insertLayer(canvasState.layerType!, point);
+          setCanvasState({ mode: BoardCanvasMode.None });
+      } else if (canvasState.mode === BoardCanvasMode.Panning && canvasState.previousState) {
+          setCanvasState(canvasState.previousState);
+          return;
       } else {
-        setCanvasState({ mode: BoardCanvasMode.None });
+          setCanvasState({ mode: BoardCanvasMode.None });
       } 
 
       history.resume();

@@ -136,23 +136,17 @@ export enum BoardCanvasMode {
     Panning
 }
 
+type BaseCanvasState = { previousState?: BoardCanvasState  };
+
 export type BoardCanvasState =
-  | { mode: BoardCanvasMode.None }
-
-  | { mode: BoardCanvasMode.Pressing, origin: Point }
-
-  | { mode: BoardCanvasMode.SelectionNet, origin: Point, current?: Point }
-
-  | { mode: BoardCanvasMode.Translating, current: Point }
-
-  | { mode: BoardCanvasMode.Inserting, layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview }
-
-  | { mode: BoardCanvasMode.Resizing, initial: XYWH, corner: side }
-
-  | { mode: BoardCanvasMode.Pencil }
-  
-  | { mode: BoardCanvasMode.Panning, origin: Point, current: Point,  screenX: number, screenY: number };
-
+  | ({ mode: BoardCanvasMode.None } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Pressing; origin: Point } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.SelectionNet; origin: Point; current?: Point } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Translating; current: Point } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Inserting; layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Resizing; initial: XYWH; corner: side } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Pencil } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Panning; origin: Point; current: Point; screenX: number; screenY: number } & BaseCanvasState);
 
 
 
