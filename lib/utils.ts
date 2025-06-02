@@ -1,10 +1,12 @@
 import { Camera, Color, Point, side, XYWH, Layer, LayerType, PathLayer } from "@/types/board-canvas"
+import { LiveObject } from "@liveblocks/client";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
 const MIN_WIDTH  = 40;  
 const MIN_HEIGHT = 20; 
 const GOLDEN_ANGLE = 137.508;  
+const PATH_ERASE_TOLERANCE = 12;
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -195,4 +197,71 @@ export function convertPointsToPath(points: number[][]): string {
 
   segments.push("Z");
   return segments.join(" ");
+}
+
+export function isPointNearBoundingBox(point: Point, bounds: { x: number; y: number; width: number; height: number }) {
+  const pad = 5;
+  return (
+    point.x >= bounds.x - pad &&
+    point.x <= bounds.x + bounds.width + pad &&
+    point.y >= bounds.y - pad &&
+    point.y <= bounds.y + bounds.height + pad
+  );
+}
+
+function distanceToSegment(p: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+
+  if (dx === 0 && dy === 0) {
+    const dpx = p.x - a.x;
+    const dpy = p.y - a.y;
+    return Math.sqrt(dpx * dpx + dpy * dpy);
+  }
+
+  const t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy);
+  const clampedT = Math.max(0, Math.min(1, t));
+  const projX = a.x + clampedT * dx;
+  const projY = a.y + clampedT * dy;
+
+  const distX = p.x - projX;
+  const distY = p.y - projY;
+  return Math.sqrt(distX * distX + distY * distY);
+}
+
+export function doesPointIntersectPath(point: Point, path: PathLayer, layerId?: string): boolean {
+  const offsetX = path.x;
+  const offsetY = path.y;
+  const points = path.points;
+
+  for (let i = 0; i < points.length - 1; i++) {
+    const a: Point = { x: points[i][0] + offsetX, y: points[i][1] + offsetY };
+    const b: Point = { x: points[i + 1][0] + offsetX, y: points[i + 1][1] + offsetY };
+
+    const dist = distanceToSegment(point, a, b);
+    if (dist < PATH_ERASE_TOLERANCE ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+export function getLayerBounds(layer: LiveObject<Layer>) {
+  const x = layer.get("x");
+  const y = layer.get("y");
+  const width = layer.get("width");
+  const height = layer.get("height");
+
+  if (
+    typeof x === "number" &&
+    typeof y === "number" &&
+    typeof width === "number" &&
+    typeof height === "number"
+  ) {
+    return { x, y, width, height };
+  }
+
+  return null;
 }

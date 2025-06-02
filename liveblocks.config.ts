@@ -2,7 +2,7 @@
 // https://liveblocks.io/docs/api-reference/liveblocks-react#Typing-your-data
 import { createClient, LiveList, LiveMap, LiveObject } from "@liveblocks/client";
 import { createRoomContext } from "@liveblocks/react";
-import { Color, Layer } from "./types/board-canvas";
+import { Color, Layer, Point } from "./types/board-canvas";
 
 
 declare global {
@@ -15,6 +15,7 @@ declare global {
       pencilDraft: [x: number, y: number, pressure: number][] | null;
       penColor: Color | null;
       penSize: number;
+      eraserDraft: Point[] | null;
     };
 
     // The Storage tree for the room, for useMutation, useStorage, etc.

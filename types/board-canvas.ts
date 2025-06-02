@@ -133,7 +133,8 @@ export enum BoardCanvasMode {
     Inserting,
     Resizing,
     Pencil,
-    Panning
+    Panning,
+    Eraser
 }
 
 type BaseCanvasState = { previousState?: BoardCanvasState  };
@@ -146,7 +147,8 @@ export type BoardCanvasState =
   | ({ mode: BoardCanvasMode.Inserting; layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Resizing; initial: XYWH; corner: side } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Pencil } & BaseCanvasState)
-  | ({ mode: BoardCanvasMode.Panning; origin: Point; current: Point; screenX: number; screenY: number } & BaseCanvasState);
+  | ({ mode: BoardCanvasMode.Panning; origin: Point; current: Point; screenX: number; screenY: number } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Eraser } & BaseCanvasState);
 
 
 
