@@ -677,6 +677,67 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
 
   const deleteLayers = useDeleteLayers();
 
+  const duplicateLayers = useMutation(({ storage, self, setMyPresence }) => {
+    const selection = self.presence.selection;
+    if (!selection.length) return;
+
+    const layers = storage.get("layers");
+    const layerIds = storage.get("layerIds");
+
+    const originals = selection
+      .map((id: string) => layers.get(id)?.toImmutable())
+      .filter((l): l is Layer => Boolean(l));
+
+    if (!originals.length) return;
+
+    const newIds: string[] = [];
+    const padding = 32;
+
+    const bounds = originals.reduce(
+      (acc, layer) => {
+        const x = layer.x ?? 0;
+        const y = layer.y ?? 0;
+        const right = x + (layer.width ?? 0);
+        const bottom = y + (layer.height ?? 0);
+        return {
+          minX: Math.min(acc.minX, x),
+          minY: Math.min(acc.minY, y),
+          maxX: Math.max(acc.maxX, right),
+          maxY: Math.max(acc.maxY, bottom),
+        };
+      },
+      {
+        minX: Infinity,
+        minY: Infinity,
+        maxX: -Infinity,
+        maxY: -Infinity,
+      }
+    );
+
+    const canvasWidth = svgRef.current?.clientWidth ?? window.innerWidth;
+    const moveDownInstead = bounds.maxX + padding > canvasWidth;
+
+    const deltaX = moveDownInstead ? 0 : bounds.maxX - bounds.minX + padding;
+    const deltaY = moveDownInstead ? bounds.maxY - bounds.minY + padding : 0;
+
+    for (const layer of originals) {
+      const newId = nanoid();
+
+      const newLayer = new LiveObject({
+        ...layer,
+        x: (layer.x ?? 0) + deltaX,
+        y: (layer.y ?? 0) + deltaY,
+      });
+
+      layers.set(newId, newLayer);
+      layerIds.push(newId);
+      newIds.push(newId);
+    }
+
+    setMyPresence({ selection: newIds }, { addToHistory: true });
+    toast.success("Слои продублированы");
+  }, []);
+
   useEffect(() => { // handle keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -697,6 +758,10 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
           case "KeyY":
             e.preventDefault();
             history.redo();
+            break;
+          case "KeyD":
+            e.preventDefault();
+            duplicateLayers();
             break;
           case "KeyP":
             e.preventDefault();
@@ -815,6 +880,124 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     []
   );
 
+  function useCopyPasteLayers(
+    getSelf: () => any,
+    updateMyPresence: ReturnType<typeof useUpdateMyPresence>,
+    svgRef: React.RefObject<SVGSVGElement | null>
+  ) {
+    const lastPasteDataRef = useRef<string | null>(null);
+    const pasteCountRef = useRef(0);
+
+    const copyLayers = useMutation(({ storage, self }) => {
+      const selection = self.presence.selection;
+      if (!selection.length) return;
+
+      const layers = storage.get("layers");
+      const selected = selection
+        .map((id: string) => layers.get(id)?.toImmutable())
+        .filter(Boolean);
+
+      const payload = JSON.stringify(selected);
+      navigator.clipboard.writeText(payload).catch(() => {});
+    }, []);
+
+    const pasteLayers = useMutation(({ storage, setMyPresence }) => {
+      navigator.clipboard.readText().then((text) => {
+        try {
+          if (!text) return;
+
+          const sameAsLast = text === lastPasteDataRef.current;
+          lastPasteDataRef.current = text;
+
+          if (sameAsLast) {
+            pasteCountRef.current += 1;
+          } else {
+            pasteCountRef.current = 0;
+          }
+
+          const parsed = JSON.parse(text);
+          if (!Array.isArray(parsed)) return;
+
+          const layers = storage.get("layers");
+          const layerIds = storage.get("layerIds");
+
+          const newIds: string[] = [];
+          const padding = 32;
+
+          const bounds = parsed.reduce(
+            (acc, layer) => {
+              const x = layer.x ?? 0;
+              const y = layer.y ?? 0;
+              const right = x + (layer.width ?? 0);
+              const bottom = y + (layer.height ?? 0);
+              return {
+                minX: Math.min(acc.minX, x),
+                minY: Math.min(acc.minY, y),
+                maxX: Math.max(acc.maxX, right),
+                maxY: Math.max(acc.maxY, bottom),
+              };
+            },
+            {
+              minX: Infinity,
+              minY: Infinity,
+              maxX: -Infinity,
+              maxY: -Infinity,
+            }
+          );
+
+          const canvasWidth = svgRef.current?.clientWidth ?? window.innerWidth;
+          const moveDownInstead = bounds.maxX + padding > canvasWidth;
+
+          const offsetMultiplier = pasteCountRef.current + 1;
+          const deltaX = moveDownInstead ? 0 : (bounds.maxX - bounds.minX + padding) * offsetMultiplier;
+          const deltaY = moveDownInstead ? (bounds.maxY - bounds.minY + padding) * offsetMultiplier : 0;
+
+          for (const layer of parsed) {
+            const newId = nanoid();
+
+            const newLayer = new LiveObject({
+              ...layer,
+              x: (layer.x ?? 0) + deltaX,
+              y: (layer.y ?? 0) + deltaY,
+            });
+
+            layers.set(newId, newLayer);
+            layerIds.push(newId);
+            newIds.push(newId);
+          }
+
+          setMyPresence({ selection: newIds }, { addToHistory: true });
+        } catch {
+          console.error("Failed to parse clipboard data", text);
+          toast.error("Не удалось вставить данные из буфера обмена");
+        }
+      });
+    }, []);
+
+
+
+    useEffect(() => {
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+          switch (e.code) {
+            case "KeyC":
+              e.preventDefault();
+              copyLayers();
+              break;
+            case "KeyV":
+              e.preventDefault();
+              pasteLayers();
+              break;
+          }
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown, true);
+      return () => window.removeEventListener("keydown", handleKeyDown, true);
+    }, [copyLayers, pasteLayers]);
+  }
+
+  useCopyPasteLayers(() => self, updateMyPresence, svgRef);
 
   useEffect(() => { // handle clipboard
     const handlePaste = async (e: ClipboardEvent) => {
