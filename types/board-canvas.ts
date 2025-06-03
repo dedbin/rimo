@@ -134,7 +134,7 @@ export enum BoardCanvasMode {
     Resizing,
     Pencil,
     Panning,
-    Eraser
+    Eraser,
 }
 
 type BaseCanvasState = { previousState?: BoardCanvasState  };
@@ -148,7 +148,7 @@ export type BoardCanvasState =
   | ({ mode: BoardCanvasMode.Resizing; initial: XYWH; corner: side } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Pencil } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Panning; origin: Point; current: Point; screenX: number; screenY: number } & BaseCanvasState)
-  | ({ mode: BoardCanvasMode.Eraser } & BaseCanvasState);
+  | ({ mode: BoardCanvasMode.Eraser } & BaseCanvasState)
 
 
 
