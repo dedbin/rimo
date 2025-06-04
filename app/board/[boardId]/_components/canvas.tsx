@@ -74,6 +74,17 @@ const MIN_FONT_SIZE = 12;
 const PADDING_X = 8;
 const PADDING_Y = 4;
 
+function isLayerClipboardData(text: string): boolean {
+  if (!text.trim().startsWith("[")) return false;
+  try {
+    const parsed = JSON.parse(text);
+    return Array.isArray(parsed) && parsed.length > 0 && "type" in parsed[0];
+  } catch {
+    return false;
+  }
+}
+
+
 interface BoardCanvasProps {
   boardId: string;
 }
@@ -964,8 +975,9 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       navigator.clipboard.writeText(payload).catch(() => {});
     }, []);
 
-    const pasteLayers = useMutation(({ storage, setMyPresence }) => {
-      navigator.clipboard.readText().then((text) => {
+    const pasteLayers = useMutation(({ storage, setMyPresence }, clipText?: string) => {
+      const read = clipText ? Promise.resolve(clipText) : navigator.clipboard.readText();
+      read.then((text) => {
         try {
           if (!text) return;
 
@@ -1042,31 +1054,32 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     useEffect(() => {
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.ctrlKey && !e.shiftKey && !e.altKey) {
-          switch (e.code) {
-            case "KeyC":
-              e.preventDefault();
-              copyLayers();
-              break;
-            case "KeyV":
-              e.preventDefault();
-              pasteLayers();
-              break;
+          if (e.code === "KeyC") {
+            e.preventDefault();
+            copyLayers();
           }
         }
       };
-
       window.addEventListener("keydown", handleKeyDown, true);
       return () => window.removeEventListener("keydown", handleKeyDown, true);
-    }, [copyLayers, pasteLayers]);
+    }, [copyLayers]);
+
+    return { pasteLayers}
   }
 
-  useCopyPasteLayers(() => self, updateMyPresence, svgRef);
+  const { pasteLayers } = useCopyPasteLayers(() => self, updateMyPresence, svgRef);
 
   useEffect(() => { // handle clipboard
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items;
-      const text = e.clipboardData?.getData("text/plain")?.trim();
+      const text = e.clipboardData?.getData("text/plain")?.trim() ?? "";
       const cursor = self.presence.cursor ?? { x: 100, y: 100 };
+
+      if (text && isLayerClipboardData(text)) {
+        e.preventDefault();
+        pasteLayers(text);
+        return;
+      }
 
       if (text?.startsWith("http")) {
         try {
@@ -1117,7 +1130,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     return () => {
       window.removeEventListener("paste", handlePaste);
     };
-  }, [insertTextLayer, insertImageLayer, self.presence.cursor]);
+  }, [insertTextLayer, insertImageLayer, self.presence.cursor, pasteLayers]);
 
   useEffect(() => { // handle wheel scroll
     const svg = svgRef.current;
