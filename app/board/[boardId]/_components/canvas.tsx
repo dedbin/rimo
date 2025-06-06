@@ -24,6 +24,7 @@ import { nanoid } from "nanoid";
 import { toast } from "sonner";
 
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
+import { useBoardBounds } from "@/hooks/use-board-bounds";
 import { useTranslation } from "@/hooks/use-translation";
 import {
   connectionIdToColor,
@@ -66,6 +67,7 @@ import { Path } from "./path";
 import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
 import { SessionTimer } from "./session-timer";
+import { ZoomControls } from "./zoom-controls";
 
 
 const MAX_LAYERS = 1000;
@@ -150,6 +152,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   const self = useSelf();
 
   const layerIds = useStorage((root) => root.layerIds);
+  const boardBounds = useBoardBounds();
 
   const pencilDraft = useSelf((me) => me.presence.pencilDraft);
 
@@ -565,6 +568,23 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   ) => {
     setMyPresence({ cursor: null });
   }, []);
+
+  const fitToScreen = useCallback(() => {
+    if (!boardBounds) return;
+
+    const margin = 40;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
+
+    const scaleX = (width - margin * 2) / boardBounds.width;
+    const scaleY = (height - margin * 2) / boardBounds.height;
+    const newScale = Math.min(scaleX, scaleY, 4);
+
+    const x = (width - boardBounds.width * newScale) / 2 - boardBounds.x * newScale;
+    const y = (height - boardBounds.height * newScale) / 2 - boardBounds.y * newScale;
+
+    setCamera({ x, y, scale: newScale });
+  }, [boardBounds]);
 
   function getSelectionBounds(selection: string[], layers: LiveMap<string, LiveObject<Layer>>) {
     const selectedLayers = selection.map(id => layers.get(id)).filter(Boolean) as LiveObject<Layer>[];
@@ -1258,17 +1278,21 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
             />
           )}
           <CursorsPresence />
-          {pencilDraft != null && pencilDraft.length > 0 && (
-            <Path
-                points={pencilDraft}
-                x={0}
-                y={0}
-                fill={rgbToCss(lastUsedColor)}
-                size={lastUsedSize}
-            />
-          )}
-        </g>
+      {pencilDraft != null && pencilDraft.length > 0 && (
+        <Path
+            points={pencilDraft}
+            x={0}
+            y={0}
+            fill={rgbToCss(lastUsedColor)}
+            size={lastUsedSize}
+        />
+      )}
+      </g>
       </svg>
+      <ZoomControls
+        scale={camera.scale}
+        onFitToScreen={fitToScreen}
+      />
     </main>
   );
 };

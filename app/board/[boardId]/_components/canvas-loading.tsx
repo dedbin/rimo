@@ -2,6 +2,7 @@ import { Loader } from "lucide-react";
 import { BoardInfoSkeleton } from "./info";
 import { BoardParticipantsSkeleton } from "./participants";
 import { BoardToolbarSkeleton } from "./toolbar";
+import { ZoomControlsSkeleton } from "./zoom-controls";
 
 export const CanvasLoading = () => {
     return (
@@ -10,6 +11,7 @@ export const CanvasLoading = () => {
             <BoardInfoSkeleton />
             <BoardParticipantsSkeleton />
             <BoardToolbarSkeleton />
+            <ZoomControlsSkeleton />
         </main>
     )
 }
