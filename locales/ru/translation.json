@@ -119,6 +119,9 @@
   "timeUp": "⏰ Время вышло!",
   "plusFive": "+5 мин",
   "minusFive": "-5 мин"
-}
+  },
+  "zoomControls": {
+    "fitToScreen": "Подогнать к экрану"
+  }
   
 }

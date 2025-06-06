@@ -119,7 +119,10 @@
   "timeUp": "⏰ Time's up!",
   "plusFive": "+5 min",
   "minusFive": "-5 min"
-}
+  },
+  "zoomControls": {
+    "fitToScreen": "Fit to screen"
+  }
   
 
   
