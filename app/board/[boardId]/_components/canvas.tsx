@@ -809,7 +809,6 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     }
 
     setMyPresence({ selection: newIds }, { addToHistory: true });
-    toast.success("Слои продублированы");
   }, []);
 
   useEffect(() => { // handle keyboard shortcuts
