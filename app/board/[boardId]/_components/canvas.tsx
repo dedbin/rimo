@@ -1195,13 +1195,13 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         const cursorX = (offsetX - camera.x) / camera.scale;
         const cursorY = (offsetY - camera.y) / camera.scale;
 
-        const scaleFactor = e.deltaY < 0 ? 1.1 : 0.9;
+        const scaleFactor = e.deltaY < 0 ? 1.03 : 0.97;
         const newScale = Math.max(0.1, Math.min(4, camera.scale * scaleFactor));
 
         const newCameraX = offsetX - cursorX * newScale;
         const newCameraY = offsetY - cursorY * newScale;
 
-        setCamera({
+        setCamera({ // TODO: animate it using animateCameraTo
           x: newCameraX,
           y: newCameraY,
           scale: newScale,
@@ -1220,7 +1220,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     return () => {
       svg.removeEventListener("wheel", handleWheel);
     };
-  }, []);
+  }, [setCamera]);
 
 
   return (
@@ -1238,7 +1238,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         redo={history.redo}
         canUndo={canUndo}
         canRedo={canRedo}
-        selectedPenSize={lastUsedSize} 
+        selectedPenSize={lastUsedSize}
         onImageUpload={(url) => {
           const cursor = self.presence.cursor ?? { x: 100, y: 100 };
           insertImageLayer(url, cursor);
