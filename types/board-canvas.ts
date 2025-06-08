@@ -121,6 +121,7 @@ export type LinkPreviewLayer = {
   description?: string;
   image?: string;
   favicon?: string;
+  fill?: Color;
 };
 
 export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer | LinkPreviewLayer

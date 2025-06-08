@@ -42,7 +42,8 @@ interface BoardToolbarProps {
   selectedPenSize: number;
   onPenSizeChange: (size: number) => void;
   onImageUpload: (url: string) => void;
-  setCamera: React.Dispatch<React.SetStateAction<Camera>>;
+  camera: Camera;
+  animateCameraTo: (camera: Camera) => void;
 }
 
 export const BoardToolbar = ({
@@ -55,7 +56,8 @@ export const BoardToolbar = ({
   onPenSizeChange,
   selectedPenSize,
   onImageUpload,
-  setCamera
+  camera,
+  animateCameraTo
 }: BoardToolbarProps) => {
   const [penOpen, setPenOpen] = useState(false);
   const { t } = useTranslation();
@@ -229,32 +231,28 @@ export const BoardToolbar = ({
         <ToolButton
           label={`${t("toolbar.zoomIn")}`}
           icon={ZoomIn}
-          onClick={() =>
-            setCamera((prev) => {
-              const scale = Math.min(prev.scale * 1.1, 4);
-              return {
-                ...prev,
-                scale,
-                x: prev.x - ((window.innerWidth / 2 - prev.x) * (scale / prev.scale - 1)),
-                y: prev.y - ((window.innerHeight / 2 - prev.y) * (scale / prev.scale - 1)),
-              };
-            })
-          }
+          onClick={() => {
+            const scale = Math.min(camera.scale * 1.1, 4);
+            animateCameraTo({
+              ...camera,
+              scale,
+              x: camera.x - ((window.innerWidth / 2 - camera.x) * (scale / camera.scale - 1)),
+              y: camera.y - ((window.innerHeight / 2 - camera.y) * (scale / camera.scale - 1)),
+            });
+          }}
         />
         <ToolButton
           label={`${t("toolbar.zoomOut")}`}
           icon={ZoomOut}
-          onClick={() =>
-            setCamera((prev) => {
-              const scale = Math.max(prev.scale * 0.9, 0.1);
-              return {
-                ...prev,
-                scale,
-                x: prev.x - ((window.innerWidth / 2 - prev.x) * (scale / prev.scale - 1)),
-                y: prev.y - ((window.innerHeight / 2 - prev.y) * (scale / prev.scale - 1)),
-              };
-            })
-          }
+          onClick={() => {
+            const scale = Math.max(camera.scale * 0.9, 0.1);
+            animateCameraTo({
+              ...camera,
+              scale,
+              x: camera.x - ((window.innerWidth / 2 - camera.x) * (scale / camera.scale - 1)),
+              y: camera.y - ((window.innerHeight / 2 - camera.y) * (scale / camera.scale - 1)),
+            });
+          }}
         />
         <ToolButton
           label={`${t("toolbar.undo")} (Ctrl+Z)`}

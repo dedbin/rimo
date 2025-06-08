@@ -1244,10 +1244,11 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
           insertImageLayer(url, cursor);
         }}
         onPenSizeChange={(size) => {
-        setLastUsedSize(size);
-        setCanvasState({ mode: BoardCanvasMode.Pencil });
-      }}
-        setCamera={setCamera}
+          setLastUsedSize(size);
+          setCanvasState({ mode: BoardCanvasMode.Pencil });
+        }}
+        camera={camera}
+        animateCameraTo={animateCameraTo}
       />
       <SelectionTools
         camera={camera}

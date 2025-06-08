@@ -25,7 +25,8 @@ export function Room({ children, roomId, fallback}: RoomProps) {
           selection: [],
           pencilDraft: null,
           penColor: null,
-          penSize: 16
+          penSize: 16,
+          eraserDraft: null // TODO: implement eraser draft
 
         }}
         initialStorage={{
