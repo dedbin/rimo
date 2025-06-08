@@ -569,6 +569,30 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     setMyPresence({ cursor: null });
   }, []);
 
+  const animateCameraTo = useCallback(
+    (target: Camera, duration = 300) => {
+      const start = performance.now();
+      const initial = cameraRef.current;
+
+      const frame = () => {
+        const now = performance.now();
+        const t = Math.min((now - start) / duration, 1);
+        const eased = 1 - Math.pow(1 - t, 3);
+
+        setCamera({
+          x: initial.x + (target.x - initial.x) * eased,
+          y: initial.y + (target.y - initial.y) * eased,
+          scale: initial.scale + (target.scale - initial.scale) * eased,
+        });
+
+        if (t < 1) requestAnimationFrame(frame);
+      };
+
+      requestAnimationFrame(frame);
+    },
+    [setCamera]
+  );
+
   const fitToScreen = useCallback(() => {
     if (!boardBounds) return;
 
@@ -583,8 +607,8 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     const x = (width - boardBounds.width * newScale) / 2 - boardBounds.x * newScale;
     const y = (height - boardBounds.height * newScale) / 2 - boardBounds.y * newScale;
 
-    setCamera({ x, y, scale: newScale });
-  }, [boardBounds]);
+    animateCameraTo({ x, y, scale: newScale });
+  }, [boardBounds, animateCameraTo]);
 
   function getSelectionBounds(selection: string[], layers: LiveMap<string, LiveObject<Layer>>) {
     const selectedLayers = selection.map(id => layers.get(id)).filter(Boolean) as LiveObject<Layer>[];
