@@ -92,8 +92,13 @@ export const LinkPreview: React.FC<LinkPreviewProps> = ({
 
         {/* Error Fallback */}
         {!loading && error && (
-          <div className="flex-1 p-4 flex items-center justify-center text-sm text-red-500">
-            Не удалось загрузить превью
+          <div className="flex-1 relative flex items-center justify-center text-sm">
+            <img
+              src="/link-preview-error.jpg"
+              alt="error"
+              className="absolute inset-0 w-full h-full object-fill scale-y opacity-50 pointer-events-none"
+            />
+            <span className="relative z-10 text-red-600 drop-shadow-md font-bold text-lg">Не удалось загрузить превью</span>
           </div>
         )}
 
