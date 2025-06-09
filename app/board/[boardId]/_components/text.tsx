@@ -6,23 +6,11 @@ import { Poppins } from "next/font/google";
 import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
 import { useMutation } from "@liveblocks/react";
 
-const MAX_FONT_SIZE = 96;
-const SCALE_FACTOR = 0.5;
-const MIN_FONT_SIZE = 12;
 
 const font = Poppins({
     subsets: ['latin'],
     weight: ['400'],
 })
-
-const calculateFontSize = (width: number, height: number) => {
-    const fontSizeHeight = height * SCALE_FACTOR;
-    const fontSizeWidth = width * SCALE_FACTOR; 
-
-    const size = Math.min(MAX_FONT_SIZE, Math.min(fontSizeHeight, fontSizeWidth));
-    return Math.max(MIN_FONT_SIZE, size);   
-}
-
 
 
 interface TextProps {
@@ -33,7 +21,7 @@ interface TextProps {
 }
 // TODO: add selection font
 export const Text = ({ id, layer, onPointerDown, selectionColor }: TextProps) => {
-    const { x, y, width, height, fill, value } = layer
+    const { x, y, width, height, fill, value, fontSize } = layer
 
     const updateValue = useMutation(({ storage }, newValue: string) => {
         const liveLayers = storage.get("layers");
@@ -63,8 +51,8 @@ export const Text = ({ id, layer, onPointerDown, selectionColor }: TextProps) =>
                 autoComplete="off"
                 onChange={handleContentEditableChange}
                 className={cn("h-full w-full flex items-center justify-center text-center drop-shadow-md outline-none", font.className)}
-                style={{ 
-                    fontSize: calculateFontSize(width, height),
+                style={{
+                    fontSize: fontSize,
                     color: fill ? rgbToCss(fill) : '#000'
                  }}
             />

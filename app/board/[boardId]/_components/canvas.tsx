@@ -10,6 +10,8 @@ import {
 } from "react";
 
 import { LiveMap, LiveObject } from "@liveblocks/client";
+
+import { shallow } from "@liveblocks/react";
 import {
   useCanRedo,
   useCanUndo,
@@ -66,13 +68,14 @@ import { LayerPreview } from "./layer-preview";
 import { Path } from "./path";
 import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
+import { TextSelectionTools } from "./text-selection-tools";
 import { SessionTimer } from "./session-timer";
 import { ZoomControls } from "./zoom-controls";
 
 
 const MAX_LAYERS = 1000;
 const SELECTION_THRESHOLD = 5;
-const MIN_FONT_SIZE = 12;
+const BASE_FONT_SIZE = 16;
 const PADDING_X = 8;
 const PADDING_Y = 4;
 
@@ -126,6 +129,8 @@ export function createLayer(
         height: 100,
         value: "Text",
         fill: lastUsedColor,
+        fontSize: BASE_FONT_SIZE,
+        fontFamily: "Poppins",
       });
 
     case LayerType.Sticker:
@@ -137,6 +142,8 @@ export function createLayer(
         width: 100,
         height: 100,
         value: "Text",
+        fontSize: BASE_FONT_SIZE,
+        fontFamily: "Poppins",
       });
 
     case LayerType.Image:
@@ -155,6 +162,11 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   const boardBounds = useBoardBounds();
 
   const pencilDraft = useSelf((me) => me.presence.pencilDraft);
+  const selection = useSelf((me) => me.presence.selection ?? []);
+  const selectedLayer = useStorage((root) => {
+    if (selection.length !== 1) return null;
+    return root.layers.get(selection[0]) ?? null;
+  }, (prev, curr) => shallow(prev, curr));
 
   if (!layerIds) {
     console.error("layerIds not found"); // TODO: make pretty error screen
@@ -250,10 +262,11 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       const layer      = liveLayers.get(self.presence.selection[0]);
       if (!layer) return;
 
-      if (layer.get("type") === LayerType.Text) {
-        const text = layer.get("value")?.toString() || "";
-        const minW = measureText(text, MIN_FONT_SIZE) + PADDING_X * 2;
-        const minH = MIN_FONT_SIZE * 1.2 + PADDING_Y * 2;
+      if (layer.get("type") === LayerType.Text || layer.get("type") === LayerType.Sticker) {
+        // @ts-ignore
+        const fontSize = layer.get("fontSize") as number;
+        const minW = measureText("W", fontSize) + PADDING_X * 2;
+        const minH = fontSize * 1.2 + PADDING_Y * 2;
 
         if (bounds.width < minW) {
           if (corner & side.left) {
@@ -952,6 +965,8 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         height: 100,
         value,
         fill: lastUsedColor,
+        fontSize: BASE_FONT_SIZE,
+        fontFamily: "Poppins",
       });
 
       liveLayers.set(id, textLayer);
@@ -1250,10 +1265,18 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         camera={camera}
         animateCameraTo={animateCameraTo}
       />
-      <SelectionTools
-        camera={camera}
-        setLastUsedColor={setLastUsedColor}
-      />
+      {selection.length === 1 && selectedLayer &&
+        (selectedLayer.type === LayerType.Text || selectedLayer.type === LayerType.Sticker) ? (
+        <TextSelectionTools
+          camera={camera}
+          setLastUsedColor={setLastUsedColor}
+        />
+      ) : (
+        <SelectionTools
+          camera={camera}
+          setLastUsedColor={setLastUsedColor}
+        />
+      )}
        
       <svg
         ref={svgRef}

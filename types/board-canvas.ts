@@ -72,6 +72,8 @@ export type StickerLayer = {
     height: number;
     fill: Color;
     value?: string;
+    fontFamily?: string;
+    fontSize: number;
 }
 
 export type TextLayer = {
@@ -84,7 +86,8 @@ export type TextLayer = {
     stroke?: Color;
     strokeWidth?: number;
     value?: string;
-    font?: string; // TODO give user ability to select font and size
+    fontFamily?: string;
+    fontSize: number;
 }
 
 export type EllipseLayer = {
