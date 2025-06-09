@@ -122,6 +122,11 @@
   },
   "zoomControls": {
     "fitToScreen": "Fit to screen"
+  },
+  "selectionTools": {
+    "bringToFront": "Bring to front",
+    "sendToBack": "Send to back",
+    "delete": "Delete"
   }
   
 

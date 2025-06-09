@@ -122,6 +122,11 @@
   },
   "zoomControls": {
     "fitToScreen": "Уместить все"
+  },
+  "selectionTools": {
+    "bringToFront": "Наверх",
+    "sendToBack": "Вниз",
+    "delete": "Удалить"
   }
   
 }

@@ -9,6 +9,7 @@ import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
 import { BringToFront, SendToBack, Trash2 } from "lucide-react";
+import { useTranslation } from "@/hooks/use-translation";
 
 interface SelectionToolsProps {
   camera: Camera;
@@ -18,6 +19,7 @@ interface SelectionToolsProps {
 export const SelectionTools = memo(
   ({ camera, setLastUsedColor }: SelectionToolsProps) => {
     const selection = useSelf((me) => me.presence.selection ?? []);
+    const { t } = useTranslation();
     const bounds = useActiveSelectionArea();
     const deleteLayers = useDeleteLayers();
 
@@ -92,19 +94,19 @@ const moveToFront = useMutation(({ storage }) => {
       >
         <ColorPicker onChange={setFill} />
         <div className="flex flex-col gap-y-0.5 justify-center ml-3">
-          <Hint label="bring to front">
+          <Hint label={t("selectionTools.bringToFront")}>
             <Button variant="ghost" size="icon" onClick={moveToFront}>
               <BringToFront />
             </Button>
           </Hint>
-          <Hint label="send to back" side="bottom">
+          <Hint label={t("selectionTools.sendToBack")} side="bottom">
             <Button variant="ghost" size="icon" onClick={moveToBack}>
               <SendToBack />
             </Button>
           </Hint>
         </div>
         <div className="flex items-center pl-2 ml-2 border-l border-neutral-200">
-          <Hint label="delete" side="right" sideOffset={10}>
+          <Hint label={t("selectionTools.delete")} side="right" sideOffset={10}>
             <Button
               variant={hoveringDelete ? "destructive" : "ghost"}
               size="icon"
