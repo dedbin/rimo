@@ -5,26 +5,33 @@ import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface FontSizePickerProps {
-  onChange: (size: number) => void;
-  currentSize: number;
+interface FontFamilyPickerProps {
+  onChange: (font: string) => void;
+  currentFont: string;
 }
 
-const fontSizes = [10, 12, 14, 18, 24, 36, 48, 64, 80, 144, 288];
+const fontFamilies = [
+  "Noto Sans",
+  "Inter",
+  "Roboto",
+  "Courier New",
+  "Georgia",
+  "Comic Sans MS",
+];
 
-export const FontSizePicker = ({ onChange, currentSize }: FontSizePickerProps) => {
+export const FontFamilyPicker = ({ onChange, currentFont }: FontFamilyPickerProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div className="relative inline-block text-left">
+    <div className="relative inline-block text-left min-w-[140px]">
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "inline-flex items-center px-2 py-1 border bg-white rounded-md shadow-sm text-sm transition-colors",
+          "w-full inline-flex items-center justify-between px-2 py-1 border bg-white rounded-md shadow-sm text-sm transition-colors",
           isOpen ? "border-green-500 text-green-500" : "border-neutral-300"
         )}
       >
-        {currentSize}
+        {currentFont}
         <ChevronDown className="ml-1 h-4 w-4" />
       </button>
 
@@ -35,21 +42,22 @@ export const FontSizePicker = ({ onChange, currentSize }: FontSizePickerProps) =
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 4 }}
             transition={{ duration: 0.2 }}
-            className="absolute z-10 mt-2 w-20 bg-white border border-neutral-200 rounded-md shadow-lg"
+            className="absolute z-10 mt-2 w-full bg-white border border-neutral-200 rounded-md shadow-lg max-h-60 overflow-y-auto"
           >
-            {fontSizes.map((size) => (
+            {fontFamilies.map((font) => (
               <button
-                key={size}
+                key={font}
                 onClick={() => {
-                  onChange(size);
+                  onChange(font);
                   setIsOpen(false);
                 }}
                 className={cn(
                   "block w-full px-2 py-1 text-left text-sm hover:bg-neutral-100",
-                  size === currentSize ? "bg-blue-500 text-white" : ""
+                  font === currentFont ? "bg-blue-500 text-white" : ""
                 )}
+                style={{ fontFamily: font }}
               >
-                {size}
+                {font}
               </button>
             ))}
           </motion.div>

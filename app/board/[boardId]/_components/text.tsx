@@ -2,15 +2,8 @@
 
 import { rgbToCss, cn } from "@/lib/utils";
 import { TextLayer } from "@/types/board-canvas";
-import { Poppins } from "next/font/google";
 import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
 import { useMutation } from "@liveblocks/react";
-
-
-const font = Poppins({
-    subsets: ['latin'],
-    weight: ['400'],
-})
 
 
 interface TextProps {
@@ -50,10 +43,11 @@ export const Text = ({ id, layer, onPointerDown, selectionColor }: TextProps) =>
                 autoCorrect="off"
                 autoComplete="off"
                 onChange={handleContentEditableChange}
-                className={cn("h-full w-full flex items-center justify-center text-center drop-shadow-md outline-none", font.className)}
+                className={cn("h-full w-full flex items-center justify-center text-center drop-shadow-md outline-none", layer.fontFamily)}
                 style={{
                     fontSize: fontSize,
-                    color: fill ? rgbToCss(fill) : '#000'
+                    color: fill ? rgbToCss(fill) : '#000',
+                    fontFamily: layer.fontFamily || "sans-serif",
                  }}
             />
         </foreignObject>

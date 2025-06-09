@@ -4,12 +4,16 @@ import { useState, useEffect, memo } from "react";
 import { useActiveSelectionArea } from "@/hooks/use-selection-bounds";
 import { Camera, Color, LayerType } from "@/types/board-canvas";
 import { useMutation, useSelf, useStorage } from "@liveblocks/react/suspense";
-import { ColorPicker } from "./color-picker";
+import { ColorDropdown } from "./color-dropdown";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
 import { BringToFront, SendToBack, Trash2 } from "lucide-react";
 import { FontSizePicker } from "./font-size-picker";
+import { FontFamilyPicker } from "./font-family-picker";
+import { useTranslation } from "@/hooks/use-translation";
+
+
 
 interface TextSelectionToolsProps {
   camera: Camera;
@@ -19,6 +23,7 @@ interface TextSelectionToolsProps {
 export const TextSelectionTools = memo(
   ({ camera, setLastUsedColor }: TextSelectionToolsProps) => {
     const selection = useSelf((me) => me.presence.selection ?? []);
+    const { t } = useTranslation();
     const bounds = useActiveSelectionArea();
     const deleteLayers = useDeleteLayers();
 
@@ -61,16 +66,34 @@ export const TextSelectionTools = memo(
     );
 
     const setFontSize = useMutation(({ storage }, size: number) => {
-      const liveLayers = storage.get("layers");
-      const id = selection[0];
-      // @ts-ignore
-      liveLayers.get(id)?.set("fontSize", size);
+        const liveLayers = storage.get("layers");
+        const id = selection[0];
+        // @ts-ignore
+        liveLayers.get(id)?.set("fontSize", size);
     }, [selection]);
 
     const currentFontSize = useStorage((root) => {
-      const id = selection[0];
-      // @ts-ignore
-      return root.layers.get(id)?.fontSize ?? 24;
+        const id = selection[0];
+        // @ts-ignore
+        return root.layers.get(id)?.fontSize ?? 24;
+    });
+
+    const setFontFamily = useMutation(({ storage }, font: string) => {
+        const liveLayers = storage.get("layers");
+        const id = selection[0];
+        // @ts-ignore
+        liveLayers.get(id)?.set("fontFamily", font);
+    }, [selection]);
+
+    const currentFontFamily = useStorage((root) => {
+        const id = selection[0];
+        // @ts-ignore
+        return root.layers.get(id)?.fontFamily ?? "Noto Sans";
+    });
+
+    const currentFill = useStorage((root) => {
+        const id = selection[0];
+        return root.layers.get(id)?.fill ?? { r: 0, g: 0, b: 0 };
     });
 
     const [hoveringDelete, setHoveringDelete] = useState(false);
@@ -88,27 +111,38 @@ export const TextSelectionTools = memo(
 
     return (
       <div
-        className="absolute p-3 rounded-xl bg-white shadow-sm border flex items-center select-none"
+        className="absolute px-3 py-2 rounded-xl bg-white shadow-sm border flex items-center select-none gap-2"
         style={{
-          transform: `translate(calc(${x}px - 50%), calc(${y - 10 * camera.scale}px - 100%))`,
+            transform: `translate(calc(${x}px - 50%), calc(${y - 10 * camera.scale}px - 100%))`,
         }}
-      >
-        <ColorPicker onChange={setFill} />
-        <FontSizePicker currentSize={currentFontSize} onChange={setFontSize} />
-        <div className="flex flex-col gap-y-0.5 justify-center ml-3">
-          <Hint label="bring to front">
+    >
+        
+        <ColorDropdown currentColor={currentFill} onChange={setFill} />
+
+        <FontFamilyPicker
+            currentFont={currentFontFamily}
+            onChange={setFontFamily}
+        />
+        <FontSizePicker 
+            currentSize={currentFontSize} 
+            onChange={setFontSize} 
+        />
+        
+        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-neutral-200">
+            <Hint label={t("selectionTools.bringToFront")}>
             <Button variant="ghost" size="icon" onClick={moveToFront}>
-              <BringToFront />
+                <BringToFront />
             </Button>
-          </Hint>
-          <Hint label="send to back" side="bottom">
+            </Hint>
+            <Hint label={t("selectionTools.sendToBack")}>
             <Button variant="ghost" size="icon" onClick={moveToBack}>
-              <SendToBack />
+                <SendToBack />
             </Button>
-          </Hint>
+            </Hint>
         </div>
+        
         <div className="flex items-center pl-2 ml-2 border-l border-neutral-200">
-          <Hint label="delete" side="right" sideOffset={10}>
+          <Hint label={t("selectionTools.delete")} side="right" sideOffset={10}>
             <Button
               variant={hoveringDelete ? "destructive" : "ghost"}
               size="icon"
