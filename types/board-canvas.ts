@@ -31,13 +31,13 @@ export enum side {
 }
 
 export enum LayerType {
-    Rectangle,
-    Ellipse,
-    Text,
-    Path,
-    Sticker,
-    Image,
-    LinkPreview = "link-preview",
+  Rectangle = "rectangle",
+  Ellipse = "ellipse",
+  Text = "text",
+  Sticker = "sticker",
+  Path = "path",
+  Image = "image",
+  LinkPreview = "linkPreview",
 }
 
 export type RectangleLayer = {

@@ -12,7 +12,6 @@ interface TextProps {
     onPointerDown: (e: React.PointerEvent, id: string) => void;
     selectionColor?: string
 }
-// TODO: add selection font
 export const Text = ({ id, layer, onPointerDown, selectionColor }: TextProps) => {
     const { x, y, width, height, fill, value, fontSize } = layer
 

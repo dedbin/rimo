@@ -18,7 +18,6 @@ interface StickerProps {
     onPointerDown: (e: React.PointerEvent, id: string) => void;
     selectionColor?: string
 }
-// TODO: add selection font
 export const Sticker = ({ id, layer, onPointerDown, selectionColor }: StickerProps) => {
     const { x, y, width, height, fill, value, fontSize } = layer
 

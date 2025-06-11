@@ -968,6 +968,68 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     };
   }, [history, setCanvasState, unselectLayer, deleteLayers]);
 
+  const insertTempImageAndUpload = useMutation(
+  async ({ storage, setMyPresence }, file: File, position: Point) => {
+    const tempUrl = URL.createObjectURL(file);
+    const { width, height } = await getImageDimensions(tempUrl);
+
+    const MAX_SIZE = 600;
+    let w = width;
+    let h = height;
+
+    if (w > MAX_SIZE || h > MAX_SIZE) {
+      const ratio = w / h;
+      if (ratio > 1) {
+        w = MAX_SIZE;
+        h = Math.round(MAX_SIZE / ratio);
+      } else {
+        h = MAX_SIZE;
+        w = Math.round(MAX_SIZE * ratio);
+      }
+    }
+
+    const id = nanoid();
+    const layer = new LiveObject<ImageLayer>({
+      type: LayerType.Image,
+      x: position.x,
+      y: position.y,
+      width: w,
+      height: h,
+      src: tempUrl,
+    });
+
+    const layers = storage.get("layers");
+    const layerIds = storage.get("layerIds");
+
+    layers.set(id, layer);
+    layerIds.push(id);
+    setMyPresence({ selection: [id] }, { addToHistory: true });
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.url) {
+        const existing = layers.get(id);
+        if (existing) {
+          // @ts-ignore
+          existing.set("src", data.url);
+        }
+      }
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      toast.error(t("canvas.pasteImageError"));
+    }
+  },
+  []
+);
+
   const insertTextLayer = useMutation(
     ({ storage, setMyPresence }, value: string, position: Point) => {
       const liveLayers = storage.get("layers");
@@ -1185,23 +1247,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
             const file = item.getAsFile();
             if (!file) continue;
 
-            const formData = new FormData();
-            formData.append("file", file);
-
-            try {
-              const response = await fetch("/api/upload-image", {
-                method: "POST",
-                body: formData,
-              });
-
-              const data = await response.json();
-              if (data.url) {
-                prepareAndInsertImageLayer(data.url, cursor);
-              }
-            } catch (err) {
-              console.error("Paste image upload failed:", err);
-              toast.error(t("canvas.pasteImageError"));
-            }
+            insertTempImageAndUpload(file, cursor);
           }
         }
       }
