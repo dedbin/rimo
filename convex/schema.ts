@@ -25,4 +25,8 @@ export default defineSchema({
     .index("byUserOrg", ["userId", "orgId"])
     .index("byUserBoard", ["userId", "boardId"])
     .index("byUserBoardOrg", ["userId", "boardId", "orgId"]),
+    images: defineTable({
+        sha256: v.string(),
+        storageId: v.id("_storage"),
+    }).index("bySha", ["sha256"]),
 })

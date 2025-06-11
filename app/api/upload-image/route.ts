@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { nanoid } from "nanoid";
-import { existsSync } from "fs";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
+import crypto from "crypto";
 
 export async function POST(req: NextRequest) {
+  const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
   try {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
@@ -21,21 +21,34 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const fileExtension = file.name.split(".").pop() || "";
-    const fileName = `${nanoid()}.${fileExtension}`;
-    const uploadsDir = join(process.cwd(), "public/uploads");
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const hash = crypto.createHash("sha256").update(buffer).digest("hex");
 
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
+    const existing = await convex.query(api.images.getBySha, { sha256: hash });
+    if (existing) {
+      return NextResponse.json({ url: existing.url });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const filePath = join(uploadsDir, fileName);
 
-    await writeFile(filePath, buffer);
+    const uploadUrl = await convex.action(api.images.generateUploadUrl, {});
+    const uploadRes = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: buffer,
+    });
 
-    const fileUrl = `/uploads/${fileName}`;
-    return NextResponse.json({ url: fileUrl });
+    if (!uploadRes.ok) {
+      console.error("Convex upload failed", await uploadRes.text());
+      return NextResponse.json({ error: "Error uploading file" }, { status: 500 });
+    }
+
+    const { storageId } = await uploadRes.json();
+    const { url } = await convex.mutation(api.images.saveImage, {
+      sha256: hash,
+      storageId,
+    });
+
+    return NextResponse.json({ url });
   } catch (error) {
     console.error("Error uploading file:", error);
     return NextResponse.json({ error: "Error uploading file" }, { status: 500 });
