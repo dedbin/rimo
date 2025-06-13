@@ -39,6 +39,7 @@ import {
   pointerEventToCanvasPoint,
   resizeBounds,
   rgbToCss,
+  getImageDimensions,
 } from "@/lib/utils";
 import {
   BoardCanvasMode,
@@ -191,7 +192,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   const insertImageLayer = useMutation(
-  ({ storage, setMyPresence }, imageUrl: string, position: Point) => {
+  ({ storage, setMyPresence }, imageUrl: string, position: Point, width: number, height: number) => {
     const liveLayers = storage.get("layers");
     const liveLayerIds = storage.get("layerIds");
 
@@ -206,8 +207,8 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
       type: LayerType.Image,
       x: position.x,
       y: position.y,
-      width: 300,
-      height: 300,
+      width,
+      height,
       src: imageUrl,
     });
 
@@ -219,6 +220,28 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
   },
   []
 );
+
+  const prepareAndInsertImageLayer = useCallback(async (url: string, position: Point) => {
+    try {
+      const { width, height } = await getImageDimensions(url);
+      const MAX_SIZE = 600;
+      let w = width;
+      let h = height;
+      if (w > MAX_SIZE || h > MAX_SIZE) {
+        const ratio = w / h;
+        if (ratio > 1) {
+          w = MAX_SIZE;
+          h = Math.round(MAX_SIZE / ratio);
+        } else {
+          h = MAX_SIZE;
+          w = Math.round(MAX_SIZE * ratio);
+        }
+      }
+      insertImageLayer(url, position, w, h);
+    } catch (e) {
+      console.error("Failed to load image", e);
+    }
+  }, [insertImageLayer]);
 
   const insertLayer = useMutation((
     { storage, setMyPresence },
@@ -945,6 +968,68 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
     };
   }, [history, setCanvasState, unselectLayer, deleteLayers]);
 
+  const insertTempImageAndUpload = useMutation(
+  async ({ storage, setMyPresence }, file: File, position: Point) => {
+    const tempUrl = URL.createObjectURL(file);
+    const { width, height } = await getImageDimensions(tempUrl);
+
+    const MAX_SIZE = 600;
+    let w = width;
+    let h = height;
+
+    if (w > MAX_SIZE || h > MAX_SIZE) {
+      const ratio = w / h;
+      if (ratio > 1) {
+        w = MAX_SIZE;
+        h = Math.round(MAX_SIZE / ratio);
+      } else {
+        h = MAX_SIZE;
+        w = Math.round(MAX_SIZE * ratio);
+      }
+    }
+
+    const id = nanoid();
+    const layer = new LiveObject<ImageLayer>({
+      type: LayerType.Image,
+      x: position.x,
+      y: position.y,
+      width: w,
+      height: h,
+      src: tempUrl,
+    });
+
+    const layers = storage.get("layers");
+    const layerIds = storage.get("layerIds");
+
+    layers.set(id, layer);
+    layerIds.push(id);
+    setMyPresence({ selection: [id] }, { addToHistory: true });
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.url) {
+        const existing = layers.get(id);
+        if (existing) {
+          // @ts-ignore
+          existing.set("src", data.url);
+        }
+      }
+    } catch (err) {
+      console.error("Image upload failed:", err);
+      toast.error(t("canvas.pasteImageError"));
+    }
+  },
+  []
+);
+
   const insertTextLayer = useMutation(
     ({ storage, setMyPresence }, value: string, position: Point) => {
       const liveLayers = storage.get("layers");
@@ -1162,23 +1247,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
             const file = item.getAsFile();
             if (!file) continue;
 
-            const formData = new FormData();
-            formData.append("file", file);
-
-            try {
-              const response = await fetch("/api/upload-image", {
-                method: "POST",
-                body: formData,
-              });
-
-              const data = await response.json();
-              if (data.url) {
-                insertImageLayer(data.url, cursor);
-              }
-            } catch (err) {
-              console.error("Paste image upload failed:", err);
-              toast.error(t("canvas.pasteImageError"));
-            }
+            insertTempImageAndUpload(file, cursor);
           }
         }
       }
@@ -1256,7 +1325,7 @@ export const BoardCanvas = ({ boardId }: BoardCanvasProps) => {
         selectedPenSize={lastUsedSize}
         onImageUpload={(url) => {
           const cursor = self.presence.cursor ?? { x: 100, y: 100 };
-          insertImageLayer(url, cursor);
+          prepareAndInsertImageLayer(url, cursor);
         }}
         onPenSizeChange={(size) => {
           setLastUsedSize(size);

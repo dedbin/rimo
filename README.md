@@ -90,7 +90,6 @@
    CLERK_FRONTEND_API_URL=<your_clerk_frontend_api_url>
    NEXT_PUBLIC_LIVEBLOCKS_PUBLIC_KEY=<your_liveblocks_public_key>
    NEXT_PUBLIC_LIVEBLOCKS_SECRET_KEY=<your_liveblocks_secret_key>
-   AITUNNEL_API_KEY=<your_aitunnel_api_key> (optional, not ready yet)
    NEXT_PUBLIC_SITE_URL=<your_site_url>
    ```
 
@@ -159,6 +158,10 @@ docker compose up --build -d
 * Панорамирование и масштабирование холста
 * Просмотр курсоров участников и их аватарок в реальном времени
 * Приглашение участников по ссылке
+* Вставка изображений с автоматической подгонкой размеров и отслеживанием загрузки
+* Предпросмотр ссылок с заголовком, описанием и изображением
+* Выбор шрифта, размера и цвета текста
+* Локализация интерфейса на русском и английском языках
 
 ---
 

@@ -265,3 +265,12 @@ export function getLayerBounds(layer: LiveObject<Layer>) {
 
   return null;
 }
+
+export async function getImageDimensions(url: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = (e) => reject(e);
+    img.src = url;
+  });
+}
