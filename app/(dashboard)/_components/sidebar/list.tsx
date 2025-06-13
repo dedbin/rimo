@@ -10,7 +10,7 @@ export const List = () => {
         }
     });
     if (!userMemberships.data?.length) return null;
-    console.log("List rendered", userMemberships.data);
+    // console.log("List rendered", userMemberships.data);
     
     return (
         <ul className="space-y-4 ">
