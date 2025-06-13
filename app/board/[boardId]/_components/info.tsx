@@ -53,6 +53,7 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
                 alt="logo"
                 width={40}
                 height={40}
+                priority
                 className="w-8 h-8 rounded-full"
               />
               <span

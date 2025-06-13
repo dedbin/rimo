@@ -29,6 +29,7 @@ export const OrgSidebar = () => {
               alt="logo"
               width={60}
               height={60}
+              priority
             />
             <span
               className={cn(

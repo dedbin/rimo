@@ -13,6 +13,7 @@ export const Loading = () => {
         alt="Logo"
         width={100}
         height={100}
+        priority
         className="animate-pulse duration-75"
       />
       <p className="text-gray-500 mt-4">{t("loading")}</p>

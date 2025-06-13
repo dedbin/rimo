@@ -28,6 +28,7 @@ export const RimoNavbar = () => {
             src="/logo.svg"
             alt="Логотип Rimo"
             fill
+            priority
             className="object-contain [filter:invert(52%)_sepia(93%)_saturate(4276%)_hue-rotate(136deg)_brightness(102%)_contrast(94%)]"
           />
         </div>
