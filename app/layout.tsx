@@ -34,17 +34,17 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Suspense fallback={<Loading/>}>
-          <ConvexClientProvider>
-            <I18nProvider>
-              <LanguageAwareHtml>
-                <Toaster />
-                <ModalProvider />
-                {children}
-              </LanguageAwareHtml>
-            </I18nProvider>
-          </ConvexClientProvider>
-        </Suspense>
+        <I18nProvider>
+          <Suspense fallback={<Loading/>}>
+            <ConvexClientProvider>
+                <LanguageAwareHtml>
+                  <Toaster />
+                  <ModalProvider />
+                  {children}
+                </LanguageAwareHtml>
+            </ConvexClientProvider>
+          </Suspense>
+        </I18nProvider>
       </body>
     </html>
   );
