@@ -1,8 +1,9 @@
 "use client";
 
-import { rgbToCss, cn } from "@/lib/utils";
+import { useState } from "react";
+import { rgbToCss } from "@/lib/utils";
 import { TextLayer } from "@/types/board-canvas";
-import { PlainTextContent } from "./plain-text-content";
+import { RichTextContent } from "@/components/board-text/content";
 
 
 interface TextProps {
@@ -12,23 +13,25 @@ interface TextProps {
     selectionColor?: string
 }
 export const Text = ({ id, layer, onPointerDown, selectionColor }: TextProps) => {
-    const { x, y, width, height, fill, value, fontSize } = layer
+    const { x, y, width, height, fill, fontSize } = layer;
+    const [measuredHeight, setMeasuredHeight] = useState(height);
 
     return (
         <foreignObject
             x={x}
             y={y}
             width={width}
-            height={height}
+            height={Math.max(height, measuredHeight)}
             onPointerDown={(e) => onPointerDown(e, id)}
             style ={{
                 outline: selectionColor ? `2px solid ${selectionColor}` : 'none'
             }}
         >
-            <PlainTextContent
+            <RichTextContent
                 id={id}
-                value={value ?? ""}
-                className={cn("h-full w-full flex items-center justify-center text-center drop-shadow-md outline-none", layer.fontFamily)}
+                minHeight={Math.ceil(fontSize * 1.4) + 8}
+                onHeight={setMeasuredHeight}
+                className="text-center drop-shadow-md outline-none"
                 style={{
                     fontSize: fontSize,
                     color: fill ? rgbToCss(fill) : '#000',

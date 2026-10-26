@@ -1,32 +1,50 @@
 import { nanoid } from "nanoid";
 import * as Y from "yjs";
-import { Layer, Point } from "@/types/board-canvas";
+import { ySyncPluginKey } from "@tiptap/y-tiptap";
+import { Layer, LayerType, Point } from "@/types/board-canvas";
 import { MAX_LAYERS, normalizeLayerOrder, parseLayer } from "@/lib/board/model";
+import { getRichTextJson, textFragmentName, writeRichTextFragment } from "@/lib/board/rich-text/document";
+import { plainTextDocument, validateRichTextDocument } from "@/lib/board/rich-text/validation";
+import { RichTextDocument } from "@/lib/board/rich-text/types";
+import { BoardFrame, FRAME_ORDER_ROOT, FRAME_ROOT, MAX_FRAMES, normalizeFrameOrder, parseFrame } from "@/lib/board/frames";
 
 export interface BoardSnapshot {
   readonly layers: ReadonlyMap<string, Layer>;
   readonly layerIds: readonly string[];
+  readonly frames: ReadonlyMap<string, BoardFrame>;
+  readonly frameIds: readonly string[];
 }
 
 export class BoardDocument {
   readonly doc: Y.Doc;
   readonly layers: Y.Map<Y.Map<unknown>>;
   readonly order: Y.Array<string>;
+  readonly frames: Y.Map<Y.Map<unknown>>;
+  readonly frameOrder: Y.Array<string>;
   readonly undoManager: Y.UndoManager;
   private readonly origin = Symbol("board-local-operation");
   private readonly listeners = new Set<() => void>();
   private readonly dirtyLayers = new Set<string>();
+  private readonly dirtyTexts = new Set<string>();
+  private readonly textRoots = new Map<Y.XmlFragment, string>();
+  private readonly textSnapshots = new Map<string, RichTextDocument>();
+  private readonly emptyText = plainTextDocument("");
+  private readonly measurementOrigin = Symbol("text-measurement");
   private orderChanged = true;
+  private framesChanged = true;
   private writable: boolean;
-  private snapshot: BoardSnapshot = { layers: new Map(), layerIds: [] };
+  private snapshot: BoardSnapshot = { layers: new Map(), layerIds: [], frames: new Map(), frameIds: [] };
 
   constructor(doc = new Y.Doc(), writable = true) {
     this.doc = doc;
     this.writable = writable;
     this.layers = doc.getMap<Y.Map<unknown>>("layers");
     this.order = doc.getArray<string>("layerIds");
-    this.undoManager = new Y.UndoManager([this.layers, this.order], {
-      trackedOrigins: new Set([this.origin]), captureTimeout: 0,
+    this.frames = doc.getMap<Y.Map<unknown>>(FRAME_ROOT);
+    this.frameOrder = doc.getArray<string>(FRAME_ORDER_ROOT);
+    this.undoManager = new Y.UndoManager([this.layers, this.order, this.frames, this.frameOrder], {
+      trackedOrigins: new Set([this.origin, ySyncPluginKey]), captureTimeout: 500,
+      captureTransaction: (transaction) => transaction.meta.get("addToHistory") !== false,
     });
     this.layers.observeDeep((events) => {
       for (const event of events) {
@@ -38,6 +56,8 @@ export class BoardDocument {
       }
     });
     this.order.observe(() => { this.orderChanged = true; });
+    this.frames.observeDeep(() => { this.framesChanged = true; });
+    this.frameOrder.observe(() => { this.framesChanged = true; });
     doc.on("afterTransaction", this.refresh);
     for (const id of this.layers.keys()) this.dirtyLayers.add(id);
     this.refresh();
@@ -45,43 +65,83 @@ export class BoardDocument {
 
   getSnapshot = (): BoardSnapshot => this.snapshot;
   getLayer = (id: string): Layer | undefined => this.snapshot.layers.get(id);
+  getRichText = (id: string): RichTextDocument => this.textSnapshots.get(id) ?? this.emptyText;
+  getTextFragment(id: string): Y.XmlFragment {
+    const fragment = this.doc.getXmlFragment(textFragmentName(id));
+    if (!this.textRoots.has(fragment)) {
+      this.textRoots.set(fragment, id);
+      this.undoManager.addToScope(fragment);
+      this.dirtyTexts.add(id);
+    }
+    return fragment;
+  }
   subscribe = (listener: () => void): (() => void) => {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
   setWritable(writable: boolean): void { this.writable = writable; }
   get canEdit(): boolean { return this.writable; }
-  isLocalOrigin(origin: unknown): boolean { return origin === this.origin || origin === this.undoManager; }
+  isLocalOrigin(origin: unknown): boolean { return this.undoManager.trackedOrigins.has(origin); }
 
-  private refresh = (): void => {
-    if (!this.dirtyLayers.size && !this.orderChanged) return;
-    const layers = new Map(this.snapshot.layers);
-    for (const id of this.dirtyLayers) {
-      const value = this.layers.get(id);
-      const layer = value instanceof Y.Map ? parseLayer(value.toJSON()) : null;
-      if (layer) layers.set(id, layer);
-      else layers.delete(id);
+  private refresh = (transaction?: Y.Transaction): void => {
+    for (const name of this.doc.share.keys()) {
+      if (name.startsWith("text:")) this.getTextFragment(name.slice(5));
+    }
+    if (transaction) {
+      for (const changed of transaction.changed.keys()) {
+        let root = changed;
+        while (root.parent) root = root.parent;
+        const id = root instanceof Y.XmlFragment ? this.textRoots.get(root) : undefined;
+        if (id) this.dirtyTexts.add(id);
+      }
+    }
+    if (!this.dirtyLayers.size && !this.orderChanged && !this.dirtyTexts.size && !this.framesChanged) return;
+    if (this.dirtyLayers.size || this.orderChanged) {
+      const layers = new Map(this.snapshot.layers);
+      for (const id of this.dirtyLayers) {
+        const value = this.layers.get(id);
+        const layer = value instanceof Y.Map ? parseLayer(value.toJSON()) : null;
+        if (layer) layers.set(id, layer);
+        else layers.delete(id);
+      }
+      this.snapshot = { ...this.snapshot, layers, layerIds: normalizeLayerOrder(this.order.toArray(), layers) };
+    }
+    if (this.framesChanged) {
+      const frames = new Map<string, BoardFrame>();
+      for (const [id, value] of this.frames) {
+        const frame = value instanceof Y.Map ? parseFrame(value.toJSON()) : null;
+        if (frame) frames.set(id, frame);
+      }
+      this.snapshot = { ...this.snapshot, frames, frameIds: normalizeFrameOrder(this.frameOrder.toArray(), frames) };
+      this.framesChanged = false;
     }
     this.dirtyLayers.clear();
     this.orderChanged = false;
-    this.snapshot = { layers, layerIds: normalizeLayerOrder(this.order.toArray(), layers) };
+    for (const id of this.dirtyTexts) this.textSnapshots.set(id, getRichTextJson(this.doc, id));
+    this.dirtyTexts.clear();
     for (const listener of this.listeners) listener();
   };
 
   transact(action: () => void): void {
     if (!this.writable) return;
+    this.undoManager.stopCapturing();
     this.doc.transact(action, this.origin);
+    this.undoManager.stopCapturing();
   }
 
-  insert(input: readonly Layer[]): string[] {
+  insert(input: readonly Layer[], richText: readonly (RichTextDocument | null)[] = []): string[] {
     if (!this.writable) return [];
     if (this.layers.size + input.length > MAX_LAYERS) throw new Error("Достигнут предел количества объектов");
     const checked = input.map(parseLayer);
     if (checked.some((layer) => !layer)) throw new Error("Некорректный объект доски");
+    const content = checked.map((layer, index) => layer?.type === LayerType.Text || layer?.type === LayerType.Sticker
+      ? richText[index] ? validateRichTextDocument(richText[index]) : plainTextDocument(layer.value ?? "") : null);
     const ids = checked.map(() => nanoid());
     this.transact(() => {
       checked.forEach((layer, index) => {
-        this.layers.set(ids[index], new Y.Map(Object.entries(layer!)));
+        const properties = Object.entries(layer!).filter(([key]) => !(content[index] && key === "value"));
+        this.layers.set(ids[index], new Y.Map(properties));
+        if (content[index]) writeRichTextFragment(this.getTextFragment(ids[index]), content[index]);
       });
       this.order.push(ids);
     });
@@ -100,10 +160,18 @@ export class BoardDocument {
     const next = parseLayer({ ...layer.toJSON(), ...patch });
     if (!next) return;
     for (const [key, value] of Object.entries(patch)) {
+      if (key === "value" && (next.type === LayerType.Text || next.type === LayerType.Sticker)) continue;
       if (value !== undefined && Object.hasOwn(next, key)) {
         layer.set(key, (next as unknown as Record<string, unknown>)[key]);
       }
     }
+  }
+
+  setMeasuredTextHeight(id: string, height: number): void {
+    const layer = this.getLayer(id);
+    if (!this.writable || !Number.isFinite(height) || height < 1 || height > 1_000_000 ||
+      (layer?.type !== LayerType.Text && layer?.type !== LayerType.Sticker) || Math.abs(layer.height - height) < 1) return;
+    this.doc.transact(() => { this.layers.get(id)?.set("height", height); }, this.measurementOrigin);
   }
 
   translate(ids: readonly string[], delta: Point): void {
@@ -140,6 +208,50 @@ export class BoardDocument {
     this.transact(() => {
       this.order.delete(0, this.order.length);
       this.order.push(next);
+    });
+  }
+
+  createFrame(input: BoardFrame): string | null {
+    if (!this.writable) return null;
+    const frame = parseFrame(input);
+    if (!frame) throw new Error("Некорректная область страницы");
+    if (this.frames.size >= MAX_FRAMES) throw new Error("Достигнут предел количества областей");
+    const id = nanoid();
+    this.transact(() => {
+      this.frames.set(id, new Y.Map(Object.entries(frame)));
+      this.frameOrder.push([id]);
+    });
+    return id;
+  }
+
+  updateFrame(id: string, patch: Partial<BoardFrame>): void {
+    const stored = this.frames.get(id);
+    if (!this.writable || !(stored instanceof Y.Map)) return;
+    const frame = parseFrame({ ...stored.toJSON(), ...patch });
+    if (!frame) throw new Error("Некорректная область страницы");
+    this.transact(() => {
+      for (const key of Object.keys(patch)) {
+        if (!Object.hasOwn(frame, key)) continue;
+        const value = (frame as unknown as Record<string, unknown>)[key];
+        if (stored.get(key) !== value) stored.set(key, value);
+      }
+    });
+  }
+
+  removeFrame(id: string): void {
+    this.transact(() => {
+      this.frames.delete(id);
+      for (let index = this.frameOrder.length - 1; index >= 0; index -= 1) {
+        if (this.frameOrder.get(index) === id) this.frameOrder.delete(index, 1);
+      }
+    });
+  }
+
+  reorderFrames(ids: readonly string[]): void {
+    const ordered = normalizeFrameOrder(ids, this.snapshot.frames);
+    this.transact(() => {
+      this.frameOrder.delete(0, this.frameOrder.length);
+      this.frameOrder.push([...ordered]);
     });
   }
 

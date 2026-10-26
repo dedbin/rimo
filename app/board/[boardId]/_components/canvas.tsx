@@ -22,10 +22,15 @@ import { SessionTimer } from "./session-timer";
 import { ZoomControls } from "./zoom-controls";
 import { CanvasLoading } from "./canvas-loading";
 import { SaveStatus } from "./save-status";
+import { BoardTextProvider } from "@/components/board-text/provider";
 
 export { createLayer } from "@/lib/board/model";
 
 export function BoardCanvas({ boardId }: { boardId: string }) {
+  return <BoardTextProvider><BoardCanvasContent boardId={boardId} /></BoardTextProvider>;
+}
+
+function BoardCanvasContent({ boardId }: { boardId: string }) {
   const runtime = useBoardRuntime();
   const snapshot = useBoardSnapshot();
   const connection = useConnectionState();

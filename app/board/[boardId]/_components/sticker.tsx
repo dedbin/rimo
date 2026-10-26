@@ -1,9 +1,10 @@
 "use client";
 
-import { rgbToCss, cn, getContrastingTextColor } from "@/lib/utils";
+import { useState } from "react";
+import { rgbToCss, getContrastingTextColor } from "@/lib/utils";
 import { StickerLayer } from "@/types/board-canvas";
 import localFont from "next/font/local";
-import { PlainTextContent } from "./plain-text-content";
+import { RichTextContent } from "@/components/board-text/content";
 
 const font = localFont({
     src: "../../../../node_modules/@fontsource/poppins/files/poppins-latin-400-normal.woff2",
@@ -19,14 +20,15 @@ interface StickerProps {
     selectionColor?: string
 }
 export const Sticker = ({ id, layer, onPointerDown, selectionColor }: StickerProps) => {
-    const { x, y, width, height, fill, value, fontSize } = layer
+    const { x, y, width, height, fill, fontSize } = layer;
+    const [measuredHeight, setMeasuredHeight] = useState(height);
 
     return (
         <foreignObject
             x={x}
             y={y}
             width={width}
-            height={height}
+            height={Math.max(height, measuredHeight)}
             onPointerDown={(e) => onPointerDown(e, id)}
             style ={{
                 outline: selectionColor ? `2px solid ${selectionColor}` : 'none',
@@ -34,12 +36,14 @@ export const Sticker = ({ id, layer, onPointerDown, selectionColor }: StickerPro
             }}
             className="drop-shadow-xl shadow-md"
         >
-            <PlainTextContent
+            <RichTextContent
                 id={id}
-                value={value ?? ""}
-                className={cn("h-full w-full flex items-center justify-center text-center outline-none", font.className)}
+                minHeight={100}
+                onHeight={setMeasuredHeight}
+                className={`text-center outline-none ${font.className}`}
                 style={{
                     fontSize: fontSize,
+                    fontFamily: layer.fontFamily || "sans-serif",
                     color: fill ? getContrastingTextColor(fill) : '#000'
                  }}
             />

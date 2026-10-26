@@ -21,6 +21,11 @@ export function useLayer(id: string) {
   return useSyncExternalStore(board.subscribe, () => board.getLayer(id), () => board.getLayer(id));
 }
 
+export function useRichText(id: string) {
+  const { board } = useBoardRuntime();
+  return useSyncExternalStore(board.subscribe, () => board.getRichText(id), () => board.getRichText(id));
+}
+
 export function useSelection() {
   const runtime = useBoardRuntime();
   return useSyncExternalStore(runtime.subscribePresence,

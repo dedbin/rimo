@@ -41,10 +41,10 @@ const Drafts = () => {
 
 export const CursorsPresence = memo(() => {
   return (
-    <>
+    <g pointerEvents="none" aria-hidden="true">
       <Drafts />
       <Cursors />
-    </>
+    </g>
   );
 });
 

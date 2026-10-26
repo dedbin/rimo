@@ -1,23 +1,25 @@
 import { Color, Layer, LayerType, Point } from "@/types/board-canvas";
 
-export const BOARD_SCHEMA_VERSION = 1;
+export const BOARD_SCHEMA_VERSION = 2;
 export const MAX_LAYERS = 10_000;
 export const MAX_TEXT_LENGTH = 100_000;
 export const MAX_CLIPBOARD_BYTES = 2 * 1024 * 1024;
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+  typeof value === "object" && value !== null && !Array.isArray(value) &&
+  (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
 const finite = (value: unknown): value is number =>
   typeof value === "number" && Number.isFinite(value) && Math.abs(value) <= 10_000_000;
 
 export function isColor(value: unknown): value is Color {
-  return isRecord(value) && [value.r, value.g, value.b].every(
+  return isRecord(value) && ["r", "g", "b"].every((key) => Object.hasOwn(value, key)) && [value.r, value.g, value.b].every(
     (channel) => typeof channel === "number" && channel >= 0 && channel <= 255,
   ) && (value.a === undefined || (typeof value.a === "number" && value.a >= 0 && value.a <= 1));
 }
 
 export function parseLayer(value: unknown): Layer | null {
   if (!isRecord(value)) return null;
+  if (!["type", "x", "y", "width", "height"].every((key) => Object.hasOwn(value, key))) return null;
   const { type, x, y, width, height } = value;
   if (![x, y, width, height].every(finite) || (width as number) < 0 || (height as number) < 0) return null;
   if (value.value !== undefined && (typeof value.value !== "string" || value.value.length > MAX_TEXT_LENGTH)) return null;

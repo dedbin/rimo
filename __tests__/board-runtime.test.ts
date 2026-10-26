@@ -34,7 +34,7 @@ const acknowledge = () => options().onStateless?.({ payload: JSON.stringify({ ty
 
 beforeEach(() => {
   runtime = new BoardRuntime(session);
-  runtime.board.doc.getMap("meta").set("schemaVersion", 1);
+  runtime.board.doc.getMap("meta").set("schemaVersion", 2);
   options().onStatus?.({ status: WebSocketStatus.Connected });
   options().onSynced?.({ state: true });
   acknowledge();

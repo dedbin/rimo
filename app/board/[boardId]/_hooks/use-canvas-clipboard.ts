@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useBoardRuntime } from "@/lib/collaboration/react";
-import { BOARD_CLIPBOARD_MIME, isEditingTarget, offsetLayers, parseClipboardLayers, serializeLayers } from "@/lib/board/clipboard";
+import { BOARD_CLIPBOARD_MIME, isEditingTarget, offsetLayers, parseBoardClipboard, serializeLayers } from "@/lib/board/clipboard";
 import { uploadBoardImage } from "@/lib/board/assets-client";
 import { BoardCanvasMode, BoardCanvasState, Color, LayerType } from "@/types/board-canvas";
 
@@ -32,9 +32,14 @@ export function useCanvasClipboard({ color, cancel, setCanvasState }: Options) {
 
   const duplicate = useCallback(() => {
     const snapshot = runtime.board.getSnapshot();
-    const layers = runtime.getSelf().presence.selection.map((id) => snapshot.layers.get(id)).filter((layer) => layer !== undefined);
+    const selected = runtime.getSelf().presence.selection.filter((id) => snapshot.layers.has(id));
+    const layers = selected.map((id) => snapshot.layers.get(id)!);
+    const richText = selected.map((id) => {
+      const layer = snapshot.layers.get(id);
+      return layer?.type === LayerType.Text || layer?.type === LayerType.Sticker ? runtime.board.getRichText(id) : null;
+    });
     try {
-      const ids = runtime.board.insert(layers.map((layer) => ({ ...layer, x: layer.x + 32, y: layer.y + 32 })));
+      const ids = runtime.board.insert(layers.map((layer) => ({ ...layer, x: layer.x + 32, y: layer.y + 32 })), richText);
       runtime.updatePresence({ selection: ids });
     } catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось создать копию"); }
   }, [runtime]);
@@ -44,10 +49,14 @@ export function useCanvasClipboard({ color, cancel, setCanvasState }: Options) {
       if (isEditingTarget(event.target)) return;
       const selection = new Set(runtime.getSelf().presence.selection);
       const snapshot = runtime.board.getSnapshot();
-      const layers = snapshot.layerIds.filter((id) => selection.has(id))
-        .map((id) => snapshot.layers.get(id)).filter((layer) => layer !== undefined);
+      const ids = snapshot.layerIds.filter((id) => selection.has(id));
+      const layers = ids.map((id) => snapshot.layers.get(id)).filter((layer) => layer !== undefined);
       if (!layers.length || !event.clipboardData) return;
-      const payload = serializeLayers(layers);
+      const richText = ids.map((id) => {
+        const layer = snapshot.layers.get(id);
+        return layer?.type === LayerType.Text || layer?.type === LayerType.Sticker ? runtime.board.getRichText(id) : null;
+      });
+      const payload = serializeLayers(layers, richText);
       event.clipboardData.setData(BOARD_CLIPBOARD_MIME, payload);
       event.clipboardData.setData("text/plain", payload);
       event.preventDefault();
@@ -56,14 +65,14 @@ export function useCanvasClipboard({ color, cancel, setCanvasState }: Options) {
       if (isEditingTarget(event.target) || !runtime.board.canEdit || !event.clipboardData) return;
       const text = event.clipboardData.getData(BOARD_CLIPBOARD_MIME) || event.clipboardData.getData("text/plain");
       const position = runtime.getSelf().presence.cursor ?? { x: 100, y: 100 };
-      const copied = parseClipboardLayers(text);
+      const copied = parseBoardClipboard(text);
       try {
         if (copied) {
           event.preventDefault();
           pasteCount.current = lastPaste.current === text ? pasteCount.current + 1 : 0;
           lastPaste.current = text;
           const padding = pasteCount.current * 32;
-          runtime.updatePresence({ selection: runtime.board.insert(offsetLayers(copied, position.x + padding, position.y + padding)) });
+          runtime.updatePresence({ selection: runtime.board.insert(offsetLayers(copied.layers, position.x + padding, position.y + padding), copied.richText) });
           return;
         }
         if (text) {

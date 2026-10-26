@@ -6,7 +6,8 @@ import * as Y from "yjs";
 import type { PersistedMessage, PersistenceErrorMessage } from "../lib/collaboration/protocol";
 import { HttpError } from "../server/http-error";
 
-import { initializeDocument, validateDocument } from "./document";
+import { initializeDocument, validateDocument, validateLegacyDocument } from "./document";
+import { migrateBoardDocument } from "../lib/board/rich-text/document";
 import { DocumentRemovedError } from "./types";
 import type { CollaborationLimits, SnapshotRepository } from "./types";
 
@@ -49,6 +50,12 @@ export class DocumentPersistence {
       throw new Error("Stored board exceeds the document limit");
     }
     Y.applyUpdate(document, stored.state);
+    if (document.getMap("meta").get("schemaVersion") === 1) {
+      validateLegacyDocument(document, this.limits);
+      migrateBoardDocument(document);
+      await this.persist(document);
+      return;
+    }
     validateDocument(document, this.limits);
     const snapshot = Y.snapshot(document);
     this.snapshots.set(document.name, snapshot);

@@ -7,6 +7,7 @@ import WebSocket from "ws";
 import * as Y from "yjs";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { BOARD_SCHEMA_VERSION } from "../../lib/board/model";
 import { createCollaborationServer } from "../server";
 import type { BoardRole, CollaborationContext, CollaborationLimits, SnapshotRepository, StoredDocument } from "../types";
 
@@ -164,7 +165,7 @@ describe("collaboration over real WebSocket connections", () => {
     attacker.provider.on("close", () => { closed = true; attacker.websocketProvider.disconnect(); });
     attacker.document.getMap("meta").set("schemaVersion", 999);
     await waitFor(() => closed);
-    expect(observer.document.getMap("meta").get("schemaVersion")).toBe(1);
+    expect(observer.document.getMap("meta").get("schemaVersion")).toBe(BOARD_SCHEMA_VERSION);
   });
 
   it("closes an authenticated frame flood before the processing queue can grow", async () => {

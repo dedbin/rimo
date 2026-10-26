@@ -4,6 +4,8 @@ import { BoardDocument } from "@/lib/collaboration/document";
 import { createLayer, normalizeLayerOrder, parseLayer } from "@/lib/board/model";
 import { LayerType } from "@/types/board-canvas";
 import { matchesPersistedSnapshot } from "@/lib/collaboration/save-state";
+import { plainTextDocument } from "@/lib/board/rich-text/validation";
+import { textFragmentName } from "@/lib/board/rich-text/document";
 
 const rectangle = (x = 0) => createLayer(LayerType.Rectangle, { x, y: 0 }, { r: 0, g: 0, b: 0 });
 const sync = (source: BoardDocument, target: BoardDocument) => {
@@ -11,6 +13,20 @@ const sync = (source: BoardDocument, target: BoardDocument) => {
 };
 
 describe("board document collaboration", () => {
+  it("inserts text into an XML fragment and restores its content when undoing layer deletion", () => {
+    const board = new BoardDocument();
+    const layer = { ...createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 }), value: "Сохранённый текст" };
+    const [id] = board.insert([layer]);
+    expect(board.layers.get(id)?.has("value")).toBe(false);
+    expect(board.getRichText(id)).toEqual(plainTextDocument("Сохранённый текст"));
+    board.remove([id]);
+    expect(board.doc.share.has(textFragmentName(id))).toBe(true);
+    board.undo();
+    expect(board.getLayer(id)).toBeDefined();
+    expect(board.getRichText(id)).toEqual(plainTextDocument("Сохранённый текст"));
+    board.destroy();
+  });
+
   it("merges simultaneous edits to different fields of the same layer", () => {
     const first = new BoardDocument();
     const second = new BoardDocument();

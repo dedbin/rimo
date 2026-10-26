@@ -1,9 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { BOARD_CLIPBOARD_MIME, isEditingTarget, offsetLayers, parseClipboardLayers, serializeLayers } from "@/lib/board/clipboard";
+import { BOARD_CLIPBOARD_MIME, isEditingTarget, offsetLayers, parseBoardClipboard, parseClipboardLayers, serializeLayers } from "@/lib/board/clipboard";
 import { createLayer, MAX_CLIPBOARD_BYTES } from "@/lib/board/model";
 import { LayerType } from "@/types/board-canvas";
+import { RichTextDocument } from "@/lib/board/rich-text/types";
 
 describe("board clipboard", () => {
+  it("preserves rich text and LaTeX in the versioned layer clipboard", () => {
+    const layer = createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 });
+    const content: RichTextDocument = { type: "doc", content: [
+      { type: "paragraph", content: [{ type: "text", text: "Жирный", marks: [{ type: "bold" }] },
+        { type: "inlineMath", attrs: { latex: "x^2" } }] },
+    ] };
+    expect(parseBoardClipboard(serializeLayers([layer], [content]))?.richText).toEqual([content]);
+  });
   it("round-trips versioned layers while preserving the relative layout", () => {
     const layers = [createLayer(LayerType.Rectangle, { x: 10, y: 20 }, { r: 0, g: 0, b: 0 }),
       createLayer(LayerType.Ellipse, { x: 40, y: 60 }, { r: 0, g: 0, b: 0 })];

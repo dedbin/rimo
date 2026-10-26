@@ -12,6 +12,7 @@ import { BringToFront, SendToBack, Trash2 } from "lucide-react";
 import { FontSizePicker } from "./font-size-picker";
 import { FontFamilyPicker } from "./font-family-picker";
 import { useTranslation } from "@/hooks/use-translation";
+import { RichTextToolbar } from "@/components/board-text/toolbar";
 
 
 
@@ -54,12 +55,13 @@ export const TextSelectionTools = memo(
 
     return (
       <div
-        className="absolute px-3 py-2 rounded-xl bg-white shadow-sm border flex items-center select-none gap-2"
+        data-board-text-toolbar
+        className="absolute z-10 px-3 py-2 rounded-xl bg-white shadow-sm border flex flex-wrap items-center select-none gap-2 max-w-[min(90vw,760px)] w-max"
         style={{
             transform: `translate(calc(${x}px - 50%), calc(${y - 10 * camera.scale}px - 100%))`,
         }}
     >
-        
+        <RichTextToolbar id={selection[0]} />
         <ColorDropdown currentColor={currentFill} onChange={setFill} />
 
         <FontFamilyPicker
