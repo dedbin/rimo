@@ -48,6 +48,7 @@ export const Image = ({ id, layer, onPointerDown, selectionColor, alt }: ImagePr
             <NextImage
                 src={src}
                 unoptimized
+                loading="eager"
                 width={Math.max(1, width)}
                 height={Math.max(1, height)}
                 alt={alt || "image"}
