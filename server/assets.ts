@@ -8,6 +8,7 @@ import { readStoredAsset, storeAsset } from "./asset-storage";
 import { getServerConfig } from "./config";
 import { getPool, inTransaction } from "./db";
 import { HttpError } from "./http-error";
+import { assertAssetQuota } from "./quotas";
 
 interface AssetRow {
   id: string;
@@ -30,7 +31,7 @@ function summarize(row: AssetRow): AssetSummary {
   };
 }
 
-async function normalizeImage(bytes: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
+export async function normalizeImage(bytes: Buffer): Promise<{ data: Buffer; width: number; height: number }> {
   const config = getServerConfig();
   if (!bytes.length || bytes.length > config.maxUploadBytes) {
     throw new HttpError(413, "FILE_TOO_LARGE", "Превышен допустимый размер изображения.");
@@ -75,18 +76,17 @@ export async function uploadAsset(boardId: string, userId: string, bytes: Buffer
   let fileWritten = false;
   try {
     return await inTransaction(async (client) => {
-      const board = await client.query("SELECT id FROM boards WHERE id = $1 FOR UPDATE", [boardId]);
+      const board = await client.query<{ owner_id: string }>(
+        "SELECT owner_id FROM boards WHERE id = $1 FOR UPDATE", [boardId],
+      );
       if (!board.rows.length) throw new HttpError(404, "BOARD_NOT_FOUND", "Доска недоступна.");
       const existing = await client.query<AssetRow>(
         "SELECT * FROM assets WHERE board_id = $1 AND sha256 = $2", [boardId, sha256],
       );
       if (existing.rows[0]) return summarize(existing.rows[0]);
-      const usage = await client.query<{ total: string }>(
-        "SELECT COALESCE(sum(byte_size), 0) AS total FROM assets WHERE board_id = $1", [boardId],
-      );
-      if (Number(usage.rows[0].total) + normalized.data.length > getServerConfig().maxBoardAssetBytes) {
-        throw new HttpError(413, "ASSET_QUOTA_EXCEEDED", "Закончился лимит изображений на доске.");
-      }
+      await assertAssetQuota(client, {
+        boardId, ownerId: board.rows[0].owner_id, additionalBytes: normalized.data.length,
+      });
       await storeAsset(storageKey, normalized.data);
       fileWritten = true;
       const inserted = await client.query<AssetRow>(

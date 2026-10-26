@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto";
 
+import { generateCover } from "../lib/generateCover";
 import type { BoardRole, BoardSummary } from "../types/service";
 import { requireBoardAccess } from "./access";
 import { getPool, inTransaction } from "./db";
 import { HttpError } from "./http-error";
 import { removeStoredAsset } from "./asset-storage";
+import { assertBoardQuota } from "./quotas";
 
 interface BoardRow {
   id: string;
@@ -77,10 +79,11 @@ export async function getBoardSummary(boardId: string, userId: string): Promise<
 
 export async function createBoard(userId: string, title: string): Promise<BoardSummary> {
   const id = randomUUID();
-  await getPool().query(
-    "INSERT INTO boards(id, owner_id, title) VALUES ($1, $2, $3)",
-    [id, userId, title],
-  );
+  await inTransaction(async (client) => {
+    await assertBoardQuota(client, userId);
+    const imageUrl = `data:image/svg+xml;base64,${Buffer.from(generateCover().svg).toString("base64")}`;
+    await client.query("INSERT INTO boards(id, owner_id, title, image_url) VALUES ($1, $2, $3, $4)", [id, userId, title, imageUrl]);
+  });
   return getBoardSummary(id, userId);
 }
 

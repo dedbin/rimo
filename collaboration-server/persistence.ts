@@ -4,6 +4,7 @@ import type { Document } from "@hocuspocus/server";
 import * as Y from "yjs";
 
 import type { PersistedMessage, PersistenceErrorMessage } from "../lib/collaboration/protocol";
+import { HttpError } from "../server/http-error";
 
 import { initializeDocument, validateDocument } from "./document";
 import { DocumentRemovedError } from "./types";
@@ -90,7 +91,9 @@ export class DocumentPersistence {
         }
         const message: PersistenceErrorMessage = {
           type: "persistence-error",
-          message: "Изменения ещё не записаны. Сервер повторит попытку.",
+          message: error instanceof HttpError && error.code === "GLOBAL_DOCUMENT_QUOTA_EXCEEDED"
+            ? `${error.message} Изменения ещё не записаны. Освободите место или увеличьте лимит.`
+            : "Изменения ещё не записаны. Сервер повторит попытку.",
         };
         document.broadcastStateless(JSON.stringify(message));
         this.scheduleRetry(document);

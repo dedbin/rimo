@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 
 import type { Pool } from "pg";
+import { assertDocumentQuota } from "../server/quotas";
 
 import { DocumentRemovedError } from "./types";
 import type { SnapshotRepository, StoredDocument } from "./types";
@@ -34,6 +35,7 @@ export function createPostgresRepository(pool: Pool): SnapshotRepository {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
+        await assertDocumentQuota(client, boardId, state.byteLength);
         const result = await client.query<DocumentRow>(
           `INSERT INTO board_documents (board_id, state, revision, saved_at)
            VALUES ($1, $2, 1, clock_timestamp())

@@ -1,6 +1,15 @@
 import path from "node:path";
 
-export interface ServerConfig {
+export interface QuotaLimits {
+  readonly maxOwners: number;
+  readonly maxBoardsPerOwner: number;
+  readonly maxBoardAssetBytes: number;
+  readonly maxOwnerAssetBytes: number;
+  readonly maxGlobalAssetBytes: number;
+  readonly maxGlobalDocumentBytes: number;
+}
+
+export interface ServerConfig extends QuotaLimits {
   readonly databaseUrl: string;
   readonly authSecret: string;
   readonly authUrl: string;
@@ -8,8 +17,18 @@ export interface ServerConfig {
   readonly collaborationUrl: string;
   readonly uploadDir: string;
   readonly maxUploadBytes: number;
-  readonly maxBoardAssetBytes: number;
   readonly maxImagePixels: number;
+}
+
+export function getQuotaLimits(): QuotaLimits {
+  return Object.freeze({
+    maxOwners: positiveInteger("MAX_OWNERS", 6),
+    maxBoardsPerOwner: positiveInteger("MAX_BOARDS_PER_OWNER", 20),
+    maxBoardAssetBytes: positiveInteger("MAX_BOARD_ASSET_BYTES", 200 * 1024 * 1024),
+    maxOwnerAssetBytes: positiveInteger("MAX_OWNER_ASSET_BYTES", 100 * 1024 * 1024),
+    maxGlobalAssetBytes: positiveInteger("MAX_GLOBAL_ASSET_BYTES", 1024 * 1024 * 1024),
+    maxGlobalDocumentBytes: positiveInteger("MAX_GLOBAL_DOCUMENT_BYTES", 500 * 1024 * 1024),
+  });
 }
 
 function positiveInteger(name: string, fallback: number): number {
@@ -56,6 +75,7 @@ export function getServerConfig(): ServerConfig {
     throw new Error("NEXT_PUBLIC_COLLABORATION_URL must be a WebSocket URL");
   }
   return Object.freeze({
+    ...getQuotaLimits(),
     databaseUrl,
     authSecret,
     authUrl: authUrl.origin,
@@ -63,7 +83,6 @@ export function getServerConfig(): ServerConfig {
     collaborationUrl: configuredWebsocketUrl.toString(),
     uploadDir: path.resolve(process.env.ASSET_STORAGE_PATH ?? "data/assets"),
     maxUploadBytes: positiveInteger("MAX_UPLOAD_BYTES", 10 * 1024 * 1024),
-    maxBoardAssetBytes: positiveInteger("MAX_BOARD_ASSET_BYTES", 200 * 1024 * 1024),
     maxImagePixels: positiveInteger("MAX_IMAGE_PIXELS", 20_000_000),
   });
 }

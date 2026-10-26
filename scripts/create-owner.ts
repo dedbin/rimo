@@ -1,4 +1,4 @@
-import { getAuth } from "../server/auth";
+import { createOwnerAccount } from "../server/auth";
 import { getPool } from "../server/db";
 import { loadEnvironment } from "./load-env";
 
@@ -12,9 +12,7 @@ async function main(): Promise<void> {
   }
   if (name.length > 80) throw new Error("OWNER_NAME must contain at most 80 characters.");
   try {
-    const result = await getAuth({ allowSignUp: true }).api.signUpEmail({
-      body: { email, password, name },
-    });
+    const result = await createOwnerAccount({ email, password, name });
     process.stdout.write(`Owner account created: ${result.user.id}\n`);
   } finally {
     await getPool().end();

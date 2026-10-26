@@ -29,6 +29,14 @@ services:
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL}
       NEXT_PUBLIC_COLLABORATION_URL: ${NEXT_PUBLIC_COLLABORATION_URL:?Set NEXT_PUBLIC_COLLABORATION_URL}
       ASSET_STORAGE_PATH: /app/data/assets
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+      MAX_BOARD_ASSET_BYTES: ${MAX_BOARD_ASSET_BYTES:-104857600}
+      MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-20000000}
+      MAX_OWNERS: ${MAX_OWNERS:-6}
+      MAX_BOARDS_PER_OWNER: ${MAX_BOARDS_PER_OWNER:-20}
+      MAX_OWNER_ASSET_BYTES: ${MAX_OWNER_ASSET_BYTES:-104857600}
+      MAX_GLOBAL_ASSET_BYTES: ${MAX_GLOBAL_ASSET_BYTES:-1073741824}
+      MAX_GLOBAL_DOCUMENT_BYTES: ${MAX_GLOBAL_DOCUMENT_BYTES:-524288000}
     depends_on:
       db: { condition: service_healthy }
     networks: [backend]
@@ -50,6 +58,7 @@ services:
       retries: 10
       start_period: 20s
     mem_limit: 1g
+    stop_grace_period: 30s
     restart: unless-stopped
 
   collaboration:
@@ -69,6 +78,7 @@ services:
       retries: 10
       start_period: 10s
     mem_limit: 768m
+    stop_grace_period: 30s
     restart: unless-stopped
 
   caddy:

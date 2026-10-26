@@ -6,6 +6,7 @@ import { anonymous } from "better-auth/plugins";
 import { getServerConfig } from "./config";
 import { getPool } from "./db";
 import { validatedProfile } from "./auth-profile";
+import { withOwnerQuota } from "./quotas";
 
 function createAuth(allowSignUp: boolean) {
   const config = getServerConfig();
@@ -44,6 +45,10 @@ export function getAuth(options: { allowSignUp?: boolean } = {}) {
   if (options.allowSignUp) return createAuth(true);
   authInstance ??= createAuth(false);
   return authInstance;
+}
+
+export async function createOwnerAccount(input: { email: string; password: string; name: string }) {
+  return withOwnerQuota(() => createAuth(true).api.signUpEmail({ body: input }));
 }
 
 export type AuthSession = NonNullable<
