@@ -3,12 +3,14 @@
 import React from "react";
 import TypeWriterComponent from "typewriter-effect";
 import { Button } from "./ui/button";
-import { SignInButton, useAuth } from "@clerk/clerk-react";
+import { SignInButton } from "@/components/auth/sign-in-button";
+import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { usePointerGlow } from "@/hooks/use-pointer-glow";
 
 export const RimoHero = () => {
-  const { isSignedIn } = useAuth();
+  const { data: session } = authClient.useSession();
+  const isSignedIn = !!session;
   usePointerGlow();
 
   return (

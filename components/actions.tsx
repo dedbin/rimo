@@ -11,7 +11,7 @@ import {
 import { Link2, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useApiMutation } from "@/hooks/use-api-mutation";
-import { api } from "@/convex/_generated/api";
+import { boardApi } from "@/lib/api-client";
 import { ConfirmModal } from "./confirm-modal";
 import { Button } from "./ui/button";
 import { useRenameModal } from "@/store/use-rename-modal";
@@ -22,12 +22,13 @@ interface ActionsProps {
   sideOffset?: DropdownMenuContentProps["sideOffset"];
   id: string;
   title: string;
+  canManage?: boolean;
 }
 
-export const Actions = ({ children, side, sideOffset, id, title }: ActionsProps) => {
+export const Actions = ({ children, side, sideOffset, id, title, canManage = false }: ActionsProps) => {
   const { t } = useTranslation();
   const { handleOpen } = useRenameModal();
-  const { mutate: deleteBoard, pending } = useApiMutation(api.board.remove);
+  const { mutate: deleteBoard, pending } = useApiMutation(boardApi.remove);
 
   const handleCopyLink = () => {
     const url = `${window.location.origin}/board/${id}`;
@@ -66,12 +67,12 @@ export const Actions = ({ children, side, sideOffset, id, title }: ActionsProps)
           {t("actions.copyLink")}
         </DropdownMenuItem>
 
-        <DropdownMenuItem className="cursor-pointer p-3" onClick={() => handleOpen(id, title)}>
+        {canManage && <DropdownMenuItem className="cursor-pointer p-3" onClick={() => handleOpen(id, title)}>
           <Pencil className="mr-2 h-4 w-4"/>
           {t("actions.rename")}
-        </DropdownMenuItem>
+        </DropdownMenuItem>}
 
-        <ConfirmModal
+        {canManage && <ConfirmModal
           header={t("actions.deleteHeader", { title })}
           description={t("actions.deleteDescription")}
           onConfirm={handleDeleteBoard}
@@ -84,7 +85,7 @@ export const Actions = ({ children, side, sideOffset, id, title }: ActionsProps)
             <Trash2 className="mr-2 h-4 w-4"/>
             {t("actions.deleteBoard")}
           </Button>
-        </ConfirmModal>
+        </ConfirmModal>}
       </DropdownMenuContent>
     </DropdownMenu>
 );

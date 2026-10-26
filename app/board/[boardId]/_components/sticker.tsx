@@ -2,13 +2,13 @@
 
 import { rgbToCss, cn, getContrastingTextColor } from "@/lib/utils";
 import { StickerLayer } from "@/types/board-canvas";
-import { Poppins } from "next/font/google";
-import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
-import { useMutation } from "@liveblocks/react";
+import localFont from "next/font/local";
+import { PlainTextContent } from "./plain-text-content";
 
-const font = Poppins({
-    subsets: ['latin'],
-    weight: ['400'],
+const font = localFont({
+    src: "../../../../node_modules/@fontsource/poppins/files/poppins-latin-400-normal.woff2",
+    weight: "400",
+    display: "swap",
 })
 
 
@@ -20,16 +20,6 @@ interface StickerProps {
 }
 export const Sticker = ({ id, layer, onPointerDown, selectionColor }: StickerProps) => {
     const { x, y, width, height, fill, value, fontSize } = layer
-
-    const updateValue = useMutation(({ storage }, newValue: string) => {
-        const liveLayers = storage.get("layers");
-
-        liveLayers.get(id)?.set("value", newValue);
-    }, [])
-
-    const handleContentEditableChange = (e: ContentEditableEvent) => {
-        updateValue(e.target.value);
-    }
 
     return (
         <foreignObject
@@ -44,12 +34,9 @@ export const Sticker = ({ id, layer, onPointerDown, selectionColor }: StickerPro
             }}
             className="drop-shadow-xl shadow-md"
         >
-            <ContentEditable
-                html={value || "text"}
-                spellCheck={!!selectionColor} 
-                autoCorrect="off"
-                autoComplete="off"
-                onChange={handleContentEditableChange}
+            <PlainTextContent
+                id={id}
+                value={value ?? ""}
                 className={cn("h-full w-full flex items-center justify-center text-center outline-none", font.className)}
                 style={{
                     fontSize: fontSize,

@@ -1,0 +1,158 @@
+import { HocuspocusProvider } from "@hocuspocus/provider";
+import * as Y from "yjs";
+import { BoardSession } from "@/types/service";
+import { BOARD_SCHEMA_VERSION } from "@/lib/board/model";
+import { BoardDocument } from "./document";
+import { BoardParticipant, BoardPresence, emptyPresence, parseParticipant } from "./presence";
+import { parseServerMessage } from "./protocol";
+import { decodePersistedSnapshot, matchesPersistedSnapshot } from "./save-state";
+
+export interface ConnectionState {
+  connected: boolean;
+  synced: boolean;
+  saved: boolean;
+  error: string | null;
+  revision: number;
+  savedAt: string | null;
+  pending: boolean;
+}
+
+export class BoardRuntime {
+  readonly board: BoardDocument;
+  readonly session: BoardSession;
+  readonly provider: HocuspocusProvider;
+  private state: ConnectionState = {
+    connected: false, synced: false, saved: false, error: null, revision: 0, savedAt: null, pending: false,
+  };
+  private readonly stateListeners = new Set<() => void>();
+  private readonly presenceListeners = new Set<() => void>();
+  private committedSnapshot: Y.Snapshot | null = null;
+  private self: BoardParticipant;
+  private others: readonly BoardParticipant[] = [];
+  private destroyed = false;
+  private accessDenied = false;
+
+  constructor(session: BoardSession) {
+    this.session = session;
+    this.board = new BoardDocument(new Y.Doc(), false);
+    this.self = { connectionId: this.board.doc.clientID, info: {
+      id: session.user.id, name: session.user.name,
+      ...(session.user.image ? { picture: session.user.image } : {}),
+    }, presence: emptyPresence() };
+    this.board.doc.on("update", this.handleDocumentUpdate);
+    this.provider = new HocuspocusProvider({
+      url: session.connection.url, name: session.board.id,
+      token: session.connection.token, document: this.board.doc,
+      onStatus: ({ status }) => {
+        if (status !== "connected") this.board.setWritable(false);
+        this.updateState({ connected: status === "connected", ...(status !== "connected" ? { synced: false } : {}) });
+      },
+      onSynced: ({ state }) => {
+        const schema = this.board.doc.getMap("meta").get("schemaVersion");
+        if (state && schema !== BOARD_SCHEMA_VERSION) {
+          this.board.setWritable(false);
+          this.updateState({ error: "Версия документа не поддерживается. Обновите страницу." });
+          return;
+        }
+        this.board.setWritable(state && session.role !== "viewer" && !this.accessDenied);
+        this.updateState({ synced: state });
+        if (state) this.provider.sendStateless(JSON.stringify({ type: "persistence-status" }));
+      },
+      onAuthenticationFailed: () => {
+        this.accessDenied = true;
+        this.board.setWritable(false);
+        this.updateState({ connected: false, synced: false, error: "Доступ к доске прекращён. Откройте действующее приглашение." });
+      },
+      onClose: ({ event }) => {
+        this.board.setWritable(false);
+        if (event.code === 1008 || /access revoked|read.only|board removed|permission denied/i.test(event.reason)) this.accessDenied = true;
+        this.updateState({ connected: false, synced: false,
+          ...(this.accessDenied ? { error: "Доступ к доске прекращён. Обновите страницу или откройте новое приглашение." } : {}) });
+      },
+      onDisconnect: () => {
+        this.board.setWritable(false);
+        this.updateState({ connected: false, synced: false });
+      },
+      onStateless: ({ payload }) => this.handleServerMessage(payload),
+    });
+    this.provider.awareness?.on("update", this.handleAwarenessUpdate);
+    this.provider.awareness?.setLocalState({ user: this.self.info, presence: this.self.presence });
+  }
+
+  getState = (): ConnectionState => this.state;
+  getSelf = (): BoardParticipant => this.self;
+  getOthers = (): readonly BoardParticipant[] => this.others;
+  subscribeState = (listener: () => void): (() => void) => {
+    this.stateListeners.add(listener);
+    return () => this.stateListeners.delete(listener);
+  };
+  subscribePresence = (listener: () => void): (() => void) => {
+    this.presenceListeners.add(listener);
+    return () => this.presenceListeners.delete(listener);
+  };
+
+  updatePresence = (patch: Partial<BoardPresence>, broadcast = true): void => {
+    if (this.destroyed) return;
+    this.self = { ...this.self, presence: { ...this.self.presence, ...patch } };
+    if (broadcast) this.provider.awareness?.setLocalStateField("presence", this.self.presence);
+    for (const listener of this.presenceListeners) listener();
+  };
+
+  private refreshOthers(): void {
+    const states = this.provider?.awareness?.getStates();
+    if (!states) return;
+    const others: BoardParticipant[] = [];
+    for (const [id, value] of states) {
+      if (id === this.board.doc.clientID) continue;
+      const participant = parseParticipant(id, value);
+      if (participant) others.push(participant);
+    }
+    this.others = others;
+    for (const listener of this.presenceListeners) listener();
+  }
+
+  private handleAwarenessUpdate = ({ added, updated, removed }: { added: number[]; updated: number[]; removed: number[] }): void => {
+    if ([...added, ...updated, ...removed].some((id) => id !== this.board.doc.clientID)) this.refreshOthers();
+  };
+
+  private updateState(patch: Partial<ConnectionState>): void {
+    if (this.destroyed) return;
+    const saved = matchesPersistedSnapshot(this.board.doc, this.committedSnapshot);
+    this.state = { ...this.state, ...patch, saved,
+      pending: saved ? false : patch.pending ?? this.state.pending };
+    for (const listener of this.stateListeners) listener();
+  }
+
+  private handleDocumentUpdate = (_update: Uint8Array, origin: unknown): void => {
+    this.updateState(this.board.isLocalOrigin(origin) ? { pending: true } : {});
+  };
+
+  private handleServerMessage(payload: string): void {
+    const message = parseServerMessage(payload);
+    if (!message) return;
+    if (message.type === "persistence-error") {
+      this.board.setWritable(false);
+      this.updateState({ error: message.message });
+      return;
+    }
+    if (message.revision < this.state.revision) return;
+    try {
+      this.committedSnapshot = decodePersistedSnapshot(message.snapshot);
+      this.board.setWritable(this.state.synced && this.session.role !== "viewer" && !this.accessDenied);
+      this.updateState({ revision: message.revision, savedAt: message.savedAt,
+        ...(!this.accessDenied ? { error: null } : {}) });
+    } catch {
+      this.updateState({ error: "Не удалось проверить подтверждение сохранения" });
+    }
+  }
+
+  destroy(): void {
+    this.destroyed = true;
+    this.provider.awareness?.off("update", this.handleAwarenessUpdate);
+    this.provider.destroy();
+    this.board.doc.off("update", this.handleDocumentUpdate);
+    this.board.destroy();
+    this.stateListeners.clear();
+    this.presenceListeners.clear();
+  }
+}

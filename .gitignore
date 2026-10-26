@@ -16,6 +16,10 @@ public/uploads
 
 # testing
 /coverage
+/temp/
+/data/
+/test-results/
+/playwright-report/
 
 # next.js
 /.next/

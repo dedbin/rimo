@@ -5,11 +5,14 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import React from "react";
-import { SignInButton, UserButton, useAuth } from "@clerk/clerk-react";
+import { SignInButton } from "@/components/auth/sign-in-button";
+import { UserButton } from "@/components/auth/user-button";
+import { authClient } from "@/lib/auth-client";
 import { usePointerGlow } from "@/hooks/use-pointer-glow";
 
 export const RimoNavbar = () => {
-  const { isSignedIn } = useAuth();
+  const { data: session } = authClient.useSession();
+  const isSignedIn = !!session;
   usePointerGlow();
   return (
     <nav className="p-4 bg-transparent flex items-center justify-between">
@@ -28,7 +31,7 @@ export const RimoNavbar = () => {
       <div className="flex items-center gap-x-4">
         {isSignedIn ? (
           <>
-            <Link href="/boards">
+            <Link href="/">
               <Button className="rounded-full">Мои доски</Button>
             </Link>
             <UserButton />

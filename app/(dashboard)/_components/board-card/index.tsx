@@ -4,51 +4,35 @@ import Image from "next/image";
 import Link from "next/link";
 import { Overlay } from "./overlay";
 import { formatDistanceToNow } from "date-fns";
-import { useAuth } from "@clerk/nextjs";
+import { authClient } from "@/lib/auth-client";
+import type { BoardSummary } from "@/types/service";
 import { Footer } from "./footer";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Actions } from "@/components/actions";
 import { MoreHorizontal } from "lucide-react";
 import { useApiMutation } from "@/hooks/use-api-mutation";
-import { api } from "@/convex/_generated/api";
+import { boardApi } from "@/lib/api-client";
 import { toast } from "sonner";
-
-interface BoardCardProps {
-  id: string;
-  title: string;
-  imageUrl: string;
-  authorName: string;
-  authorId: string;
-  createdAt: number;
-  orgId: string;
-  isFavorite: boolean;
-}
 
 export const BoardCard = ({
   id,
   title,
   imageUrl,
   authorName,
-  authorId,
+  ownerId,
   createdAt,
-  orgId,
+  role,
   isFavorite,
-}: BoardCardProps) => {
+}: BoardSummary) => {
   const timeAgo = formatDistanceToNow(new Date(createdAt), { addSuffix: true });
-  const {userId} = useAuth();
-  const authorLabel = userId === authorId ? "You" : authorName; 
+  const { data: session } = authClient.useSession();
+  const authorLabel = session?.user.id === ownerId ? "Вы" : authorName;
 
-  const { mutate: toggleFavorite, pending: favoritePending } = useApiMutation(api.board.favorite);
-  const { mutate: untoggleFavorite, pending: unfavoritePending } = useApiMutation(api.board.unFavorite);
+  const { mutate: toggleFavorite, pending: favoritePending } = useApiMutation(boardApi.favorite);
 
   const handleToggleFavorite = () => {
-    if (isFavorite) {
-      untoggleFavorite({ id })
-      .catch((_error) => {toast.error("Failed to unfavorite");});
-    } else {
-      toggleFavorite({ id, orgId })
-      .catch((_error) => {toast.error("Failed to favorite");});
-    }
+    void toggleFavorite({ id, favorite: !isFavorite })
+      .catch(() => toast.error("Не удалось изменить избранное"));
   };
   return (
     <Link href={`/board/${id}`} className="block">
@@ -67,9 +51,11 @@ export const BoardCard = ({
           <Actions
             id={id}
             title={title}
+            canManage={role === "owner"}
             side="right"
           >
             <button 
+              aria-label="Действия с доской"
               className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity px-3 py-2 outline-none "
             >
               <MoreHorizontal className="text-white opacity-75 hover:opacity-100 transition-opacity" />
@@ -82,7 +68,7 @@ export const BoardCard = ({
             authorLabel={authorLabel}
             timeAgo={timeAgo}
             onClick = {handleToggleFavorite}
-            disabled={favoritePending || unfavoritePending}
+            disabled={favoritePending}
         />
       </div>
     </Link>

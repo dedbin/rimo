@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useTranslation } from "@/hooks/use-translation";
 import { Pause, Play, Square } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 
 export const SessionTimer = () => {
   const { t } = useTranslation();
@@ -11,7 +11,7 @@ export const SessionTimer = () => {
   const [seconds, setSeconds] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   // TODO: allow user to set duration
-  const [duration, setDuration] = useState<number | null>(null); // null = stopwatch mode 
+  const [duration] = useState<number | null>(null); // null = stopwatch mode
   const [showControls, setShowControls] = useState(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);

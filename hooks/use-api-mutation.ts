@@ -1,25 +1,18 @@
-import { useMutation } from "convex/react";
-import { useState } from "react";
+"use client";
 
-export const useApiMutation = (mutationFunction:any) => {
-    const [pending, setPending] = useState(false);
-    const mutation = useMutation(mutationFunction);
+import { useCallback, useState } from "react";
 
-    const mutate = (payload :any) => {
-        setPending(true);
-        return mutation(payload)
-            .finally(() => setPending(false))
-            .then((result) => {
-                return result;
-            })
-            .catch((error) => {
-                console.error("Error in api mutation:", error);
-                throw error;
-            });
-
-    };
-    return {
-        mutate,
-        pending,
-    };
+export function useApiMutation<TPayload, TResult>(
+  mutation: (payload: TPayload) => Promise<TResult>,
+) {
+  const [pendingCount, setPendingCount] = useState(0);
+  const mutate = useCallback(async (payload: TPayload): Promise<TResult> => {
+    setPendingCount((count) => count + 1);
+    try {
+      return await mutation(payload);
+    } finally {
+      setPendingCount((count) => Math.max(0, count - 1));
+    }
+  }, [mutation]);
+  return { mutate, pending: pendingCount > 0 };
 }

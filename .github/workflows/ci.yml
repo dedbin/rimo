@@ -1,0 +1,49 @@
+name: Verify service
+
+on:
+  push:
+    branches: [master, "codex/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:18-bookworm
+        env:
+          POSTGRES_DB: rimo_test
+          POSTGRES_USER: rimo_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U rimo_test -d rimo_test"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      DATABASE_URL: postgresql://rimo_test@localhost:5432/rimo_test
+      RIMO_TEST_DATABASE_URL: postgresql://rimo_test@localhost:5432/rimo_test
+      BETTER_AUTH_URL: http://localhost:3000
+      NEXT_PUBLIC_COLLABORATION_URL: ws://localhost:1234
+      ASSET_STORAGE_PATH: temp/ci-assets
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Generate ephemeral authentication secret
+        run: node -e "require('node:fs').appendFileSync(process.env.GITHUB_ENV, 'BETTER_AUTH_SECRET=' + require('node:crypto').randomBytes(48).toString('base64url') + '\n')"
+      - run: npm ci
+      - run: npm run db:migrate
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high

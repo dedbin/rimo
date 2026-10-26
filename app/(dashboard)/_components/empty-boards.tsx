@@ -3,8 +3,8 @@
 import { useTranslation } from "@/hooks/use-translation";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
-import { api } from "@/convex/_generated/api";
-import { useOrganization } from "@clerk/nextjs";
+import { boardApi } from "@/lib/api-client";
+import { authClient } from "@/lib/auth-client";
 import { useApiMutation } from "@/hooks/use-api-mutation";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,26 +13,17 @@ import { useRouter } from "next/navigation";
 export const EmptyBoards = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { organization } = useOrganization();
-  const { mutate: createBoard, pending } = useApiMutation(api.board.create);
+  const { data: session } = authClient.useSession();
+  const { mutate: createBoard, pending } = useApiMutation(boardApi.create);
 
   const onClick = async () => {
-    if (!organization) return;
-
     try {
-      const res = await fetch("/api/generate-cover", { method: "POST" });
-      if (!res.ok) throw new Error("Failed to generate cover");
-      const { imageUrl } = await res.json();
-
-      const id = await createBoard({
+      const board = await createBoard({
         title: t("emptyBoards.defaultTitle"),
-        orgId: organization.id,
-        imageUrl,
       });
 
-      router.push(`/board/${id}`);
-    } catch (error) {
-      console.error("error creating board:", error);
+      router.push(`/board/${board.id}`);
+    } catch {
       toast.error(t("emptyBoards.toastError"));
     }
   };
@@ -46,7 +37,7 @@ export const EmptyBoards = () => {
       <p className="text-muted-foreground text-sm text-center mt-2">
         {t("emptyBoards.description")}
       </p>
-      <div className="mt-6">
+      {!session?.user.isAnonymous && <div className="mt-6">
         <Button disabled={pending} onClick={onClick} size="lg">
           {pending ? (
             <>
@@ -57,7 +48,7 @@ export const EmptyBoards = () => {
             t("emptyBoards.create")
           )}
         </Button>
-      </div>
+      </div>}
     </div>
   );
 };

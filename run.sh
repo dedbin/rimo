@@ -1,9 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-cp .env.local .env
+if [[ ! -f .env ]]; then
+  node scripts/setup-env.mjs "${1:-http://localhost:3080}"
+fi
 
-echo "🚀 Собираем и запускаем Rimo в dev-режиме..."
-docker-compose up --build -d
-
-echo "✅ Запущено. Открывай: http://goga-nado.ru:3000"
-echo "📊 Следи за ресурсами: docker stats rimo-dev"
+docker compose up --build -d --wait
+echo "Rimo запущен. Адрес указан в BETTER_AUTH_URL файла .env."
+docker compose ps

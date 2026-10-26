@@ -1,0 +1,13 @@
+# Example only; generate independent random values with scripts/setup-env.mjs.
+POSTGRES_PASSWORD=REPLACE_WITH_RANDOM_VALUE
+DATABASE_URL=postgresql://rimo:REPLACE_WITH_RANDOM_VALUE@db:5432/rimo
+BETTER_AUTH_SECRET=REPLACE_WITH_A_RANDOM_SECRET_OF_AT_LEAST_32_CHARACTERS
+BETTER_AUTH_URL=https://board.example.com
+NEXT_PUBLIC_COLLABORATION_URL=wss://board.example.com/collaboration
+APP_DOMAIN=board.example.com
+ASSET_STORAGE_PATH=data/assets
+
+# Optional safeguards; defaults are enforced by the server.
+MAX_UPLOAD_BYTES=10485760
+MAX_BOARD_ASSET_BYTES=104857600
+MAX_IMAGE_PIXELS=20000000

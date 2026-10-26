@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
-import { ConvexClientProvider } from "@/providers/convex-client-provider";
 import { Toaster } from "sonner"
 import { ModalProvider } from "@/providers/modal-provider";
 import { I18nProvider } from "@/providers/i18n-provider";
@@ -9,14 +8,14 @@ import { Suspense } from "react";
 import { Loading } from "@/components/auth/loading";
 import { LanguageAwareHtml } from "@/components/language-aware-html";
 
-const geistSans = Geist({
+const geistSans = localFont({
+  src: "../node_modules/@fontsource/geist/files/geist-latin-400-normal.woff2",
   variable: "--font-geist-sans",
-  subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
+const geistMono = localFont({
+  src: "../node_modules/@fontsource/geist-mono/files/geist-mono-latin-400-normal.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
@@ -30,19 +29,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html>
+    <html lang="ru">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <I18nProvider>
           <Suspense fallback={<Loading/>}>
-            <ConvexClientProvider>
                 <LanguageAwareHtml>
                   <Toaster />
                   <ModalProvider />
                   {children}
                 </LanguageAwareHtml>
-            </ConvexClientProvider>
           </Suspense>
         </I18nProvider>
       </body>

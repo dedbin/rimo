@@ -1,39 +1,32 @@
 "use client";
 
 import { memo } from "react";
-import { shallow, useOthersConnectionIds, useOthersMapped } from "@liveblocks/react/suspense";
+import { useOthers } from "@/lib/collaboration/react";
 import { Cursor } from "./cursor";
 import { Path } from "./path";
 import { rgbToCss } from "@/lib/utils";
 
 const Cursors = () => {
-  const othersConnectionIds = useOthersConnectionIds();
+  const others = useOthers();
   return (
     <>
-      {othersConnectionIds.map((connectionId) => (
-        <Cursor key={connectionId} connectionId={connectionId} />
+      {others.map((participant) => (
+        <Cursor key={participant.connectionId} participant={participant} />
       ))}
     </>
   );
 };
 
 const Drafts = () => {
-  const others = useOthersMapped(
-    (other) => ({
-      pencilDraft: other.presence.pencilDraft,
-      penColor: other.presence.penColor,
-      penSize:  other.presence.penSize, 
-    }),
-    shallow
-  );
+  const others = useOthers();
 
   return (
     <>
-      {others.map(([key, other]) => {
+      {others.map(({ connectionId, presence: other }) => {
         if (!other.pencilDraft) return null;
         return (
           <Path
-            key={key}
+            key={connectionId}
             points={other.pencilDraft}
             x={0}
             y={0}

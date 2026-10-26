@@ -1,27 +1,15 @@
 "use client";
 
-import { useOrganizationList } from "@clerk/nextjs";
-import { Item } from "./item";
+import Image from "next/image";
+import Link from "next/link";
 
 export const List = () => {
-    const {userMemberships} = useOrganizationList({
-        userMemberships: {
-            infinite: true,
-        }
-    });
-    if (!userMemberships.data?.length) return null;
-    // console.log("List rendered", userMemberships.data);
     
     return (
-        <ul className="space-y-4 ">
-            {userMemberships.data?.map((mem) => (
-                <Item
-                    key={mem.organization.id}
-                    id={mem.organization.id}
-                    name={mem.organization.name}
-                    imageUrl={mem.organization.imageUrl}
-                />
-            ))}
-        </ul>
+        <li className="flex w-full justify-center">
+          <Link href="/" aria-label="Мои доски" className="relative h-10 w-10 rounded-md bg-white p-1">
+            <Image src="/logo.svg" alt="Rimo" width={32} height={32} />
+          </Link>
+        </li>
     );
 };

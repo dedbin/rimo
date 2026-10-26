@@ -1,0 +1,12 @@
+{$APP_DOMAIN} {
+    encode zstd gzip
+    request_body {
+        max_size 11MB
+    }
+    handle /collaboration* {
+        reverse_proxy collaboration:1234
+    }
+    handle {
+        reverse_proxy app:3000
+    }
+}

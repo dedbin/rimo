@@ -13,7 +13,6 @@ import {
   Image as ImageIcon,
   ZoomIn, 
   ZoomOut,
-  Eraser,
   EraserIcon
 } from "lucide-react";
 import { ToolButton } from "./tool-button";
@@ -41,7 +40,7 @@ interface BoardToolbarProps {
   canRedo: boolean;
   selectedPenSize: number;
   onPenSizeChange: (size: number) => void;
-  onImageUpload: (url: string) => void;
+  onImageUpload: (file: File) => Promise<void>;
   camera: Camera;
   animateCameraTo: (camera: Camera) => void;
 }
@@ -201,25 +200,7 @@ export const BoardToolbar = ({
               const file = input.files?.[0];
               if (!file) return;
 
-              const formData = new FormData();
-              formData.append("file", file);
-
-              try {
-                const response = await fetch("/api/upload-image", {
-                  method: "POST",
-                  body: formData,
-                });
-
-                if (!response.ok) {
-                  throw new Error("Upload failed");
-                }
-
-                const data = await response.json();
-                onImageUpload(data.url);
-              } catch (err) {
-                console.error("Upload error:", err);
-                alert(t("toolbar.imageUploadError"));
-              }
+              await onImageUpload(file);
             };
 
             input.click();

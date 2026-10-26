@@ -1,5 +1,6 @@
 import { convertPointsToPath } from "@/lib/utils";
 import getStroke from "perfect-freehand";
+import { memo, useMemo } from "react";
 
 interface PathProps {
     x: number;
@@ -11,11 +12,12 @@ interface PathProps {
     size?: number;
 }
 
-export const Path = ({ x, y, points, fill, onPointerDown, stroke, size }: PathProps) => {
+export const Path = memo(({ x, y, points, fill, onPointerDown, stroke, size }: PathProps) => {
+    const outline = useMemo(() => convertPointsToPath(getStroke(points, { size: size ?? 16, thinning: 0.5, smoothing: 0.5, streamline: 0.5 })), [points, size]);
     return (
         <path
             className="drop-shadow-md"
-            d={convertPointsToPath(getStroke(points, { size: size ?? 16, thinning: 0.5, smoothing: 0.5, streamline: 0.5 }))}
+            d={outline}
             onPointerDown={(e) => onPointerDown && onPointerDown(e, "path")}
             style={{ transform: `translate(${x}px, ${y}px)` }}
             x = {0}
@@ -25,4 +27,5 @@ export const Path = ({ x, y, points, fill, onPointerDown, stroke, size }: PathPr
             strokeWidth={1}
         />
     )
-}
+});
+Path.displayName = "Path";

@@ -1,5 +1,4 @@
 import { Camera, Color, Point, side, XYWH, Layer, LayerType, PathLayer } from "@/types/board-canvas"
-import { LiveObject } from "@liveblocks/client";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
@@ -229,7 +228,7 @@ function distanceToSegment(p: Point, a: Point, b: Point): number {
   return Math.sqrt(distX * distX + distY * distY);
 }
 
-export function doesPointIntersectPath(point: Point, path: PathLayer, layerId?: string): boolean {
+export function doesPointIntersectPath(point: Point, path: PathLayer): boolean {
   const offsetX = path.x;
   const offsetY = path.y;
   const points = path.points;
@@ -248,11 +247,8 @@ export function doesPointIntersectPath(point: Point, path: PathLayer, layerId?: 
 }
 
 
-export function getLayerBounds(layer: LiveObject<Layer>) {
-  const x = layer.get("x");
-  const y = layer.get("y");
-  const width = layer.get("width");
-  const height = layer.get("height");
+export function getLayerBounds(layer: Layer): XYWH | null {
+  const { x, y, width, height } = layer;
 
   if (
     typeof x === "number" &&
