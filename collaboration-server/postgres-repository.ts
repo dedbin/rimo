@@ -35,6 +35,10 @@ export function createPostgresRepository(pool: Pool): SnapshotRepository {
       const client = await pool.connect();
       try {
         await client.query("BEGIN");
+        // Board -> asset budget -> document budget is the shared lock order.
+        // Take the FK's board lock before the document budget, including the first save.
+        const board = await client.query("SELECT id FROM boards WHERE id = $1 FOR KEY SHARE", [boardId]);
+        if (!board.rows.length) throw new DocumentRemovedError();
         await assertDocumentQuota(client, boardId, state.byteLength);
         const result = await client.query<DocumentRow>(
           `INSERT INTO board_documents (board_id, state, revision, saved_at)
