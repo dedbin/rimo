@@ -107,6 +107,7 @@ export class BoardDocument {
   }
 
   translate(ids: readonly string[], delta: Point): void {
+    if (delta.x === 0 && delta.y === 0) return;
     this.transact(() => {
       for (const id of ids) {
         const layer = this.layers.get(id);

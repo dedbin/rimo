@@ -70,8 +70,11 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
         y: current.y + sample.clientY - gesture.screen.y });
       gesture.screen = { x: sample.clientX, y: sample.clientY };
     } else if (gesture && mode === BoardCanvasMode.Translating) {
-      gesture.delta = { x: point.x - gesture.origin.x, y: point.y - gesture.origin.y };
-      publishPreview(gesture);
+      const delta = { x: point.x - gesture.origin.x, y: point.y - gesture.origin.y };
+      if (Math.hypot(delta.x, delta.y) * cameraRef.current!.scale >= 3 || svgRef.current.hasPointerCapture(gesture.pointerId)) {
+        gesture.delta = delta;
+        publishPreview(gesture);
+      }
     } else if (gesture && mode === BoardCanvasMode.Resizing && gesture.initialBounds && gesture.corner !== null) {
       gesture.resize = resizeBounds(gesture.initialBounds, gesture.corner, point);
       publishPreview(gesture);
@@ -122,7 +125,9 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     if (event.button !== 0 && event.button !== 1) return;
     const svg = svgRef.current;
     if (!svg) return;
-    svg.setPointerCapture(event.pointerId);
+    // Capturing a click on SVG retargets its later dblclick away from text content.
+    // A translating gesture captures only after movement crosses the drag threshold.
+    if (mode !== BoardCanvasMode.Translating) svg.setPointerCapture(event.pointerId);
     const point = toPoint(event);
     active.current = { pointerId: event.pointerId, origin: point, ids, delta: { x: 0, y: 0 },
       draft: [[point.x, point.y, event.pressure || 0.5]], erase: new Set(), initialBounds: bounds,
@@ -175,6 +180,14 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   });
 
   const onPointerMove = (event: PointerEvent<SVGSVGElement>) => {
+    const gesture = active.current;
+    const svg = svgRef.current;
+    if (gesture && svg && state.current.mode === BoardCanvasMode.Translating && !svg.hasPointerCapture(event.pointerId)) {
+      const point = toPoint(event);
+      if (Math.hypot(point.x - gesture.origin.x, point.y - gesture.origin.y) * cameraRef.current!.scale >= 3) {
+        svg.setPointerCapture(event.pointerId);
+      }
+    }
     latest.current = { clientX: event.clientX, clientY: event.clientY, pressure: event.pressure, buttons: event.buttons };
     if (frame.current !== null) return;
     frame.current = requestAnimationFrame(() => {
@@ -211,13 +224,26 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   };
 
   useEffect(() => {
+    const releaseOutside = (event: globalThis.PointerEvent) => {
+      if (active.current && event.target instanceof Node && !svgRef.current?.contains(event.target)) cancel();
+    };
     window.addEventListener("blur", cancel);
-    return () => { window.removeEventListener("blur", cancel); };
-  }, [cancel]);
+    window.addEventListener("pointerup", releaseOutside);
+    window.addEventListener("pointercancel", cancel);
+    return () => {
+      window.removeEventListener("blur", cancel);
+      window.removeEventListener("pointerup", releaseOutside);
+      window.removeEventListener("pointercancel", cancel);
+    };
+  }, [cancel, svgRef]);
   useEffect(() => () => { if (frame.current !== null) cancelAnimationFrame(frame.current); }, []);
 
   return { canvasState, setCanvasState, preview, cancel, onPointerDown, onLayerPointerDown,
     onResizeHandlePointerDown, onPointerMove, onPointerUp, onPointerCancel: cancel,
     onLostPointerCapture: () => { if (active.current) cancel(); },
-    onPointerLeave: () => { if (!active.current) runtime.updatePresence({ cursor: null }); } };
+    onPointerLeave: () => {
+      const gesture = active.current;
+      if (gesture && !svgRef.current?.hasPointerCapture(gesture.pointerId)) cancel();
+      if (!active.current) runtime.updatePresence({ cursor: null });
+    } };
 }

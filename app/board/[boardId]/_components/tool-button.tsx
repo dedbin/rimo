@@ -19,6 +19,7 @@ export const ToolButton = ({ label, icon: Icon, onClick, isDisabled, isActive }:
                 size="icon"
                 onClick={onClick}
                 disabled={isDisabled}
+                aria-label={label}
             >
                 <Icon/>
             </Button>

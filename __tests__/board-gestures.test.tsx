@@ -33,7 +33,9 @@ beforeEach(() => {
   board = new BoardDocument();
   presence = emptyPresence();
   svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  Object.assign(svg, { setPointerCapture: vi.fn(), releasePointerCapture: vi.fn(), hasPointerCapture: () => true,
+  let captured = false;
+  Object.assign(svg, { setPointerCapture: vi.fn(() => { captured = true; }),
+    releasePointerCapture: vi.fn(() => { captured = false; }), hasPointerCapture: () => captured,
     getBoundingClientRect: () => ({ left: 0, top: 0 }) });
   runtime = { board, getSelf: () => ({ presence }), updatePresence: (patch: Partial<BoardPresence>) => {
     presence = { ...presence, ...patch };
@@ -44,6 +46,39 @@ beforeEach(() => {
 afterEach(() => { cleanup(); board.destroy(); vi.unstubAllGlobals(); });
 
 describe("canvas gesture lifecycle", () => {
+  it("preserves text double-click targeting by waiting for movement before pointer capture", () => {
+    const [id] = board.insert([createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })]);
+    const { result } = setup();
+    let updates = 0;
+    board.doc.on("update", () => { updates += 1; });
+    act(() => result.current.onLayerPointerDown(pointer(50, 50), id));
+    act(() => result.current.onPointerUp(pointer(50, 50)));
+    act(() => result.current.onLayerPointerDown(pointer(50, 50), id));
+    act(() => result.current.onPointerUp(pointer(50, 50)));
+    expect(svg.setPointerCapture).not.toHaveBeenCalled();
+    expect(updates).toBe(0);
+  });
+
+  it("clears a pending uncaptured click when released outside the canvas", () => {
+    const [id] = board.insert([createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })]);
+    const { result } = setup();
+    act(() => result.current.onLayerPointerDown(pointer(50, 50), id));
+    act(() => window.dispatchEvent(new Event("pointerup")));
+    // A native pointer event targets an element, not Window; reproduce that path too.
+    act(() => document.body.dispatchEvent(new Event("pointerup", { bubbles: true })));
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.None);
+    expect(board.getLayer(id)).toMatchObject({ x: 0, y: 0 });
+  });
+
+  it("clears an uncaptured click when the pointer leaves the canvas", () => {
+    const [id] = board.insert([createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })]);
+    const { result } = setup();
+    act(() => result.current.onLayerPointerDown(pointer(50, 50), id));
+    act(() => result.current.onPointerLeave());
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.None);
+    expect(presence.cursor).toBeNull();
+  });
+
   it("commits the pointer-up position even when a queued frame has not run", () => {
     const [id] = board.insert([createLayer(LayerType.Rectangle, { x: 10, y: 20 }, { r: 0, g: 0, b: 0 })]);
     const { result } = setup();
