@@ -15,7 +15,7 @@ export interface PositionMigrationStats {
   causalEntries: number;
 }
 
-function invalid(): never { throw new RichTextValidationError("Некорректные данные совместного редактирования текста"); }
+function invalid(code = "shape"): never { throw new RichTextValidationError(`Некорректные данные совместного редактирования текста [position:${code}]`); }
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null);
@@ -25,7 +25,7 @@ function integer(value: unknown, max = Number.MAX_SAFE_INTEGER): value is number
 }
 function client(value: unknown): value is number { return integer(value, 0xffff_ffff); }
 function keys(value: Record<string, unknown>, required: readonly string[], optional: readonly string[] = []): void {
-  if (required.some((key) => !Object.hasOwn(value, key)) || Object.keys(value).some((key) => !required.includes(key) && !optional.includes(key))) invalid();
+  if (required.some((key) => !Object.hasOwn(value, key)) || Object.keys(value).some((key) => !required.includes(key) && !optional.includes(key))) invalid("fields");
 }
 function boundary(value: unknown): boolean { return value === undefined || value === "start" || value === "end"; }
 function identifier(value: unknown): boolean {
@@ -40,18 +40,21 @@ function validateTransfer(value: unknown, fragmentName: string): void {
   const source = value.source;
   if (!record(source)) invalid();
   keys(source, ["client", "clock", "length"], ["boundary"]);
+  // Pinned y-tiptap mergePositionTransfers also coalesces adjacent node boundaries.
   if (!client(source.client) || !integer(source.clock) || !integer(source.length, MAX_POSITION_SPAN) || source.length === 0 ||
-    !Number.isSafeInteger(source.clock + source.length) || !boundary(source.boundary) ||
-    (source.boundary !== undefined && source.length !== 1)) invalid();
+    !Number.isSafeInteger(source.clock + source.length) || !boundary(source.boundary)) invalid("source-range");
   const target = value.target;
   if (target === null) return;
   if (!record(target)) invalid();
   keys(target, ["client", "clock", "type"], ["tname", "assoc", "boundary"]);
   if (!client(target.client) || !integer(target.clock) || !Number.isSafeInteger(target.clock + source.length) ||
-    !boundary(target.boundary) || (target.assoc !== undefined && ![-1, 0, 1].includes(target.assoc as number))) invalid();
+    !boundary(target.boundary) || (target.assoc !== undefined && ![-1, 0, 1].includes(target.assoc as number))) invalid("target-range");
   if (target.type === null) {
-    if (target.tname !== fragmentName) invalid();
-  } else if (!identifier(target.type) || target.tname !== undefined) invalid();
+    // getPositionNodeTransfers targets node identities directly for start/end,
+    // with type:null and no tname; other root targets require this exact fragment.
+    if (target.boundary !== undefined && target.tname === undefined) return;
+    if (target.tname !== fragmentName) invalid("target-root");
+  } else if (!identifier(target.type) || target.tname !== undefined) invalid("target-type");
 }
 
 export function positionMigrationLayerId(name: string): string | null {

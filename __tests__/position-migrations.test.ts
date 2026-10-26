@@ -51,6 +51,47 @@ describe("pinned Tiptap position metadata contract", () => {
     expect(validatePositionMigrationRoot(fixture(migration()), root)).toEqual({ records: 1, transfers: 2, causalEntries: 1 });
   });
 
+  it("accepts bold selection followed by Enter from the public binding, including node-boundary destinations", () => {
+    const board = new BoardDocument();
+    initializeDocument(board.doc);
+    const [id] = board.insert([createLayer(LayerType.Text, { x: 430, y: 340 }, { r: 0, g: 0, b: 0 })]);
+    const editor = new Editor({ element: document.createElement("div"), extensions: [
+      ...createTextExtensions(), createBoardTextBinding({ fragment: board.getTextFragment(id), history: board, canEdit: () => true }),
+    ] });
+    try {
+      for (const character of "Русская математика") editor.commands.insertContent(character);
+      editor.commands.selectAll();
+      editor.commands.toggleBold();
+      editor.commands.setTextSelection(editor.state.doc.content.size - 1);
+      editor.commands.splitBlock();
+      const name = `${POSITION_MIGRATION_PREFIX}text:${id}`;
+      const records = [...board.doc.getMap(name).values()];
+      expect(records.length).toBeGreaterThan(0);
+      expect(() => validatePositionMigrationRoot(board.doc, name)).not.toThrow();
+      const restored = new Y.Doc(); documents.push(restored);
+      Y.applyUpdate(restored, Y.encodeStateAsUpdate(board.doc));
+      expect(() => validatePositionMigrationRoot(restored, name)).not.toThrow();
+      expect(() => validateDocument(board.doc, DEFAULT_LIMITS)).not.toThrow();
+    } finally { editor.destroy(); board.destroy(); }
+  });
+
+  it("accepts coalesced node-boundary ranges while keeping root and numeric range checks", () => {
+    const value = { ...migration(), transfers: [
+      { source: { client: 1, clock: 2, length: 3, boundary: "end" }, target: null },
+    ] };
+    expect(validatePositionMigrationRoot(fixture(value), root).transfers).toBe(1);
+    expect(() => validatePositionMigrationRoot(fixture({ ...value, transfers: [
+      { source: { client: 1, clock: 2, length: 110_001, boundary: "end" }, target: null },
+    ] }), root)).toThrow("source-range");
+    for (const target of [
+      { client: 1, clock: 5, type: null },
+      { client: 1, clock: 5, type: null, boundary: "end", tname: "text:another-layer" },
+      { client: -1, clock: 5, type: null, boundary: "end" },
+    ]) expect(() => validatePositionMigrationRoot(fixture({ ...value, transfers: [
+      { source: { client: 1, clock: 2, length: 1, boundary: "end" }, target },
+    ] }), root)).toThrow();
+  });
+
   it("rejects unknown namespaces, missing fragment roots and non-map metadata", () => {
     expect(positionMigrationLayerId("__tiptap_position_migrations:item:1:2")).toBeNull();
     const doc = new Y.Doc(); documents.push(doc);
