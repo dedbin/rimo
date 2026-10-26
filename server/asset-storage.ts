@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { getServerConfig } from "./config";
 
-function resolveStoragePath(key: string): string {
+export function resolveStoragePath(key: string): string {
   if (!/^[0-9a-f-]{36}\.(png|jpeg|gif|webp)$/.test(key)) {
     throw new Error("Invalid asset storage key");
   }

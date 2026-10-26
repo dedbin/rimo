@@ -1,12 +1,18 @@
 {$APP_DOMAIN} {
     encode zstd gzip
-    request_body {
-        max_size 11MB
+    handle /api/boards/import {
+        request_body {
+            max_size 256MiB
+        }
+        reverse_proxy app:3000
     }
     handle /collaboration* {
         reverse_proxy collaboration:1234
     }
     handle {
+        request_body {
+            max_size 11MB
+        }
         reverse_proxy app:3000
     }
 }

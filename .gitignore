@@ -20,6 +20,8 @@ public/uploads
 /data/
 /test-results/
 /playwright-report/
+/backups/
+*.rimo
 
 # next.js
 /.next/
