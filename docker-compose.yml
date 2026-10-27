@@ -1,5 +1,12 @@
+x-service-logging: &service-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   db:
+    logging: *service-logging
     image: postgres:18-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
     environment:
       POSTGRES_DB: rimo
@@ -17,6 +24,7 @@ services:
     restart: unless-stopped
 
   migrate:
+    logging: *service-logging
     image: rimo:${RIMO_TAG:-local}
     build:
       context: .
@@ -44,6 +52,7 @@ services:
     restart: "no"
 
   app:
+    logging: *service-logging
     image: rimo:${RIMO_TAG:-local}
     environment:
       <<: *service-environment
@@ -65,6 +74,7 @@ services:
     restart: unless-stopped
 
   export-worker:
+    logging: *service-logging
     image: rimo-export:${RIMO_TAG:-local}
     build:
       context: .
@@ -89,6 +99,7 @@ services:
     restart: unless-stopped
 
   collaboration:
+    logging: *service-logging
     image: rimo:${RIMO_TAG:-local}
     command: ["node", "--import=tsx", "collaboration-server/index.ts"]
     environment:
@@ -109,6 +120,7 @@ services:
     restart: unless-stopped
 
   caddy:
+    logging: *service-logging
     image: caddy:2@sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489
     environment:
       APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN}
