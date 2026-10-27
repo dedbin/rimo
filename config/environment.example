@@ -3,9 +3,12 @@ POSTGRES_PASSWORD=REPLACE_WITH_RANDOM_VALUE
 DATABASE_URL=postgresql://rimo:REPLACE_WITH_RANDOM_VALUE@db:5432/rimo
 BETTER_AUTH_SECRET=REPLACE_WITH_A_RANDOM_SECRET_OF_AT_LEAST_32_CHARACTERS
 BETTER_AUTH_URL=https://board.example.com
-NEXT_PUBLIC_COLLABORATION_URL=wss://board.example.com/collaboration
+COLLABORATION_PUBLIC_URL=wss://board.example.com/collaboration
 APP_DOMAIN=board.example.com
 ASSET_STORAGE_PATH=data/assets
+PDF_WORKER_TOKEN=REPLACE_WITH_AN_INDEPENDENT_RANDOM_SECRET_OF_AT_LEAST_32_CHARACTERS
+# Local development only. Compose uses its private export-worker hostname.
+PDF_WORKER_URL=http://localhost:3100
 
 # Optional safeguards; defaults are enforced by the server.
 MAX_UPLOAD_BYTES=10485760

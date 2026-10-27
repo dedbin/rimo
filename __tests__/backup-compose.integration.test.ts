@@ -56,7 +56,7 @@ describe.skipIf(process.env.RIMO_TEST_DOCKER_BACKUP !== "1")("Compose service ba
           `POSTGRES_PASSWORD=${password}`, `DATABASE_URL=postgresql://rimo:${password}@db:5432/rimo`,
           `BETTER_AUTH_SECRET=${randomBytes(48).toString("base64url")}`, `BETTER_AUTH_URL=http://localhost:${httpPort}`,
           `PDF_WORKER_TOKEN=${randomBytes(48).toString("base64url")}`,
-          `NEXT_PUBLIC_COLLABORATION_URL=ws://localhost:${httpPort}/collaboration`, "APP_DOMAIN=http://localhost",
+          `COLLABORATION_PUBLIC_URL=ws://localhost:${httpPort}/collaboration`, "APP_DOMAIN=http://localhost",
           `HTTP_PORT=${httpPort}`, `HTTPS_PORT=${await port()}`, "RIMO_TAG=local", "",
         ].join("\n"), { mode: 0o600 });
         contexts.push(await composeContext({ project, "env-file": envFile, "compose-file": "docker-compose.yml" }));

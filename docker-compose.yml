@@ -27,7 +27,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL}
-      NEXT_PUBLIC_COLLABORATION_URL: ${NEXT_PUBLIC_COLLABORATION_URL:?Set NEXT_PUBLIC_COLLABORATION_URL}
+      COLLABORATION_PUBLIC_URL: ${COLLABORATION_PUBLIC_URL:?Set COLLABORATION_PUBLIC_URL}
       ASSET_STORAGE_PATH: /app/data/assets
       MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
       MAX_BOARD_ASSET_BYTES: ${MAX_BOARD_ASSET_BYTES:-104857600}
@@ -45,12 +45,15 @@ services:
 
   app:
     image: rimo:${RIMO_TAG:-local}
-    environment: *service-environment
+    environment:
+      <<: *service-environment
+      PDF_WORKER_URL: http://export-worker:3100
+      PDF_WORKER_TOKEN: ${PDF_WORKER_TOKEN:?Set PDF_WORKER_TOKEN}
     volumes:
       - assets:/app/data/assets
     depends_on:
       migrate: { condition: service_completed_successfully }
-    networks: [backend]
+    networks: [backend, exports]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
@@ -59,6 +62,30 @@ services:
       start_period: 20s
     mem_limit: 1g
     stop_grace_period: 30s
+    restart: unless-stopped
+
+  export-worker:
+    image: rimo-export:${RIMO_TAG:-local}
+    build:
+      context: .
+      dockerfile: export-worker/Dockerfile
+    environment:
+      PDF_WORKER_HOST: 0.0.0.0
+      PDF_WORKER_PORT: "3100"
+      PDF_WORKER_TOKEN: ${PDF_WORKER_TOKEN:?Set PDF_WORKER_TOKEN}
+      PDF_CHROMIUM_SANDBOX: "true"
+    networks: [exports]
+    read_only: true
+    tmpfs:
+      - /tmp:size=201326592,mode=1777
+    mem_limit: 768m
+    shm_size: 128m
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./config/chromium-seccomp.json
+    stop_grace_period: 35s
     restart: unless-stopped
 
   collaboration:
@@ -101,6 +128,8 @@ services:
 
 networks:
   backend:
+    internal: true
+  exports:
     internal: true
   ingress:
 

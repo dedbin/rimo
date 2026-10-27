@@ -4,6 +4,7 @@ import { useState } from "react";
 import { rgbToCss } from "@/lib/utils";
 import { TextLayer } from "@/types/board-canvas";
 import { RichTextContent } from "@/components/board-text/content";
+import { resolveBoardFont } from "@/lib/board/fonts";
 
 
 interface TextProps {
@@ -35,7 +36,7 @@ export const Text = ({ id, layer, onPointerDown, selectionColor }: TextProps) =>
                 style={{
                     fontSize: fontSize,
                     color: fill ? rgbToCss(fill) : '#000',
-                    fontFamily: layer.fontFamily || "sans-serif",
+                    fontFamily: resolveBoardFont(layer.fontFamily),
                  }}
             />
         </foreignObject>

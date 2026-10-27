@@ -13,18 +13,22 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "owner:create": "tsx scripts/create-owner.ts",
     "collaboration": "node --env-file-if-exists=.env.local --import=tsx collaboration-server/index.ts",
+    "export-worker": "node --env-file-if-exists=.env.local --import=tsx export-worker/index.ts",
     "i18n:extract": "npx i18next -c i18next-parser.config.js",
     "i18n:translate": "python3 scripts/translate_i18n.py",
     "i18n": "npm run i18n:extract && npm run i18n:translate",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "node --env-file-if-exists=.env.local scripts/test-integration.mjs",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "verify:standalone": "node --env-file-if-exists=.env.local scripts/verify-standalone.mjs"
   },
   "dependencies": {
     "@fontsource/geist": "5.3.0",
     "@fontsource/geist-mono": "5.3.0",
     "@fontsource/noto-sans": "5.3.0",
+    "@fontsource/noto-sans-mono": "5.3.0",
+    "@fontsource/noto-serif": "5.3.0",
     "@fontsource/poppins": "5.3.0",
     "@hocuspocus/provider": "4.7.1",
     "@hocuspocus/server": "4.7.1",

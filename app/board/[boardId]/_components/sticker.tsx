@@ -3,14 +3,8 @@
 import { useState } from "react";
 import { rgbToCss, getContrastingTextColor } from "@/lib/utils";
 import { StickerLayer } from "@/types/board-canvas";
-import localFont from "next/font/local";
 import { RichTextContent } from "@/components/board-text/content";
-
-const font = localFont({
-    src: "../../../../node_modules/@fontsource/poppins/files/poppins-latin-400-normal.woff2",
-    weight: "400",
-    display: "swap",
-})
+import { resolveBoardFont } from "@/lib/board/fonts";
 
 
 interface StickerProps {
@@ -40,10 +34,10 @@ export const Sticker = ({ id, layer, onPointerDown, selectionColor }: StickerPro
                 id={id}
                 minHeight={100}
                 onHeight={setMeasuredHeight}
-                className={`text-center outline-none ${font.className}`}
+                className="text-center outline-none"
                 style={{
                     fontSize: fontSize,
-                    fontFamily: layer.fontFamily || "sans-serif",
+                    fontFamily: resolveBoardFont(layer.fontFamily),
                     color: fill ? getContrastingTextColor(fill) : '#000'
                  }}
             />

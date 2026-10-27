@@ -9,11 +9,13 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { requestJson } from "@/lib/api-client";
 import { BoardSummary } from "@/types/service";
-import { useBoardRuntime } from "@/lib/collaboration/react";
+import { useBoardRuntime, useBoardSnapshot, useConnectionState, useSelection } from "@/lib/collaboration/react";
 import { Hint } from "@/components/hint";
 import { useRenameModal } from "@/store/use-rename-modal";
 import { BoardCopyLinkAction } from "@/components/copy-link";
 import { BoardShareButton } from "@/components/board-share-button";
+import { BoardArchiveActions } from "@/components/board-archive-actions";
+import { BoardExportDialog } from "@/components/board-export-dialog";
 import { useTranslation } from "@/hooks/use-translation";
 
 const font = localFont({
@@ -35,6 +37,9 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
   const { t } = useTranslation();
 
   const runtime = useBoardRuntime();
+  const snapshot = useBoardSnapshot();
+  const selection = useSelection();
+  const connection = useConnectionState();
   const result = useSWR(`/api/boards/${encodeURIComponent(boardId)}`, requestJson<{ board: BoardSummary }>, {
     fallbackData: { board: runtime.session.board },
   });
@@ -82,8 +87,18 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
         </Button>
       </Hint>
       <TabSeparator />
-      <BoardCopyLinkAction boardId={data.id} />
+      <BoardCopyLinkAction boardId={data.id}>
+        {runtime.session.role === "owner" && <BoardArchiveActions boardId={data.id}
+          revision={connection.revision} disabled={!connection.saved || !connection.connected} />}
+      </BoardCopyLinkAction>
       {runtime.session.role === "owner" && <BoardShareButton boardId={data.id} />}
+      <BoardExportDialog boardId={data.id} revision={connection.revision}
+        saved={connection.saved && connection.connected} canEdit={runtime.board.canEdit}
+        selection={selection} snapshot={snapshot}
+        onCreateFrame={(frame) => { runtime.board.createFrame(frame); }}
+        onRenameFrame={(id, name) => runtime.board.updateFrame(id, { name })}
+        onRemoveFrame={(id) => runtime.board.removeFrame(id)}
+        onFrameOrderChange={(ids) => runtime.board.reorderFrames(ids)} />
     </div>
   );
 };
