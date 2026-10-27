@@ -19,7 +19,7 @@ export interface ServiceStatus {
 export function storageSpaceHealth(freeBytes: number, totalBytes: number): "low" | "critical" | null {
   const fraction = totalBytes > 0 ? freeBytes / totalBytes : 0;
   if (freeBytes < 256 * 1024 * 1024 || fraction < 0.02) return "critical";
-  if (freeBytes < 2 * 1024 * 1024 * 1024 || fraction < 0.1) return "low";
+  if (freeBytes < 2 * 1024 * 1024 * 1024 || fraction <= 0.2) return "low";
   return null;
 }
 
