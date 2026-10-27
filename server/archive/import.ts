@@ -4,7 +4,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { generateCover } from "../../lib/generateCover";
-import { removeStoredAsset, resolveStoragePath } from "../asset-storage";
+import { removeStoredAsset, resolveStoragePath, syncStoredAsset } from "../asset-storage";
 import { getBoardSummary, parseBoardTitle } from "../boards";
 import { HttpError } from "../http-error";
 import { assertAssetQuota, assertBoardQuota, assertDocumentQuota } from "../quotas";
@@ -53,6 +53,7 @@ export async function importBoardArchive(request: Request, ownerId: string): Pro
       signal.throwIfAborted();
       await publishAsset(asset.file, asset.storageKey);
       published.push(asset.storageKey);
+      await syncStoredAsset(asset.storageKey);
     }
     if (archive.assets.length) {
       const assets = archive.assets;
