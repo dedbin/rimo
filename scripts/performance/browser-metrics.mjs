@@ -73,16 +73,20 @@ export async function installBrowserMetrics(page) {
       pendingDragInput = null;
       requestAnimationFrame((timestamp) => {
         if (!active) return;
-        const latencyMs = timestamp - input;
+        // The shared rAF stamp can precede this mutation; observe actual callback time.
+        const callbackAt = performance.now();
+        const callbackMs = callbackAt - start;
+        const rafTimestampMs = timestamp - start;
+        const latencyMs = callbackAt - input;
         const ordinal = data.reactions.length;
         data.reactions.push(latencyMs);
-        if (dragInput !== null) data.dragReactions.push(timestamp - dragInput);
-        if (data.firstPreviewMs === null) data.firstPreviewMs = timestamp - start;
+        if (dragInput !== null) data.dragReactions.push(callbackAt - dragInput);
+        if (data.firstPreviewMs === null) data.firstPreviewMs = callbackMs;
         if (data.reactionTrace.length < 8 || (latencyMs > 50 && data.reactionTrace.length < 32)) {
           data.reactionTrace.push({ ordinal, inputOrdinal, appliedAtInputOrdinal, inputMs: input - start,
             dragInputMs: dragInput === null ? null : dragInput - start,
-            mutationMs, frameMs: timestamp - start, latencyMs,
-            dragLatencyMs: dragInput === null ? null : timestamp - dragInput });
+            mutationMs, rafTimestampMs, callbackMs, latencyMs,
+            dragLatencyMs: dragInput === null ? null : callbackAt - dragInput });
         }
       });
     });

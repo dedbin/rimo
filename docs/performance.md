@@ -53,6 +53,12 @@ node --import=tsx scripts/load-collaboration.mjs --seconds 3600 --rooms 5 --conn
 
 `frameMs` измеряет промежутки rAF во время жеста и двух заключительных кадров; p95 — nearest rank. В отчёте также есть long tasks, CDP JSHeap/DOMNode counts, protocol types, application bytes и фактический размер снимка Yjs. Эти bytes не включают WebSocket framing/TCP/TLS. Метрики heap не являются полным RSS процесса Chromium.
 
+### Протокол измерения 5
+
+В протоколе 5 `reactionProxyMs`, `activeDragReactionProxyMs` и startup используют `performance.now()` внутри rAF callback после изменения preview. Аргумент rAF — общий timestamp серии callbacks, который может предшествовать mutation и выполнению конкретного callback; это следует из [алгоритма WHATWG](https://html.spec.whatwg.org/multipage/imagebitmap-and-animations.html#run-the-animation-frame-callbacks). В trace отдельно сохраняются `mutationMs`, фактический `callbackMs` и диагностический `rafTimestampMs`. Кадровый ряд `frameMs` продолжает использовать интервалы rAF timestamps. Пределы 33/50 мс, input timestamps, порог жеста, сценарий и отсутствие прогрева сохранены. Это по-прежнему DOM/rAF proxy без доказательства показа пикселей compositor.
+
+Исторические raw протоколов 3/4 и их критерии сохраняются без переписывания: реакция по rAF timestamp могла занижаться. Ограниченного trace недостаточно для пересчёта всех распределений; для приёмки по исправленному proxy нужен отдельный прогон протокола 5.
+
 ## Нагрузочный профиль и его пределы
 
 Для 50/10 создаются пять своих досок: по два writer и восемь viewer соединений. Writer используют текущую сессию владельца; viewer — одну переиспользуемую анонимную сессию с явным приглашением в каждую доску. Это 50 соединений двух учётных записей. Read-only scope каждого viewer проверяется при соединении. Тестовый viewer state по умолчанию — `temp/performance-viewer-storage.json`; `--viewer-storage-state` меняет путь. Если вход истёк или отсутствует, создаётся один anonymous аккаунт и сохраняется приватный state. Аккаунт остаётся для повторных замеров, поскольку его удаление через API сервиса отключено. На Unix новый state создаётся с `0600`, на Windows доступ определяется ACL родительского каталога.

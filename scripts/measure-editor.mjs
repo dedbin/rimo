@@ -33,9 +33,9 @@ async function main() {
   const trials = positiveInteger(values.trials, "trials", 20);
   const steps = positiveInteger(values.steps, "steps", 2_000);
   const report = { kind: "editor-performance", version: 1, status: "running", targetOrigin: new URL(values["base-url"]).origin, environment: await environment(values.label),
-    sceneVersion: SCENE_VERSION, gestureProtocolVersion: 2, measurementProtocolVersion: 4, methodology: {
-      reaction: "capture pointermove -> actual SVG preview transform or parent CSS variables -> next requestAnimationFrame; DOM/rAF proxy, not compositor input-to-photon",
-      dragReaction: "earliest pending pointermove after the production 3px screen threshold -> transform -> rAF; raw proxy and startup remain separate",
+    sceneVersion: SCENE_VERSION, gestureProtocolVersion: 2, measurementProtocolVersion: 5, methodology: {
+      reaction: "capture pointermove -> actual SVG preview transform or parent CSS variables -> performance.now() inside the next requestAnimationFrame callback; shared rAF stamp is diagnostic, not compositor input-to-photon",
+      dragReaction: "earliest pending pointermove after the production 3px screen threshold -> transform -> actual rAF callback time; raw proxy and startup remain separate",
       gesture: "180 moves by default; first move 4px along the trajectory, total displacement120x40; no synthetic warmup or discarded first-preview sample",
       frames: "requestAnimationFrame intervals during the gesture and two settling frames; nearest-rank p95",
       eventTiming: "native Event Timing entries >=16ms, reported separately; pointermove is not covered by this API",
