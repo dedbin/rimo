@@ -12,8 +12,12 @@
   `sha256:c49c1ecf7c36bd6cc8625a830d6cef56725e20926cc423ecd8000ac3eeaf0e23`.
 - Исторический образ после native ESM и восстановления при квоте (source `d383dde`):
   `sha256:31726ed066c5096175b8313daa78d3fb18d4b8f693ff130a6614d237a0a295c1`.
-- Текущий runtime после ACL и SVG/rich-text/avatar исправлений (source `8ef7b3b`):
+- Образ после ACL и SVG/rich-text/avatar исправлений (source `8ef7b3b`):
   `sha256:221b1d0d4ea7f6539b173147714e65d87536a57e4b91241824a70aa213e16f0b`.
+- Диагностический образ с runtime GC/heap/event-loop счётчиками (source `0e9a474`):
+  `sha256:b71bc2cf585c022ab0e0dbcb38f6ec26c68b0a44494652db63ba26ef1479eb7b`.
+- Текущий кандидат с yield очереди и проверкой закрытых соединений (source `b17c6c0`):
+  `sha256:2f10ad2a9ba420c16c21e304634b5e968f7c7d29133face0b864678cab6f48c4`.
   Worker: `sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23`.
 - Промежуточный образ живых ролей и прежних сетевых/TLS проверок:
   `sha256:48116dd68d90d8b09293440075e97dea48f6f0f120d4dc5fc6239e0a586d9ce2`.
@@ -27,10 +31,10 @@
 
 | Сценарий | Наблюдаемый результат |
 | --- | --- |
-| Полный набор с PostgreSQL | 655 passed, 16 opt-in skipped, 90 исходных test files; 57,09 с; lint и TypeScript прошли |
-| GitHub Actions на опубликованном `9cd0514` | [verify успешно](https://github.com/dedbin/rimo/actions/runs/40469840848): чистый npm ci, PostgreSQL/migrate, lint/type/test, реальный PDF и два extractor, production build, UI E2E, standalone и audit production dependencies |
-| Production UI на Windows | 5/5 E2E за 1,1 мин на предыдущей версии, включая живую смену ролей и штатную остановку трёх дочерних серверов; свежий локальный build ещё предстоит |
-| UI через Caddy на текущем образе 221b | 5/5 E2E за 1,1 мин: collaboration, rich text, clipboard, PDF/archive и live roles; функциональный прогон шёл параллельно отдельному TLS-стенду и unit suite |
+| Полный набор с PostgreSQL | На `7b39e41`: 696 passed, 16 opt-in skipped, 99 исходных test files; 55,06 с; lint и TypeScript прошли |
+| GitHub Actions на опубликованном `b17c6c0` | [verify успешно](https://github.com/dedbin/rimo/actions/runs/40489453627): чистый npm ci, PostgreSQL/migrate, lint/type/test, реальный PDF и два extractor, production build, UI E2E, standalone и audit production dependencies |
+| Production UI на Windows | Свежий production build на `0e9a474`, 5/5 E2E за 1,0 мин, включая живую смену ролей и штатную остановку трёх дочерних серверов; порты освобождены |
+| UI через Caddy на образе 221b | 5/5 E2E за 1,1 мин: collaboration, rich text, clipboard, PDF/archive и live roles; функциональный прогон шёл параллельно отдельному TLS-стенду и unit suite |
 | Переносимый архив | Новая БД восстанавливает rich text, LaTeX, точные WebP и порядок именованных фреймов |
 | Полная зашифрованная копия сервиса | Restic 0.19.1, check-data, restore-verify, manifest/hash, PostgreSQL, files, прежний вход и HTTP на чистом Compose: 94,5 с вместе с monitor faults; внешний offsite ещё не настроен |
 | Монитор эксплуатации | Девять наблюдений на изолированных Compose: healthy, реальные остановки/восстановления PDF и БД, квота владельцев, synthetic denied/timeout; cleanup без оставшихся контейнеров/томов/сетей/locks |
@@ -40,7 +44,7 @@
 | Assets ENOSPC | 12,88 с; настоящий полный tmpfs, HTTP 507, rows/orphans=0; после освобождения места HTTP 201, decode/hash/выдача совпали |
 | PostgreSQL ENOSPC | 17,16 с; настоящий SQLSTATE 53100 при расширении relation; новый ACK отсутствует, прежние bytes/revision сохранены; retry и новый WS восстановили все 1001 объект |
 | PDF | Linux sandbox=true, лимит 768 МиБ, 20 страниц: print 384 мс, inspect+print 829 мс; оба независимых extractor проверили русский текст, гарнитуры, code и порядок; PNG просмотрен |
-| Standalone | Один BUILD_ID, три runtime WebSocket URL без пересборки, CSS/woff2 совпадают через HTTP; dotenv в артефакте отсутствует |
+| Standalone | На свежем `0e9a474` BUILD_ID `13sjW9ZaLfdcFQXNTLftN`, три runtime WebSocket URL без пересборки, CSS/woff2 совпадают через HTTP; dotenv в артефакте отсутствует |
 | Границы комнат | Реальные WS/PG регрессии для uppercase UUID, параллельного auth при лимите комнат, ошибок load, TTL и stop |
 | Живые права | editor→viewer отменяет активный текст и начатый drag; viewer→editor снова разрешает изменение без reload; readonly и auth-failure остаются серверными ограничениями |
 | HTTPS/WSS на текущем 221b | 51,168 с, compiled ESM entry, Node CA/SNI HTTP1/H2, два Linux Chromium contexts, Secure/HttpOnly/Lax cookies, HTTP308 без secure cookie, WSS/Saved/reload, private image и PDF preview; 78WSSframes, errors0, свой проект/тома удалены |
@@ -89,6 +93,18 @@ DOM 2851–2852; устойчивого роста не видно. Все кр�
 DOM 2851–2852; этот короткий ряд не заменяет долгий контроль памяти.
 Отчёт `temp/performance/network-upper-candidate221b.json`, новый network SHA-256
 `03bffc05ebb6889d1a418f4f355e615d2e94e71ddafb9926ed304ac289b8a454`.
+
+После добавления history fixture и runtime sampler состав network fingerprint
+изменился; перед следующим сетевым профилем потребуется новая калибровка.
+Исторические raw-отчёты и fingerprint не переписываются.
+
+Отдельная inert duplex-проверка без Rimo сравнила0/50мс задержки в каждом
+направлении на том же transport helper. По2880frames/23040deliveries в каждой
+фазе, потерь/дубликатов0, cadence100%, cleanup10/10. Update peer p95 вырос
+10,342→119,126мс, echo10,261→119,166мс, shaped max160,6мс. Эта проверка
+не подтверждает гипотезу, что proxy сам добавляет ещё200мс в mixed10.
+Отчёт `temp/performance/duplex-network/6685d85b-5ff1-4630-8ac5-0741902a073c.json`;
+скрипт `scripts/performance/duplex-network-probe.mjs`, source `6c5b59c`.
 
 ### Десять активных соединений на native ESM
 
@@ -223,8 +239,60 @@ pending/missing/buffered=0, все 50 соединений живы, p95 300,2 �
 32310 операций, 290655 доставок, `access-unavailable`, pending15/missing0.
 Collaboration около376 МиБ; ошибки ACL достигали прежнего deadline 3 с.
 Отчёт `temp/performance/load-hour-native-31726.json` сохранён. Исправления
-SQL/монотонного распределённого опроса вошли в 221b; полный час после них
-ещё не выполнен. Правила доступа, квоты и deadline не ослаблялись.
+SQL/монотонного распределённого опроса вошли в 221b. Повтор на нём остановился
+через 2716,29 с (45 мин 16 с): 53240 операций, 479007 доставок, cadence1,960Гц,
+missing0/pending17; 14 ACL timeout по3715–3718мс при прежнем deadline3000мс.
+Перед отказом collaboration466,6МиБ/768МиБ, документ каждой комнаты1447218байт;
+OOM/restart не было. Отчёт `temp/performance/load-hour-candidate221b-staggered-acl.json`.
+Успешная очистка отражена пустыми массивами cleanup/closeErrors. Час не принят.
+
+Для короткого воспроизведения добавлен опциональный синтетический профиль:
+два offline writer накапливают GC-историю и возвращают координаты к исходным,
+затем публикуется один проверенный update. Это не бинарный replay часового сбоя.
+На `b71` пять документов1422552–1439850байт с112002–116002structs дали отказ
+receive-limit через93,14с; 1780операций/16020доставок, потерь0. Runtime показал
+heapLimit396МиБ и около17с GC за90с, преимущественно minor; максимальная
+зафиксированная GC-пауза64,7мс, loop max1204,8мс. Эти счётчики не доказывают
+причину старого45-минутного отказа, где такой телеметрии ещё не было.
+Отчёт `temp/performance/load-preaged1447-default396-b71.json`.
+
+Кандидат `b17c6c0` использует стандартный setImmediate между проверяемыми
+обновлениями комнаты и повторно проверяет Connection/роль после ожиданий.
+Регрессии настоящего SDK закрывают также поздний ACL-ответ после close;
+ревью P0–P2 не выявило. Первый pre-aged повтор остановился около 52 с и дополнительно
+обнаружил unhandled error при cleanup CONNECTING WebSocket в проверочном клиенте.
+Исходный отчёт остался `running`, поэтому он не используется как завершённое
+измерение. Пять собственных досок удалены отдельной процедурой с проверкой IDs;
+`load-preaged1447-yield-b17-cleanup.json` содержит пустой cleanupFailures.
+
+После исправления клиента (`22976c5`, три регрессии настоящего ws) повтор
+на том же образе завершился корректным failed-отчётом: receive-limit через
+55,56 с, 1100 операций, cadence 1,980 Гц, missing 0 / pending 51, cleanup/closeErrors
+пустые. GC за рабочий интервал занял около 10 с; loop max 411,6 мс, heap limit
+396 МиБ. Raw: `temp/performance/load-preaged1447-yield-b17-cleanupfix.json`.
+Yield сам по себе не подтвердил требуемую пропускную способность.
+
+Отдельный A/B на том же образе только с `--max-semi-space-size=16` сохранил
+receive-limit: отказ через 65,66 с, 1290 операций, pending 49 / max 55,
+missing 0, cleanup/closeErrors пустые. Наблюдаемая доля GC снизилась с 18,06%
+до 13,18%, heap limit вырос с 396 до 432 МиБ. Исходные синтетические fixtures
+немного различаются по bytes/structs, поэтому численная причинная оценка
+выигрыша не заявляется. В подготовке этого диагностического прогона был фон
+из трёх offline checks общей длительностью менее секунды; Docker/сервис они
+не использовали. Raw: `temp/performance/load-preaged1447-yield-b17-semi16.json`.
+
+Эксперимент semi-space32 также не прошёл: receive-limit через 18,67 с,
+370 операций, missing 0 / pending 44, cleanup/closeErrors пустые.
+Это не монотонная зависимость от настройки; случайные fixtures и неполные
+окна не позволяют ранжировать параметры по времени до отказа.
+Raw: `temp/performance/load-preaged1447-yield-b17-semi32.json`.
+Базовая конфигурация восстановлена: heap limit 396 МиБ, memory cap 768 МиБ,
+тот же image, OOM/restart нет. Во всех этих прогонах лимит контейнера
+оставался 768 МиБ. Это стандартная настройка Node с обменом
+пропускной способности на дополнительную память; рекомендация документации —
+проверять её на собственной нагрузке ([Node 22 CLI](https://nodejs.org/download/release/v22.13.0/docs/api/cli.html#--max-semi-space-sizesize-in-mib)).
+Параметры находятся только в игнорируемых экспериментальных override,
+а не приняты в конфигурацию сервиса. Правила доступа, квоты и deadline не ослаблялись.
 
 V8-профиль показал 70,24% активного CPU в кодировании Yjs; полная сверка
 canonical — 32,80%, encoding проверенной shadow — 33,76%, persistence encoding —
@@ -232,6 +300,59 @@ canonical — 32,80%, encoding проверенной shadow — 33,76%, persist
 Попытка заменить полную сверку delta-обновлением отклонена: in-place изменение
 JSON старого prefix не меняет delta, но меняет полное состояние. Проверки
 сохранности ради скорости не ослаблялись.
+
+Новый CPU-профиль на `b17c6c0` с накопленной историей: 35,18 с sampling,
+27,82 с active; кодирование Yjs 58,18%, V8 GC 21,33% active. В старой сводке
+нативный bundle лишал классификатор исходных имён файлов и давал ложные нули
+для отдельных callers. Пересчёт по точной source map того же образа встроенным
+Node SourceMap сопоставил 171/171 frame: canonical alignment 29,08%,
+validated shadow 25,96%, persistence encoding 3,11%. Доли inclusive пересекаются.
+Raw и прежняя summary не переписаны; новый файл
+`temp/performance/collaboration-b17-preaged.cpuprofile.mapped-summary.json`.
+Inspector закрыт и проверен отдельно. Это диагностика с накладными расходами,
+не подтверждение серверного бюджета.
+
+Host-проверка штатной цепочки V2→V1 остановилась на обязательном сравнении
+полных V1 bytes реальной истории до измеряемых итераций. Эквивалентность
+содержимого не подменяет здесь требование побайтного совпадения; выигрыш
+производительности этого варианта не заявляется. Исходные данные сохранены
+в `temp/performance/encoding-history-host-room1.json`. V2 в рабочий сервис
+не переносится: [официальная Yjs Docs](https://docs.yjs.dev/api/y.doc)
+прямо помечает формат экспериментальным и не рекомендует production.
+
+Отдельный ограниченный host diagnostic внутреннего fullV2-cache с неизменной
+V1-квотой также не даёт оснований к переходу: Windows Node 22.15, 5 warmup и
+20 измерений, median/p95 для пары canonical+shadow 26,18/31,34 мс в текущем V1
+и 34,51/37,94 мс в смешанном варианте. JSON-mutation, pending structs/delete sets,
+неизменность и полные references проверены. Это сравнение одного синтетического
+документа на host, не серверная приёмка и не измерение total allocations.
+Raw: `temp/performance/encoding-cache-host-room1.json`; production не менялся.
+
+На том же `b17c6c0` вариант semi-space64 завершил короткий pre-aged профиль:
+180,00 с, 3540 операций / 31860 доставок, cadence 1,967 Гц, все 50 соединений,
+pending/missing/buffered 0, max pending 32, cleanup/closeErrors пустые.
+Propagation p95 823,1 мс относится к Node providers, а не браузерному бюджету.
+Фактический heap limit 576 МиБ, финальный RSS Node 485,0 МиБ при прежнем
+контейнере 768 МиБ. Raw: `temp/performance/load-preaged1447-yield-b17-semi64.json`.
+Это одна успешная короткая попытка с синтетической историей. Полный час на тех
+же настройках впоследствии завершился receive-limit через 2329,11 с
+(38 мин 49 с): 45730 операций, 411228 подтверждённых доставок, cadence 1,963 Гц,
+missing 0, pending 38 / max 45. Неподтверждённая очередь не считается сохранённой.
+Node propagation p95 470,5 мс / max 2936,0 мс; документы около 1317232 байт
+каждый. Финальный heap 340,8 МиБ, Node RSS 591,2 МиБ, GC max 85,85 мс,
+loop max 396,6 мс. Очистка и closeErrors пустые. Raw:
+`temp/performance/load-hour-b17-semi64.json`. Час не принят, настройка не
+перенесена в постоянную конфигурацию.
+
+После паузы выполнения собственный host PostgreSQL оказался остановлен,
+а прежний порт 55432 уже обслуживал другой проект. Его данные, настройки и
+контейнер не менялись. Свой `temp/postgres` проверен через pg_ctl и запущен
+на свободном loopback 55439; SQL подтвердил точный data_directory и rimo_dev.
+Игнорируемый локальный env получил явный isolated test DSN. Повторный полный
+набор с подготовленным receive guard: 703 passed, 16 skipped, 100 test files,
+62,42 с; scoped 7/7, lint/type прошли. Эти тесты не доказывают полноту общего
+лимита: независимый reviewer нашёл обход через очередь SDK до `connected`;
+его исправление и реальные WS-регрессии ещё выполняются.
 
 Подробная методика: [performance.md](../docs/performance.md).
 
