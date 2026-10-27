@@ -5,6 +5,7 @@ import { parseArgs } from "node:util";
 
 import { api, createBoard, dockerEnvironment, environment, fail, installLoadInterruptHandlers, openProvider, ownerContext, positiveInteger, removeBoards, safeError, viewerContext, waitFor, writeFinalReport, writeReport, Y } from "./performance/common.mjs";
 import { imageAsset, seedScene } from "./performance/fixture.mjs";
+import { MAX_HISTORY_TARGET, prepareHistoryFixture } from "./performance/history-fixture.mjs";
 import { runLoad } from "./performance/load-runner.mjs";
 
 const { values } = parseArgs({ options: {
@@ -20,11 +21,11 @@ const { values } = parseArgs({ options: {
   "batch-size": { type: "string", default: "500" }, "batch-every-seconds": { type: "string", default: "30" },
   "sample-seconds": { type: "string", default: "10" }, "compose-project": { type: "string" },
   "network-label": { type: "string", default: "loopback; no artificial RTT applied" },
-  "start-signal": { type: "string" },
+  "start-signal": { type: "string" }, "history-bytes": { type: "string" },
 } });
 
 if (values.help) {
-  process.stdout.write("node --import=tsx scripts/load-collaboration.mjs [--base-url URL] [--storage-state FILE] [--viewer-storage-state FILE] [--seconds 30] [--rooms 1] [--connections 10] [--editors 2] [--objects 3000] [--compose-project NAME] [--output FILE] [--label LABEL]\nFor >300 seconds set RIMO_RUN_LONG_LOAD=1 explicitly. Plan A: --seconds 3600 --rooms 5 --connections 50 --editors 10.\n");
+  process.stdout.write("node --import=tsx scripts/load-collaboration.mjs [--base-url URL] [--storage-state FILE] [--viewer-storage-state FILE] [--seconds 30] [--rooms 1] [--connections 10] [--editors 2] [--objects 3000] [--compose-project NAME] [--output FILE] [--label LABEL] [--history-bytes BYTES]\nFor >300 seconds set RIMO_RUN_LONG_LOAD=1 explicitly. Plan A: --seconds 3600 --rooms 5 --connections 50 --editors 10.\n");
 } else {
   await main().catch((error) => { process.stderr.write(`${safeError(error)}\n`); process.exitCode = 1; });
 }
@@ -40,6 +41,7 @@ async function main() {
     batchEverySeconds: positiveInteger(values["batch-every-seconds"], "batch-every-seconds", 3_600),
     sampleSeconds: positiveInteger(values["sample-seconds"], "sample-seconds", 60), composeProject: values["compose-project"],
   };
+  if (values["history-bytes"] !== undefined) options.historyBytes = positiveInteger(values["history-bytes"], "history-bytes", MAX_HISTORY_TARGET);
   if (options.seconds > 300 && process.env.RIMO_RUN_LONG_LOAD !== "1") throw fail("Long load runs require explicit RIMO_RUN_LONG_LOAD=1");
   const startSignal = values["start-signal"] ? path.resolve(values["start-signal"]) : null;
   if (startSignal && (!startSignal.startsWith(path.resolve("temp/performance") + path.sep) || existsSync(startSignal))) {
@@ -80,13 +82,17 @@ async function main() {
       report.createdBoards = boards;
       await writeReport(values.output, report);
       const seeder = await openProvider(owner, values["base-url"], boardId, controller.signal);
+      const prepared = options.historyBytes ? new Y.Doc({ gc: true }) : seeder.document;
       try {
-        const scene = seedScene(seeder.document, options.objects, await imageAsset(owner, boardId));
+        if (options.historyBytes) Y.applyUpdate(prepared, Y.encodeStateAsUpdate(seeder.document));
+        const scene = seedScene(prepared, options.objects, await imageAsset(owner, boardId));
+        const history = options.historyBytes ? await prepareHistoryFixture(prepared, options.historyBytes, { signal: controller.signal }) : undefined;
+        if (options.historyBytes) Y.applyUpdate(seeder.document, Y.encodeStateAsUpdate(prepared));
         await waitFor(() => seeder.isPersisted());
         report.fixture.push({ boardId, objects: scene.objects, visibleObjects: scene.visibleObjects, distribution: scene.distribution,
           visibleDistribution: scene.visibleDistribution, uniqueImages: scene.uniqueImages,
-          documentBytes: Y.encodeStateAsUpdate(seeder.document).byteLength });
-      } finally { await seeder.close(); }
+          documentBytes: Y.encodeStateAsUpdate(seeder.document).byteLength, ...(history ? { history } : {}) });
+      } finally { if (options.historyBytes) prepared.destroy(); await seeder.close(); }
       if (viewer) {
         const invitation = await api(owner, "POST", `/api/boards/${boardId}/invites`, { role: "viewer", expiresInHours: 24 });
         await api(viewer.context, "POST", "/api/invites/accept", { token: invitation.token, name: "Нагрузочный зритель" });
