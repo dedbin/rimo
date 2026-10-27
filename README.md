@@ -76,7 +76,7 @@ npm run dev
 Во втором терминале:
 
 ```bash
-npm run collaboration
+npm run collaboration:dev
 ```
 
 Интерфейс доступен на [localhost:3000](http://localhost:3000), WebSocket — на порту 1234. `.env.local` читается локальными командами; контейнеры получают переменные через Compose. Значения окружения и данные из `data/` и `temp/` не коммитятся.

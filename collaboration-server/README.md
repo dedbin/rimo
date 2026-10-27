@@ -1,6 +1,11 @@
 # Сервер совместной работы
 
-Отдельный долгоживущий процесс Hocuspocus. Node.js 22+, PostgreSQL и миграции проекта обязательны. Запуск: `npm run collaboration`. Переменные окружения читаются из `.env.local` при локальном запуске; контейнер передаёт их при старте.
+Отдельный долгоживущий процесс Hocuspocus. Node.js 22+, PostgreSQL и миграции проекта обязательны. После `npm run build` запуск: `npm run collaboration`. Переменные окружения читаются из `.env.local` при локальном запуске; контейнер передаёт их при старте.
+
+`scripts/build-collaboration.mjs` входит в postbuild и собирает собственные TypeScript-модули в `dist/collaboration/index.mjs` с отдельной source map. Зависимости остаются внешними: native Node загружает их ESM exports и один Yjs, без runtime-трансляции через tsx. В Docker и managed Playwright запускается тот же compiled entry. Модель, полная валидация, ACL и протокол сохранения общие с исходниками; сборка не заменяет их ускоренным вариантом. Каталог `dist` не хранится в Git. Для разработки с прямым исполнением TypeScript остаётся `npm run collaboration:dev`.
+
+Команды production запускают Node с `--enable-source-maps`: ошибки compiled
+entry указывают исходный TypeScript через отдельную связанную source map.
 
 ## Размещение и доступ
 
@@ -42,3 +47,12 @@ node --env-file=.env.local node_modules/vitest/vitest.mjs run collaboration-serv
 ```
 
 Для PostgreSQL проверок нужен `DATABASE_URL`; без него эти отдельные тесты пропускаются. Проверки создают и удаляют только собственные схемы `rimo_ws_test_*`. Аварийная проверка запускает отдельный процесс, ждёт DB ACK, завершает его через `SIGKILL` и проверяет восстановление другим процессом. Остальные проверки используют настоящие WebSocket подключения и контролируемые хранилище/ACL для воспроизводимых отказов.
+
+Compiled runtime проверяется отдельно:
+
+```sh
+node node_modules/vitest/vitest.mjs run __tests__/compiled-collaboration.test.ts
+node --env-file-if-exists=.env.local scripts/test-integration.mjs __tests__/compiled-collaboration.integration.test.ts
+```
+
+Первая команда собирает native smoke и проверяет идентичность Yjs/Hocuspocus/codec без сети. Вторая через `test-integration.mjs` выбирает БД из `RIMO_TEST_DATABASE_URL`, затем `DATABASE_URL` и запускает настоящий compiled index в отдельном процессе со своей схемой `rimo_compiled_test_*` и временным loopback-портом. Она проверяет реальные Better Auth cookies, persisted ACK против PostgreSQL, отказ некорректного XML, отзыв приглашения и сохранность принятого, но ещё не подтверждённого изменения после graceful restart. Рабочий Compose для этого не перезапускается.

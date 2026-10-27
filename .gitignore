@@ -29,6 +29,7 @@ public/uploads
 
 # production
 /build
+/dist/
 
 # misc
 .DS_Store

@@ -44,7 +44,7 @@ export default defineConfig({
   },
   webServer: external ? undefined : [
     { command: process.env.RIMO_E2E_APP_COMMAND ?? "npm start", url: `${baseURL}/api/health`, timeout: 120_000, reuseExistingServer: !process.env.CI, env: localEnvironment },
-    { command: "node --env-file-if-exists=.env.local --import=tsx collaboration-server/index.ts", url: "http://localhost:1234/healthz", timeout: 30_000, reuseExistingServer: !process.env.CI, env: localEnvironment },
+    { command: "node --enable-source-maps --env-file-if-exists=.env.local dist/collaboration/index.mjs", url: "http://localhost:1234/healthz", timeout: 30_000, reuseExistingServer: !process.env.CI, env: localEnvironment },
     { command: "node --env-file-if-exists=.env.local e2e/start-worker.mjs", url: "http://localhost:3100/healthz", timeout: 30_000, reuseExistingServer: !process.env.CI },
   ],
 });

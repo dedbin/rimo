@@ -101,7 +101,7 @@ services:
   collaboration:
     logging: *service-logging
     image: rimo:${RIMO_TAG:-local}
-    command: ["node", "--import=tsx", "collaboration-server/index.ts"]
+    command: ["node", "--enable-source-maps", "dist/collaboration/index.mjs"]
     environment:
       <<: *service-environment
       COLLABORATION_HOST: 0.0.0.0
