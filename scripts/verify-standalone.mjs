@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { access, readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { createServer } from "node:net";
 import path from "node:path";
 
@@ -36,7 +36,7 @@ async function stop(child, closed) {
   try { await closed; } finally { clearTimeout(timer); }
 }
 
-async function verifyEndpoint(endpoint, email, password, buildId) {
+async function verifyEndpoint(endpoint, email, password, buildId, resources) {
   const port = await freePort();
   const origin = `http://127.0.0.1:${port}`;
   const environment = { ...process.env, PORT: String(port), HOSTNAME: "127.0.0.1", BETTER_AUTH_URL: origin };
@@ -51,6 +51,11 @@ async function verifyEndpoint(endpoint, email, password, buildId) {
   let cookie;
   try {
     await waitUntilReady(origin, child);
+    for (const resource of resources) {
+      const response = await fetch(`${origin}${resource.route}`, { signal: AbortSignal.timeout(5_000) });
+      assert.equal(response.status, 200, "Standalone static resource was not served");
+      assert.ok(resource.bytes.equals(Buffer.from(await response.arrayBuffer())), "Standalone static resource changed in transit");
+    }
     const login = await fetch(`${origin}/api/auth/sign-in/email`, {
       method: "POST", headers: { origin, "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }), signal: AbortSignal.timeout(10_000),
@@ -58,6 +63,7 @@ async function verifyEndpoint(endpoint, email, password, buildId) {
     assert.equal(login.status, 200, "Standalone owner sign-in failed");
     cookie = login.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");
     assert.ok(cookie, "Standalone sign-in did not set a session");
+    await login.body?.cancel();
     const created = await fetch(`${origin}/api/boards`, {
       method: "POST", headers: { cookie, origin, "Content-Type": "application/json" },
       body: JSON.stringify({ title: "Standalone runtime fixture" }), signal: AbortSignal.timeout(5_000),
@@ -69,7 +75,7 @@ async function verifyEndpoint(endpoint, email, password, buildId) {
       headers: { cookie }, signal: AbortSignal.timeout(5_000),
     });
     assert.equal(response.status, 200, "Standalone board session failed");
-    assert.ok((await response.json()).connection.url === endpoint.value, "Compiled application ignored its runtime endpoint");
+    assert.ok((await response.json()).connection.url === endpoint.value, `Compiled application ignored runtime ${endpoint.key}`);
     assert.equal((await readFile(path.join(directory, ".next/BUILD_ID"), "utf8")).trim(), buildId);
   } finally {
     try {
@@ -78,6 +84,7 @@ async function verifyEndpoint(endpoint, email, password, buildId) {
           method: "DELETE", headers: { cookie, origin }, signal: AbortSignal.timeout(5_000),
         });
         assert.ok(deleted.ok, "Standalone fixture cleanup failed");
+        await deleted.body?.cancel();
       }
     } finally { await stop(child, closed); }
   }
@@ -87,15 +94,17 @@ async function main() {
   const email = process.env.RIMO_E2E_EMAIL;
   const password = process.env.RIMO_E2E_PASSWORD;
   assert.ok(email && password, "Set RIMO_E2E_EMAIL and RIMO_E2E_PASSWORD for a dedicated test owner");
-  const resources = [
-    "@fontsource/noto-sans/files/noto-sans-cyrillic-400-normal.woff2",
-    "@fontsource/noto-serif/files/noto-serif-cyrillic-700-italic.woff2",
-    "@fontsource/noto-sans-mono/files/noto-sans-mono-latin-400-normal.woff2",
-    "katex/dist/katex.min.css", "katex/dist/fonts/KaTeX_Main-Regular.woff2",
-  ];
-  await Promise.all(resources.map((file) => access(path.join(directory, "node_modules", file))));
+  assert.ok(!(await readdir(directory)).some((file) => /^\.env(?:\.|$)/.test(file)), "Standalone must not bundle dotenv configuration");
+  const staticDirectory = path.join(directory, ".next/static");
+  const staticFiles = await readdir(staticDirectory, { recursive: true });
+  const resources = await Promise.all([".css", ".woff2"].map(async (extension) => {
+    const file = staticFiles.find((entry) => entry.endsWith(extension));
+    assert.ok(file, `Standalone is missing ${extension} resources`);
+    return { route: `/_next/static/${file.split(path.sep).map(encodeURIComponent).join("/")}`,
+      bytes: await readFile(path.join(staticDirectory, file)) };
+  }));
   const buildId = (await readFile(path.join(directory, ".next/BUILD_ID"), "utf8")).trim();
-  for (const endpoint of endpoints) await verifyEndpoint(endpoint, email, password, buildId);
+  for (const endpoint of endpoints) await verifyEndpoint(endpoint, email, password, buildId, resources);
   process.stdout.write(`${JSON.stringify({ result: "passed", buildId, resourceChecks: resources.length,
     runtimeEndpoints: endpoints.length, rebuildsBetweenEndpoints: 0 })}\n`);
 }

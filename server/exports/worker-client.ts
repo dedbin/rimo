@@ -1,9 +1,15 @@
-import { MAX_PDF_BYTES, MAX_PDF_JOB_BYTES, PdfJobError } from "../../export-worker/contract";
+import { MAX_PDF_BYTES, MAX_PDF_HTML_BYTES, MAX_PDF_JOB_BYTES, PdfJobError } from "../../export-worker/contract";
 import type { PdfJob, PdfWarning } from "../../export-worker/contract";
 import { HttpError } from "../http-error";
 import { pdfSnapshotStore } from "./store";
 
+type WorkerEndpoint = "inspect" | "render" | "preview";
+
 async function boundedBody(response: Response, maximum: number): Promise<Buffer> {
+  if (Number(response.headers.get("content-length")) > maximum) {
+    await response.body?.cancel();
+    throw new HttpError(413, "PDF_TOO_LARGE", "Ответ PDF превышает допустимый размер.");
+  }
   const reader = response.body?.getReader();
   if (!reader) throw new HttpError(502, "PDF_WORKER_INVALID", "Worker вернул пустой ответ.");
   const chunks: Buffer[] = [];
@@ -23,8 +29,8 @@ async function boundedBody(response: Response, maximum: number): Promise<Buffer>
   } finally { reader.releaseLock(); }
 }
 
-async function dispatchWorkerRequest(endpoint: "inspect" | "render", job: PdfJob, signal: AbortSignal): Promise<Buffer> {
-  signal.throwIfAborted();
+async function dispatchWorkerRequest(endpoint: WorkerEndpoint, job: PdfJob, signal: AbortSignal, page?: number): Promise<Buffer> {
+  if (signal.aborted) throw new HttpError(499, "PDF_CANCELLED", "Экспорт отменён.");
   const token = process.env.PDF_WORKER_TOKEN;
   if (!token || token.length < 32) throw new HttpError(503, "PDF_NOT_CONFIGURED", "PDF пока не настроен на сервере.");
   const url = new URL(process.env.PDF_WORKER_URL ?? "http://127.0.0.1:3100");
@@ -32,12 +38,18 @@ async function dispatchWorkerRequest(endpoint: "inspect" | "render", job: PdfJob
     throw new Error("PDF_WORKER_URL must be an HTTP(S) origin");
   }
   url.pathname = `/${endpoint}`;
+  if (endpoint === "preview") url.searchParams.set("page", String(page));
   const body = JSON.stringify(job);
   if (Buffer.byteLength(body) > MAX_PDF_JOB_BYTES) throw new PdfJobError(413, "PDF_SNAPSHOT_TOO_LARGE", "Снимок PDF слишком большой. Уменьшите область экспорта.");
   try {
     const response = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body,
       signal: AbortSignal.any([signal, AbortSignal.timeout(35_000)]), cache: "no-store", redirect: "error" });
-    const bytes = await boundedBody(response, response.ok && endpoint === "render" ? MAX_PDF_BYTES : 32_768);
+    if (response.ok && endpoint === "preview" && response.headers.get("content-type") !== "text/html; charset=utf-8") {
+      await response.body?.cancel();
+      throw new HttpError(502, "PDF_WORKER_INVALID", "Worker вернул некорректный предпросмотр.");
+    }
+    const maximum = !response.ok || endpoint === "inspect" ? 32_768 : endpoint === "preview" ? MAX_PDF_HTML_BYTES : MAX_PDF_BYTES;
+    const bytes = await boundedBody(response, maximum);
     if (!response.ok) {
       let message = "Не удалось сформировать PDF.";
       let code = "PDF_FAILED";
@@ -59,8 +71,8 @@ async function dispatchWorkerRequest(endpoint: "inspect" | "render", job: PdfJob
   }
 }
 
-async function workerRequest(endpoint: "inspect" | "render", job: PdfJob, signal: AbortSignal): Promise<Buffer> {
-  return pdfSnapshotStore().dispatch(() => dispatchWorkerRequest(endpoint, job, signal));
+async function workerRequest(endpoint: WorkerEndpoint, job: PdfJob, signal: AbortSignal, page?: number): Promise<Buffer> {
+  return pdfSnapshotStore().dispatch(() => dispatchWorkerRequest(endpoint, job, signal, page));
 }
 
 export async function inspectSnapshot(job: PdfJob, signal: AbortSignal): Promise<readonly PdfWarning[]> {
@@ -80,3 +92,7 @@ export async function inspectSnapshot(job: PdfJob, signal: AbortSignal): Promise
 }
 
 export async function printSnapshot(job: PdfJob, signal: AbortSignal): Promise<Buffer> { return workerRequest("render", job, signal); }
+
+export async function previewSnapshot(job: PdfJob, page: number, signal: AbortSignal): Promise<Buffer> {
+  return workerRequest("preview", job, signal, page);
+}

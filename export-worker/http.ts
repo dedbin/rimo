@@ -3,8 +3,10 @@ import { createServer } from "node:http";
 import type { IncomingMessage, Server, ServerResponse } from "node:http";
 
 import { inspectPdf, printPdf } from "./browser";
-import { MAX_PDF_JOB_BYTES, PdfJobError } from "./contract";
+import { MAX_PDF_HTML_BYTES, MAX_PDF_JOB_BYTES, PdfJobError } from "./contract";
 import { PdfQueue } from "./queue";
+import { renderPdfHtml } from "./render";
+import { localPdfResources } from "./resources";
 import { parsePdfJob } from "./validation";
 
 function authorized(request: IncomingMessage, token: string): boolean {
@@ -39,6 +41,31 @@ function errorResponse(response: ServerResponse, error: unknown): void {
   response.end(JSON.stringify({ error: { code: known ? error.code : "PDF_FAILED", message: known ? error.message : "Не удалось сформировать PDF." } }));
 }
 
+async function sendPreview(response: ServerResponse, bytes: Buffer, signal: AbortSignal): Promise<void> {
+  signal.throwIfAborted();
+  await new Promise<void>((resolve, reject) => {
+    const dispose = (): void => {
+      signal.removeEventListener("abort", abort);
+      response.off("finish", finish);
+      response.off("close", close);
+      response.off("error", fail);
+    };
+    const finish = (): void => { dispose(); resolve(); };
+    const fail = (error: unknown): void => { dispose(); response.destroy(); reject(error); };
+    const abort = (): void => fail(signal.reason);
+    const close = (): void => {
+      if (response.writableFinished) finish();
+      else fail(new PdfJobError(499, "PDF_CANCELLED", "Экспорт отменён."));
+    };
+    signal.addEventListener("abort", abort, { once: true });
+    response.once("finish", finish);
+    response.once("close", close);
+    response.once("error", fail);
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Content-Length": bytes.byteLength });
+    response.end(bytes);
+  });
+}
+
 export function createPdfWorker(token: string): Server {
   if (token.length < 32) throw new Error("PDF_WORKER_TOKEN must contain at least 32 characters");
   const queue = new PdfQueue();
@@ -51,15 +78,26 @@ export function createPdfWorker(token: string): Server {
       return;
     }
     if (!authorized(request, token)) { response.writeHead(401); response.end(); return; }
-    if (request.method !== "POST" || !["/inspect", "/render"].includes(request.url ?? "")) { response.writeHead(404); response.end(); return; }
+    const preview = /^\/preview\?page=(0|[1-9]\d?)$/.exec(request.url ?? "");
+    if (request.method !== "POST" || (!preview && !["/inspect", "/render"].includes(request.url ?? ""))) { response.writeHead(404); response.end(); return; }
     if (request.headers["content-type"] !== "application/json") { response.writeHead(415); response.end(); return; }
     const cancelled = new AbortController();
-    const cancel = (): void => { if (!response.writableEnded) cancelled.abort(new PdfJobError(499, "PDF_CANCELLED", "Экспорт отменён.")); };
+    const cancel = (): void => { if (!response.writableFinished) cancelled.abort(new PdfJobError(499, "PDF_CANCELLED", "Экспорт отменён.")); };
     request.once("aborted", cancel);
     response.once("close", cancel);
     void queue.run(async (signal) => {
       const job = parsePdfJob(await readBody(request, signal));
-      if (request.url === "/inspect") {
+      signal.throwIfAborted();
+      if (preview) {
+        const page = Number(preview[1]);
+        if (page >= job.pages.length) throw new PdfJobError(400, "PDF_PAGE_NOT_FOUND", "Страница предпросмотра недоступна.");
+        const resources = await localPdfResources();
+        signal.throwIfAborted();
+        const html = renderPdfHtml(job, resources, page);
+        const bytes = Buffer.from(html, "utf8");
+        if (bytes.byteLength > MAX_PDF_HTML_BYTES) throw new PdfJobError(413, "PDF_TOO_COMPLEX", "Страница PDF слишком сложная. Уменьшите область экспорта.");
+        await sendPreview(response, bytes, signal);
+      } else if (request.url === "/inspect") {
         const warnings = await inspectPdf(job, signal);
         response.writeHead(200, { "Content-Type": "application/json" });
         response.end(JSON.stringify({ warnings }));

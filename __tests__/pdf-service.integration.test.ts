@@ -1,13 +1,15 @@
 // @vitest-environment node
 import { randomBytes, randomUUID } from "node:crypto";
 import { mkdir, rm, writeFile } from "node:fs/promises";
+import { request as httpRequest } from "node:http";
+import type { ClientRequest } from "node:http";
 import type { AddressInfo } from "node:net";
 import path from "node:path";
 
 import { escapeIdentifier, Pool } from "pg";
 import sharp from "sharp";
 import * as Y from "yjs";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { POST as downloadRoute } from "../app/api/boards/[boardId]/pdf/route";
 import { POST as prepareRoute } from "../app/api/boards/[boardId]/pdf/preview/route";
@@ -51,6 +53,14 @@ function input(minimumRevision = committedRevision, frameId = "lesson"): PdfRequ
   return { minimumRevision, pages: [{ source: { type: "frame", frameId }, format: "A4", orientation: "portrait" }] };
 }
 function cookies(response: Response): string { return response.headers.getSetCookie().map((value) => value.split(";")[0]).join("; "); }
+function holdWorker(): ClientRequest {
+  const connection = httpRequest(`${process.env.PDF_WORKER_URL}/preview?page=0`, { method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } }, (reply) => reply.resume());
+  connection.on("error", () => undefined);
+  connection.write("{");
+  return connection;
+}
+async function workerStatus(): Promise<unknown> { return (await fetch(`${process.env.PDF_WORKER_URL}/healthz`)).json(); }
 
 describe.skipIf(!databaseUrl || process.env.RIMO_PDF_BROWSER_TEST !== "1")("committed board PDF HTTP contract", () => {
   beforeAll(async () => {
@@ -123,6 +133,9 @@ describe.skipIf(!databaseUrl || process.env.RIMO_PDF_BROWSER_TEST !== "1")("comm
     expect(html).not.toContain("Новая правка после предпросмотра");
     expect(html).toContain("data:image/webp;base64,");
     expect(preview.headers.get("content-security-policy")).toContain("sandbox");
+    expect(preview.headers.get("cache-control")).toBe("private, no-store");
+    expect(preview.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(preview.headers.get("x-frame-options")).toBe("SAMEORIGIN");
     const downloaded = await downloadRoute(request(`/api/boards/${boardId}/pdf`, { token: fixed.token, acceptWarnings: true }), context());
     expect(downloaded.status).toBe(200);
     expect(downloaded.headers.get("x-rimo-revision")).toBe(String(committedRevision));
@@ -147,7 +160,15 @@ describe.skipIf(!databaseUrl || process.env.RIMO_PDF_BROWSER_TEST !== "1")("comm
     const prepared = await prepareRoute(request(`/api/boards/${boardId}/pdf/preview`, input(), viewerCookie), context());
     expect(prepared.status).toBe(201);
     const value = await prepared.json() as PdfPreview;
-    await getPool().query("UPDATE board_members SET revoked_at = now() WHERE board_id = $1 AND user_id = $2", [boardId, viewerId]);
+    const blocker = holdWorker();
+    try {
+      await expect.poll(workerStatus).toMatchObject({ running: true, waiting: 0 });
+      const pending = previewRoute(request(`/api/boards/${boardId}/pdf/preview/${value.token}`, undefined, viewerCookie), previewContext(value.token));
+      await expect.poll(workerStatus).toMatchObject({ running: true, waiting: 1 });
+      await getPool().query("UPDATE board_members SET revoked_at = now() WHERE board_id = $1 AND user_id = $2", [boardId, viewerId]);
+      blocker.end("}");
+      expect((await pending).status).toBe(404);
+    } finally { blocker.destroy(); }
     expect((await previewRoute(request(`/api/boards/${boardId}/pdf/preview/${value.token}`, undefined, viewerCookie), previewContext(value.token))).status).toBe(404);
     expect((await downloadRoute(request(`/api/boards/${boardId}/pdf`, { token: value.token, acceptWarnings: true }, viewerCookie), context())).status).toBe(404);
   }, 30_000);
@@ -161,5 +182,45 @@ describe.skipIf(!databaseUrl || process.env.RIMO_PDF_BROWSER_TEST !== "1")("comm
     const removed = await deletePreviewRoute(new Request(`http://localhost:3000/api/boards/${boardId}/pdf/preview/${value.token}`, { method: "DELETE", headers: { origin: "http://localhost:3000", cookie: ownerCookie } }), previewContext(value.token));
     expect(removed.status).toBe(204);
     expect((await previewRoute(request(`/api/boards/${boardId}/pdf/preview/${value.token}`), previewContext(value.token))).status).toBe(404);
+  }, 30_000);
+
+  it("does not deliver HTML if the token expires while its worker request is queued", async () => {
+    const prepared = await prepareRoute(request(`/api/boards/${boardId}/pdf/preview`, input()), context());
+    expect(prepared.status).toBe(201);
+    const value = await prepared.json() as PdfPreview;
+    const blocker = holdWorker();
+    let clock: ReturnType<typeof vi.spyOn> | undefined;
+    try {
+      await expect.poll(workerStatus).toMatchObject({ running: true, waiting: 0 });
+      const pending = previewRoute(request(`/api/boards/${boardId}/pdf/preview/${value.token}`), previewContext(value.token));
+      await expect.poll(workerStatus).toMatchObject({ running: true, waiting: 1 });
+      clock = vi.spyOn(Date, "now").mockReturnValue(Date.parse(value.expiresAt) + 1);
+      blocker.end("}");
+      const expired = await pending;
+      expect(expired.status).toBe(404);
+      expect(await expired.json()).toMatchObject({ error: { code: "PDF_PREVIEW_EXPIRED" } });
+    } finally { clock?.mockRestore(); blocker.destroy(); }
+  }, 30_000);
+
+  it("cancels queued preview work and can deliver the same snapshot on a later request", async () => {
+    const prepared = await prepareRoute(request(`/api/boards/${boardId}/pdf/preview`, input()), context());
+    expect(prepared.status).toBe(201);
+    const value = await prepared.json() as PdfPreview;
+    const blocker = holdWorker();
+    try {
+      await expect.poll(workerStatus).toMatchObject({ running: true, waiting: 0 });
+      const controller = new AbortController();
+      const incoming = new Request(`http://localhost:3000/api/boards/${boardId}/pdf/preview/${value.token}`, { headers: { cookie: ownerCookie }, signal: controller.signal });
+      const pending = previewRoute(incoming, previewContext(value.token));
+      await expect.poll(workerStatus).toMatchObject({ running: true, waiting: 1 });
+      controller.abort();
+      expect((await pending).status).toBe(499);
+      await expect.poll(workerStatus).toMatchObject({ running: true, waiting: 0 });
+      blocker.end("}");
+      await expect.poll(workerStatus).toMatchObject({ running: false, waiting: 0 });
+      const delivered = await previewRoute(request(`/api/boards/${boardId}/pdf/preview/${value.token}`), previewContext(value.token));
+      expect(delivered.status).toBe(200);
+      expect(await delivered.text()).toContain("Новая правка после предпросмотра");
+    } finally { blocker.destroy(); }
   }, 30_000);
 });

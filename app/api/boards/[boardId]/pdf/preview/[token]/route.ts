@@ -10,7 +10,7 @@ export async function GET(request: Request, context: Context): Promise<Response>
   return handlePdfApi(async () => {
     const session = await requireSession(request);
     const { boardId, token } = await context.params;
-    return previewPdfPage(boardId, session.user.id, token, Number(new URL(request.url).searchParams.get("page") ?? 0));
+    return previewPdfPage(boardId, session.user.id, token, Number(new URL(request.url).searchParams.get("page") ?? 0), request.signal);
   });
 }
 

@@ -1,7 +1,5 @@
-import { pageMetrics, PdfJobError } from "../../export-worker/contract";
+import { pageMetrics, PDF_CONTENT_POLICY, PdfJobError } from "../../export-worker/contract";
 import type { PdfPreview } from "../../export-worker/contract";
-import { PDF_CONTENT_POLICY, renderPdfHtml } from "../../export-worker/render";
-import { localPdfResources } from "../../export-worker/resources";
 import { parsePdfRequest } from "../../export-worker/validation";
 import { requireBoardAccess } from "../access";
 import { handleApi, readRequestBuffer } from "../http";
@@ -9,7 +7,7 @@ import { HttpError } from "../http-error";
 import { capturePdfSnapshot } from "./snapshot";
 import { pdfSnapshotStore } from "./store";
 import { pdfWarnings } from "./warnings";
-import { inspectSnapshot, printSnapshot } from "./worker-client";
+import { inspectSnapshot, previewSnapshot, printSnapshot } from "./worker-client";
 
 export function handlePdfApi(operation: () => Promise<Response>): Promise<Response> {
   return handleApi(async () => {
@@ -40,11 +38,15 @@ export async function preparePdfPreview(boardId: string, userId: string, request
   });
 }
 
-export async function previewPdfPage(boardId: string, userId: string, token: string, page: number): Promise<Response> {
+export async function previewPdfPage(boardId: string, userId: string, token: string, page: number, signal: AbortSignal): Promise<Response> {
   await requireBoardAccess(boardId, userId);
   const snapshot = pdfSnapshotStore().get(token, boardId, userId);
   if (!Number.isInteger(page) || page < 0 || page >= snapshot.job.pages.length) throw new HttpError(400, "PDF_PAGE_NOT_FOUND", "Страница предпросмотра недоступна.");
-  return new Response(renderPdfHtml(snapshot.job, await localPdfResources(), page), { headers: {
+  const bytes = await previewSnapshot(snapshot.job, page, signal);
+  await requireBoardAccess(boardId, userId);
+  pdfSnapshotStore().get(token, boardId, userId);
+  if (signal.aborted) throw new HttpError(499, "PDF_CANCELLED", "Экспорт отменён.");
+  return new Response(new Uint8Array(bytes), { headers: {
     "Content-Type": "text/html; charset=utf-8", "Cache-Control": "private, no-store",
     "Content-Security-Policy": `${PDF_CONTENT_POLICY}; sandbox`, "X-Content-Type-Options": "nosniff",
     "Referrer-Policy": "no-referrer", "X-Frame-Options": "SAMEORIGIN",

@@ -4,11 +4,9 @@ import { resolveBoardFont } from "../lib/board/fonts";
 import { getContrastingTextColor, rgbToCss } from "../lib/board/colors";
 import { LayerType } from "../types/board-canvas";
 import type { Layer } from "../types/board-canvas";
-import { MAX_PDF_HTML_BYTES, pageMetrics, PDF_FORMATS, PdfJobError } from "./contract";
+import { MAX_PDF_HTML_BYTES, pageMetrics, PDF_CONTENT_POLICY, PDF_FORMATS, PdfJobError } from "./contract";
 import type { PdfJob, PdfLayer, PdfPage } from "./contract";
 import { escapeHtml, renderPdfRichText } from "./rich-text";
-
-export const PDF_CONTENT_POLICY = "default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; connect-src 'none'; object-src 'none'";
 
 interface Placement { readonly bounds: PdfPage["bounds"]; readonly scale: number }
 function position(layer: Layer, placement: Placement): string {

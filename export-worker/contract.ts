@@ -12,6 +12,7 @@ export const MAX_PDF_RENDER_SOURCE_BYTES = 8 * 1024 * 1024;
 export const MAX_PDF_RENDERED_OBJECTS = 20_000;
 export const MAX_PDF_RENDERED_POINTS = 500_000;
 export const PDF_JOB_TIMEOUT_MS = 30_000;
+export const PDF_CONTENT_POLICY = "default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; connect-src 'none'; object-src 'none'";
 export const PDF_FORMATS = { A4: [210, 297], A3: [297, 420], Letter: [215.9, 279.4] } as const;
 export type PdfFormat = keyof typeof PDF_FORMATS;
 export type PdfOrientation = "portrait" | "landscape";
