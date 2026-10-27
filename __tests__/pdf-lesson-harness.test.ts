@@ -6,7 +6,7 @@ import { promisify } from "node:util";
 
 import { describe, expect, it } from "vitest";
 
-import { acceptanceStatus, clockBounds, criteria, overlapEvidence } from "../scripts/performance/pdf-lesson/criteria.mjs";
+import { acceptanceStatus, criteria, overlapEvidence } from "../scripts/performance/pdf-lesson/criteria.mjs";
 import { reservePdfDirectory } from "../scripts/performance/pdf-lesson/artifacts.mjs";
 import { validateProjectBindings } from "../scripts/performance/service-target.mjs";
 
@@ -24,13 +24,17 @@ function completeReport() {
   const helper = { image: "fixture-image", helperConfigurationSha256: "fixture-hash", perDirectionBitsPerSecond: 50_000_000 };
   const verified = { pages: 20, russian_text_searchable: true, russian_text_copyable: true, page_order_verified: true, independent_pdfminer_exact_phrases: true };
   const memory = { cgroupCurrentBytes: 100_000_000, cgroupLimitBytes: 768 * 1024 * 1024, pid1RssBytes: 50_000_000 };
+  const browserClock = { stable: true, lower: -1, upper: 1, uncertaintyMs: 2 };
   return { requestedExports: 20, snapshot: { revision: 42 }, operations: Array.from({ length: 20 }, (_, index) => ({
     source: index % 2 ? "editor" : "owner", overlap: { fromEpochMs: 1, toEpochMs: 2 }, saved: true, undoRestored: true,
-    browserClockDifferenceMs: 0, peerClockDifferenceMs: 0,
-    pdf: { revision: 42, requestDurationMs: 1_000, verified: { ...verified } },
+    sourceClock: { ...browserClock }, peerClock: { ...browserClock },
+    pdf: { revision: 42, requestDurationMs: 1_000, clock: { ...browserClock }, verified: { ...verified } },
   })), fullPropagation: { count: 20, p95: 150 }, overlapPropagation: { count: 20, p95: 150 }, roundtrip: { count: 20, p50: 110 },
     calibration: { status: "complete", checks: { http: true, ws: true, download: true, upload: true }, helper }, helpers: [{ ...helper }, { ...helper }],
-    probe: { clock: { stable: true, uncertaintyMs: 4 }, samples: [{ ok: true, waiting: 0, atEpochMs: 1_000, monotonicMs: 100 }] }, pageErrors: [],
+    probe: { samples: [
+      { requestId: 1, replyId: 1, sequence: 1, ok: true, running: true, waiting: 0, hostSentAt: 990, hostReceivedAt: 1_000 },
+      { requestId: 2, replyId: 2, sequence: 2, ok: true, running: true, waiting: 0, hostSentAt: 1_015, hostReceivedAt: 1_025 },
+    ] }, pageErrors: [],
     durable: { originalCoordinatesRestored: true, controlContentRestored: true, persisted: true },
     memoryBefore: memory, memoryImmediateAfter: memory, memoryAfterFiveSecondIdle: memory };
 }
@@ -87,7 +91,7 @@ describe("PDF parallel lesson acceptance boundary", () => {
     expect(report.operations).toHaveLength(20);
   });
 
-  it.each(["pages", "revision", "saved", "undo", "p95", "roundtrip", "calibration", "queue", "clock", "memory", "owner-only", "incomplete"])(
+  it.each(["pages", "revision", "saved", "undo", "p95", "roundtrip", "calibration", "queue", "browser-clock", "causal", "memory", "owner-only", "incomplete"])(
     "cannot accept a run missing %s", (missing) => {
       const report = completeReport();
       if (missing === "pages") report.operations[0].pdf.verified.pages = 19;
@@ -98,7 +102,8 @@ describe("PDF parallel lesson acceptance boundary", () => {
       if (missing === "roundtrip") report.roundtrip.p50 = 10;
       if (missing === "calibration") report.calibration.checks.upload = false;
       if (missing === "queue") report.probe.samples[0].waiting = 1;
-      if (missing === "clock") report.probe.clock.stable = false;
+      if (missing === "browser-clock") report.operations[0].sourceClock.stable = false;
+      if (missing === "causal") report.probe.samples[0].replyId = 99;
       if (missing === "memory") report.memoryImmediateAfter.cgroupCurrentBytes = 900 * 1024 * 1024;
       if (missing === "owner-only") report.operations.forEach((entry) => { entry.source = "owner"; });
       if (missing === "incomplete") report.operations.pop();
@@ -126,22 +131,19 @@ describe("PDF parallel lesson acceptance boundary", () => {
     expect(acceptanceStatus(criteria(report), [])).toBe("accepted");
   });
 
-  it("confirms pointerup strictly inside observed occupancy with bounded worker/host clocks", () => {
-    const bounds = clockBounds([{ sentAt: 1_100, receivedAt: 1_104, probeAt: 1_000 }, { sentAt: 1_200, receivedAt: 1_204, probeAt: 1_100 }]);
-    const operation = { pointerUpAt: 1_150, browserClockDifferenceMs: 0, probeStartSequence: 0, probeEndSequence: 2,
-      pdf: { requestStartEpochMs: 1_050, bodyEndEpochMs: 1_250 } };
-    const samples = [{ sequence: 1, atEpochMs: 1_000, ok: true, running: true, waiting: 0 },
-      { sequence: 2, atEpochMs: 1_100, ok: true, running: true, waiting: 0 }];
-    expect(overlapEvidence(operation, samples, bounds)).toMatchObject({ firstSequence: 1, lastSequence: 2, pointerUpAt: 1_150 });
-    expect(overlapEvidence({ ...operation, pointerUpAt: 1_100 }, samples, bounds)).toBeNull();
-    expect(overlapEvidence(operation, samples.slice(0, 1), bounds)).toBeNull();
-    expect(overlapEvidence(operation, samples.map((entry) => ({ ...entry, running: false })), bounds)).toBeNull();
-    expect(overlapEvidence(operation, [{ ...samples[0], running: false }, samples[1]], bounds)).toBeNull();
-    expect(overlapEvidence({ ...operation, browserClockDifferenceMs: 10 }, samples, bounds)).toBeNull();
-    expect(overlapEvidence({ ...operation, pdf: { requestStartEpochMs: 1_050, bodyEndEpochMs: 1_100 } }, samples, bounds)).toBeNull();
-    const drift = clockBounds([{ sentAt: 100, receivedAt: 102, probeAt: 0 }, { sentAt: 200, receivedAt: 202, probeAt: 200 }]);
-    expect(drift.stable).toBe(false);
-    expect(overlapEvidence(operation, samples, drift)).toBeNull();
+  it("confirms pointerup strictly between correlated host receive/send occupancy bounds", () => {
+    const browserClock = { stable: true, lower: -1, upper: 1, uncertaintyMs: 2 };
+    const operation = { pointerUpAt: 1_150, sourceClock: browserClock, probeStartSequence: 0, probeEndSequence: 2,
+      pdf: { requestStartEpochMs: 1_050, bodyEndEpochMs: 1_250, clock: browserClock } };
+    const samples = [{ requestId: 1, replyId: 1, sequence: 1, hostSentAt: 1_100, hostReceivedAt: 1_105, ok: true, running: true, waiting: 0 },
+      { requestId: 2, replyId: 2, sequence: 2, hostSentAt: 1_195, hostReceivedAt: 1_205, ok: true, running: true, waiting: 0 }];
+    expect(overlapEvidence(operation, samples)).toMatchObject({ firstSequence: 1, lastSequence: 2, pointerUpAt: 1_150 });
+    expect(overlapEvidence({ ...operation, pointerUpAt: 1_100 }, samples)).toBeNull();
+    expect(overlapEvidence(operation, samples.slice(0, 1))).toBeNull();
+    expect(overlapEvidence(operation, samples.map((entry) => ({ ...entry, running: false })))).toBeNull();
+    expect(overlapEvidence(operation, [{ ...samples[0], running: false }, samples[1]])).toBeNull();
+    expect(overlapEvidence({ ...operation, sourceClock: { ...browserClock, lower: 10 } }, samples)).toBeNull();
+    expect(overlapEvidence({ ...operation, pdf: { ...operation.pdf, bodyEndEpochMs: 1_100 } }, samples)).toBeNull();
   });
 
   it("validates the declared 3000/500 scene,20 frames and bounded control pages without any service/browser", async () => {

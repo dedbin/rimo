@@ -10,13 +10,15 @@ import { chromium } from "playwright";
 import { api, createBoard, distribution, dockerEnvironment, dockerSample, environment, fail, openProvider, ownerContext, positiveInteger,
   removeBoards, safeError, viewerContext, waitFor, writeReport, Y } from "../common.mjs";
 import { idAt, imageAsset, VIEWPORT } from "../fixture.mjs";
-import { collaborationRoundTrip, imagesReady, instrument, measureMove, waitUntilUsable } from "../network/browser-probe.mjs";
+import { collaborationRoundTrip, imagesReady, instrument, waitUntilUsable } from "../network/browser-probe.mjs";
 import { cleanupStep, NETWORK_CALIBRATION_FILE, NETWORK_GUEST_STATE_FILE, networkSourceHash, startHelper } from "../network/helper.mjs";
 import { createRunLifecycle } from "../network/lifecycle.mjs";
 import { inspectProject } from "../service-target.mjs";
 import { reservePdfDirectory } from "./artifacts.mjs";
-import { acceptanceStatus, clockBounds, criteria, overlapEvidence } from "./criteria.mjs";
+import { acceptanceStatus, criteria, overlapEvidence } from "./criteria.mjs";
+import { hostNow } from "./clock.mjs";
 import { auditLesson, controlImage, prepareSnapshot, seedLesson } from "./fixture.mjs";
+import { prepareMove } from "./input.mjs";
 import { downloadPdf, pdfTools, verifyPdf } from "./pdf.mjs";
 import { startProbe } from "./probe.mjs";
 
@@ -42,8 +44,7 @@ async function sourceHash() {
 }
 
 function refreshMetrics(report) {
-  if (report.probe.echoes?.length) report.probe.clock = clockBounds(report.probe.echoes);
-  for (const operation of report.operations) operation.overlap = report.probe.clock ? overlapEvidence(operation, report.probe.samples, report.probe.clock) : null;
+  for (const operation of report.operations) operation.overlap = overlapEvidence(operation, report.probe.samples ?? []);
   report.fullPropagation = distribution(report.operations.map((entry) => entry.propagationMs).filter(Number.isFinite));
   report.overlapPropagation = distribution(report.operations.filter((entry) => entry.overlap !== null).map((entry) => entry.propagationMs).filter(Number.isFinite));
   report.roundtrip = distribution(report.roundtripMs.map((entry) => entry.value));
@@ -63,15 +64,15 @@ async function main() {
   assert.ok(output.startsWith(`${path.resolve("temp")}${path.sep}`), "PDF lesson artifacts must remain inside temp");
   await mkdir(path.dirname(output), { recursive: true });
   const claim = await open(output, "wx", 0o600); await claim.close();
-  const report = { kind: "pdf-parallel-two-browser-lesson", status: "running", at: new Date().toISOString(), requestedExports,
+  const report = { kind: "pdf-parallel-two-browser-lesson", measurementVersion: 3, status: "running", at: new Date().toISOString(), requestedExports,
     environment: null, service: null, harnessSha256: null,
     networkSourceSha256: networkHash, calibration, helperAttempts: [], helpers: [], browsers: [], createdBoards: [], operations: [],
     roundtripMs: [], pageErrors: [], cleanup: [], probe: {},
     methodology: { stimulus: "declared sequential exports, one public request at a time; same fixed 20-page snapshot; no hidden retry or artificial print delay",
-      input: "one alternating owner/editor 20px move per export; peer persistent style mutation minus source pointerup; one undo after each, both Saved",
+      input: "prepare real alternating owner/editor 20px drag before POST, release on observed running; peer persistent style mutation minus source pointerup; clock-bounded upper delay, raw delta also retained; one undo after each, both Saved",
       pdf: "prepare/inspect before timing via owner API; POST download via real owner Chromium fetch and proxy; Blob download to local file, no PDF bytes in JSON",
-      overlap: "pointerup inside conservative two-observation worker /healthz running interval; read-only 25ms probe inside worker namespace; queue occupancy proxy, not CPU print",
-      clocks: "probe clock-echo host bounds before/after, 1ms resolution allowance; browser performance epoch checked against Date.now with <=5ms tolerance",
+      overlap: "correlated health{id} through persistent docker exec; one request in flight; pointerup after first running hostReceivedAt+2 and before last running hostSentAt-2; contiguous running/waiting0 observations and own browser POST; queue occupancy proxy, not CPU print/job identity",
+      clocks: "host performance.timeOrigin+performance.now brackets every health request; remote clocks diagnostic only, no clock-rate assumption; browser performance epoch echoes constrained to +/-5ms and <=50ms bounds",
       network: "two existing calibrated helpers, 100ms added RTT/50Mbit per browser; both HTTP and WebSocket go through proxy; no CDP emulation",
       memory: "cgroup current/peak/limit and PID1 RSS sampled read-only; probe process adds overhead; before/immediate-after/5s-idle snapshots, no forced worker GC" },
     manualReviewRequired: ["Inspect worker memory series before/after 20 declared jobs; samples and cgroup history do not prove absence of leaks or VPS capacity"] };
@@ -128,8 +129,8 @@ async function main() {
       report.roundtripMs.push({ phase: "before", client, value: await collaborationRoundTrip(pages[client], boardId) });
     }
     probe = await startProbe(report.projectBinding, lifecycle.signal);
-    report.probe = { container: probe.container, intervalMs: 25, samples: probe.samples, memory: probe.memory, echoes: probe.echoes };
-    report.probe.clock = clockBounds(probe.echoes);
+    report.probe = { container: probe.container, intervalMs: 25, method: "causal correlated health roundtrip, runner monotonic epoch only",
+      samples: probe.samples, memory: probe.memory };
     report.memoryBefore = await probe.memoryNow();
     report.dockerBefore = await dockerSample(values["compose-project"]);
     await progress("fixed-snapshot-and-probe-ready");
@@ -138,9 +139,9 @@ async function main() {
       lifecycle.check(); probe.check();
       await probe.waitState(false, Math.max(0, probe.sequence() - 1));
       const source = pages[index % 2]; const peer = pages[1 - index % 2];
-      await source.evaluate(() => { window.__rimoNetwork.pointerUpAt = null; });
+      const prepared = await prepareMove(source, peer, rectangle, 20);
       const operation = { index: index + 1, source: index % 2 === 0 ? "owner" : "editor", probeStartSequence: probe.sequence(),
-        pointerUpAt: null, receivedAt: null, propagationMs: null, saved: false, undoRestored: false, overlap: null, pdf: null };
+        preparedAt: hostNow(), pointerUpAt: null, receivedAt: null, propagationMs: null, saved: false, undoRestored: false, overlap: null, pdf: null };
       report.operations.push(operation);
       const filename = path.join(report.pdfArtifactDirectory, `control-${String(index + 1).padStart(3, "0")}.pdf`);
       const downloading = downloadPdf(pages[0], boardId, snapshot, filename).then((result) => { operation.pdf = result; return result; },
@@ -148,22 +149,18 @@ async function main() {
       pendingDownloads.add(downloading); void downloading.finally(() => pendingDownloads.delete(downloading));
       await waitFor(() => { probe.check(); return operation.pdf !== null || !!operation.pdfError ||
         probe.samples.some((entry) => entry.sequence > operation.probeStartSequence && entry.ok && entry.running); }, 5_000, lifecycle.signal);
-      operation.inputStartEpochMs = Date.now();
-      try { operation.propagationMs = await measureMove(source, peer, rectangle, 20); }
-      finally {
-        const timing = await source.evaluate(() => ({ pointerUpAt: window.__rimoNetwork.pointerUpAt,
-          browserClockDifferenceMs: Date.now() - (performance.timeOrigin + performance.now()) }));
-        operation.pointerUpAt = timing.pointerUpAt; operation.browserClockDifferenceMs = timing.browserClockDifferenceMs;
-        const received = await peer.evaluate(() => ({ at: window.__rimoNetwork.receivedAt,
-          clockDifferenceMs: Date.now() - (performance.timeOrigin + performance.now()) }));
-        operation.receivedAt = received.at; operation.peerClockDifferenceMs = received.clockDifferenceMs;
-      }
+      const trigger = probe.samples.find((entry) => entry.sequence > operation.probeStartSequence && entry.ok && entry.running);
+      operation.releaseTrigger = { hostAt: hostNow(), runningSequence: trigger?.sequence ?? null };
+      try { await prepared.release(); }
+      finally { Object.assign(operation, await prepared.timing()); }
+      if (!Number.isFinite(operation.propagationMs) || operation.propagationMs < 0) throw fail("Invalid monotonic browser input timing");
       await Promise.all(pages.map((page) => page.getByText("Сохранено", { exact: true }).waitFor())); operation.saved = true;
       await source.keyboard.press("Control+z");
       await Promise.all(pages.map((page) => page.waitForFunction(({ x, y }) => [...document.querySelectorAll('svg[aria-label="Холст доски"] rect.drop-shadow-md')]
         .some((item) => { const matrix = new DOMMatrix(item.style.transform); return matrix.e === x && matrix.f === y; }), rectangle)));
       await Promise.all(pages.map((page) => page.getByText("Сохранено", { exact: true }).waitFor())); operation.undoRestored = true;
       if (!await downloading) throw fail("A public PDF export failed");
+      operation.pdf.clock = operation.source === "owner" ? operation.sourceClock : operation.peerClock;
       await probe.waitState(false, probe.sequence());
       operation.probeEndSequence = probe.sequence();
       await progress(`export-and-lesson-${index + 1}`);
@@ -174,7 +171,6 @@ async function main() {
     }
     await new Promise((resolve) => setTimeout(resolve, 5_000));
     lifecycle.check(); report.memoryAfterFiveSecondIdle = await probe.memoryNow();
-    report.probe.clock = await probe.clock();
     report.dockerAfter = await dockerSample(values["compose-project"]);
     report.networkStatistics = await Promise.all(helpers.map((helper) => helper.statistics()));
     await probe.close();

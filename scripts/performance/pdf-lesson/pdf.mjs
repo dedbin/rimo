@@ -23,6 +23,7 @@ export async function downloadPdf(page, boardId, snapshot, filename) {
     const metadata = await page.evaluate(async ({ boardId, token, expectedRevision }) => {
       const now = () => performance.timeOrigin + performance.now();
       const requestStartEpochMs = now();
+      const requestStartWallEpochMs = Date.now();
       const response = await fetch(`/api/boards/${boardId}/pdf`, { method: "POST", cache: "no-store",
         headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, acceptWarnings: true }), signal: AbortSignal.timeout(35_000) });
       const headersEpochMs = now();
@@ -34,11 +35,13 @@ export async function downloadPdf(page, boardId, snapshot, filename) {
       const blob = await response.blob();
       if (blob.size < 5 || blob.size > 32 * 1024 * 1024) throw new Error("Public PDF body size is invalid");
       const bodyEndEpochMs = now();
+      const bodyEndWallEpochMs = Date.now();
       const objectUrl = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = objectUrl; anchor.download = "pdf-lesson-control.pdf";
       document.body.append(anchor); anchor.click(); anchor.remove();
-      return { requestStartEpochMs, headersEpochMs, bodyEndEpochMs, revision: expectedRevision, bytes: blob.size, objectUrl };
+      return { requestStartEpochMs, headersEpochMs, bodyEndEpochMs, requestStartWallEpochMs, bodyEndWallEpochMs,
+        revision: expectedRevision, bytes: blob.size, objectUrl };
     }, { boardId, token: snapshot.token, expectedRevision: snapshot.revision });
     if (metadata.failed) throw fail(`Public PDF response contract failed (HTTP ${metadata.status})`);
     objectUrl = metadata.objectUrl;
@@ -47,6 +50,7 @@ export async function downloadPdf(page, boardId, snapshot, filename) {
     const bytes = await readFile(filename);
     if (bytes.toString("ascii", 0, 5) !== "%PDF-" || bytes.length !== metadata.bytes) throw fail("Downloaded PDF file did not match the browser response");
     return { requestStartEpochMs: metadata.requestStartEpochMs, headersEpochMs: metadata.headersEpochMs, bodyEndEpochMs: metadata.bodyEndEpochMs,
+      requestStartWallEpochMs: metadata.requestStartWallEpochMs, bodyEndWallEpochMs: metadata.bodyEndWallEpochMs,
       revision: metadata.revision, bytes: bytes.length, sha256: createHash("sha256").update(bytes).digest("hex"), file: path.resolve(filename),
       requestDurationMs: metadata.bodyEndEpochMs - metadata.requestStartEpochMs };
   } finally {

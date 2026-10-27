@@ -1,29 +1,28 @@
-/** Conservative occupancy evidence; this does not identify Chromium CPU phases. */
-export function clockBounds(echoes) {
-  const valid = echoes.filter((entry) => [entry.sentAt, entry.receivedAt, entry.probeAt].every(Number.isFinite) && entry.receivedAt >= entry.sentAt);
-  if (!valid.length) throw new Error("No worker probe clock observations");
-  const lower = Math.max(...valid.map((entry) => entry.sentAt - entry.probeAt - 1));
-  const upper = Math.min(...valid.map((entry) => entry.receivedAt - entry.probeAt + 1));
-  return { lower, upper, uncertaintyMs: upper - lower, stable: lower <= upper && upper - lower <= 50, observations: valid.length };
-}
+import { causalObservationsValid } from "./causal.mjs";
+import { browserClockCompatible } from "./clock.mjs";
 
-export function overlapEvidence(operation, samples, bounds) {
-  if (!bounds.stable || !Number.isFinite(operation.pointerUpAt) || !Number.isFinite(operation.browserClockDifferenceMs) ||
-      Math.abs(operation.browserClockDifferenceMs) > 5 || !Number.isSafeInteger(operation.probeStartSequence) ||
+/** Conservative occupancy evidence; this does not identify Chromium CPU phases. */
+export function overlapEvidence(operation, samples) {
+  if (!causalObservationsValid(samples) || !Number.isFinite(operation.pointerUpAt) || !browserClockCompatible(operation.sourceClock) ||
+      !browserClockCompatible(operation.pdf?.clock) || !Number.isSafeInteger(operation.probeStartSequence) ||
       !Number.isSafeInteger(operation.probeEndSequence) || operation.probeEndSequence <= operation.probeStartSequence ||
-      !operation.pdf || operation.pointerUpAt < operation.pdf.requestStartEpochMs ||
-      operation.pointerUpAt > operation.pdf.bodyEndEpochMs) return null;
-  const margin = 2 + Math.abs(operation.browserClockDifferenceMs);
+      ![operation.pdf.requestStartEpochMs, operation.pdf.bodyEndEpochMs].every(Number.isFinite)) return null;
+  const pointerFrom = operation.pointerUpAt + operation.sourceClock.lower;
+  const pointerTo = operation.pointerUpAt + operation.sourceClock.upper;
+  if (pointerFrom < operation.pdf.requestStartEpochMs + operation.pdf.clock.upper ||
+      pointerTo > operation.pdf.bodyEndEpochMs + operation.pdf.clock.lower) return null;
   let start;
   for (const sample of samples) {
     if (sample.sequence <= operation.probeStartSequence || sample.sequence > operation.probeEndSequence) continue;
     if (!sample.ok || !sample.running || sample.waiting !== 0) { start = undefined; continue; }
     start ??= sample;
-    const from = start.atEpochMs + bounds.upper + margin;
-    const to = sample.atEpochMs + bounds.lower - margin;
-    if (from <= operation.pointerUpAt && operation.pointerUpAt <= to) {
+    const from = start.hostReceivedAt + 2;
+    const to = sample.hostSentAt - 2;
+    if (Number.isFinite(from) && Number.isFinite(to) && from <= pointerFrom && pointerTo <= to) {
       return { fromEpochMs: from, toEpochMs: to, firstSequence: start.sequence, lastSequence: sample.sequence,
-        pointerUpAt: operation.pointerUpAt, meaning: "worker queue occupied, not Chromium CPU timing" };
+        firstReplyId: start.replyId, lastRequestId: sample.requestId,
+        pointerUpAt: operation.pointerUpAt, pointerHostBounds: { lower: pointerFrom, upper: pointerTo },
+        meaning: "worker queue occupied, not Chromium CPU timing" };
     }
   }
   return null;
@@ -32,7 +31,6 @@ export function overlapEvidence(operation, samples, bounds) {
 export function criteria(report) {
   const count = report.operations.length;
   const overlap = report.operations.filter((entry) => entry.overlap !== null);
-  const offsets = (report.probe?.samples ?? []).map((entry) => entry.atEpochMs - entry.monotonicMs);
   return {
     declaredExportsCompleted: Number.isSafeInteger(report.requestedExports) && report.requestedExports >= 20 && count === report.requestedExports,
     allExportsHaveTwentyVerifiedPages: count > 0 && report.operations.every((entry) => entry.pdf?.verified?.pages === 20 &&
@@ -50,10 +48,9 @@ export function criteria(report) {
       Object.values(report.calibration.checks).every((entry) => entry === true) && report.helpers.length === 2 &&
       report.helpers.every((entry) => entry.perDirectionBitsPerSecond === 50_000_000 && entry.image === report.calibration.helper?.image &&
         entry.helperConfigurationSha256 === report.calibration.helper?.helperConfigurationSha256),
-    probeClockStable: report.probe?.clock?.stable === true && report.probe.clock.uncertaintyMs <= 50 && offsets.length > 0 &&
-      offsets.every(Number.isFinite) && Math.max(...offsets) - Math.min(...offsets) <= 5,
-    browserEpochClocksCompatible: count > 0 && report.operations.every((entry) => Number.isFinite(entry.browserClockDifferenceMs) &&
-      Math.abs(entry.browserClockDifferenceMs) <= 5 && Number.isFinite(entry.peerClockDifferenceMs) && Math.abs(entry.peerClockDifferenceMs) <= 5),
+    causalProbeObservationsValid: causalObservationsValid(report.probe?.samples),
+    browserMonotonicEpochClocksCompatible: count > 0 && report.operations.every((entry) => browserClockCompatible(entry.sourceClock) &&
+      browserClockCompatible(entry.peerClock) && browserClockCompatible(entry.pdf?.clock)),
     probeHealthyAndQueueUncontended: report.probe?.samples?.length > 0 && report.probe.samples.every((entry) => entry.ok && entry.waiting === 0),
     everyMoveSavedAndUndone: count > 0 && report.operations.every((entry) => entry.saved === true && entry.undoRestored === true),
     finalStateDurable: report.durable?.originalCoordinatesRestored === true && report.durable?.controlContentRestored === true && report.durable?.persisted === true,

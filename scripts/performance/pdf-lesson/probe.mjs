@@ -3,7 +3,8 @@ import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
 
 import { fail, waitFor } from "../common.mjs";
-import { clockBounds } from "./criteria.mjs";
+import { healthRecord } from "./causal.mjs";
+import { hostNow } from "./clock.mjs";
 
 /** Read-only program sent to the existing worker. No environment or credentials. */
 export const PROBE_SOURCE = `
@@ -12,19 +13,19 @@ export const PROBE_SOURCE = `
   const { createInterface } = await import('node:readline');
   const agent = new Agent({ keepAlive:true,maxSockets:1 });
   const output = value => process.stdout.write(JSON.stringify(value)+'\\n');
-  let stopping=false, sequence=0;
+  let stopping=false, activeHealth=false, sequence=0;
   const memory = async id => {
     try {
       const [current, peak, limit, status] = await Promise.all([
         readFile('/sys/fs/cgroup/memory.current','utf8'), readFile('/sys/fs/cgroup/memory.peak','utf8'),
         readFile('/sys/fs/cgroup/memory.max','utf8'), readFile('/proc/1/status','utf8')]);
-      output({kind:'memory',id,atEpochMs:Date.now(),cgroupCurrentBytes:Number(current),cgroupPeakBytes:Number(peak),
+      output({kind:'memory',id,atEpochMs:Date.now(),monotonicMs:performance.now(),cgroupCurrentBytes:Number(current),cgroupPeakBytes:Number(peak),
         cgroupLimitBytes:limit.trim()==='max'?null:Number(limit),pid1RssBytes:Number(/VmRSS:\\s+(\\d+)/.exec(status)?.[1]??0)*1024});
     } catch { output({kind:'memory',id,ok:false}); }
   };
   const health = () => new Promise(resolve => {
     let timer;
-    const finish=value=>{clearTimeout(timer);resolve(value);};
+    const finish=value=>{clearTimeout(timer);resolve({ok:false,running:false,waiting:0,...value});};
     const request = get('http://127.0.0.1:3100/healthz',{agent},response=>{
       let body='';
       response.on('data',chunk=>{body+=chunk;if(body.length>1024)request.destroy();});
@@ -39,24 +40,25 @@ export const PROBE_SOURCE = `
     request.on('error',()=>finish({ok:false}));
   });
   const input=createInterface({input:process.stdin});
+  const stop=()=>{if(stopping)return;stopping=true;clearTimeout(deadline);input.close();process.stdin.destroy();agent.destroy();};
+  const deadline=setTimeout(stop,600000);
   input.on('line',line=>{
+    if(stopping)return;
     try { const command=JSON.parse(line);
-      if(command.kind==='clock') output({kind:'clock',id:command.id,atEpochMs:Date.now()});
-      if(command.kind==='memory') void memory(command.id);
-      if(command.kind==='stop') stopping=true;
-    } catch { stopping=true; }
+      if(command.kind==='stop'){stop();return;}
+      if(!Number.isSafeInteger(command.id)||command.id<=0)throw new Error('Invalid command');
+      if(command.kind==='health'){
+        if(activeHealth||sequence>=30000)throw new Error('Health budget exceeded');
+        activeHealth=true;
+        const startedMonotonicMs=performance.now();
+        void health().then(state=>{if(!stopping)output({kind:'health',id:command.id,sequence:++sequence,
+          atEpochMs:Date.now(),startedMonotonicMs,monotonicMs:performance.now(),...state});}).finally(()=>{activeHealth=false;});
+      }else if(command.kind==='memory')void memory(command.id);
+      else throw new Error('Invalid command kind');
+    } catch { process.exitCode=1;stop(); }
   });
-  input.on('close',()=>{stopping=true;});
-  const deadline=setTimeout(()=>{stopping=true;},600000);
+  input.on('close',stop);
   output({kind:'ready'});
-  let lastMemory=0;
-  while(!stopping&&sequence<30000){
-    const state=await health();
-    output({kind:'health',sequence:++sequence,atEpochMs:Date.now(),monotonicMs:performance.now(),...state});
-    if(Date.now()-lastMemory>=1000){lastMemory=Date.now();await memory();}
-    await new Promise(resolve=>setTimeout(resolve,25));
-  }
-  clearTimeout(deadline);input.close();agent.destroy();
 `;
 
 export async function startProbe(binding, signal) {
@@ -66,56 +68,80 @@ export async function startProbe(binding, signal) {
     { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
   const samples = [];
   const memory = [];
-  const echoes = [];
   const pending = new Map();
   let ready = false;
   let failure;
   let ended = false;
-  let closing;
+  let stopping = false;
+  let closePromise;
+  let polling;
   let nextId = 0;
+  const rejectPending = (error) => { for (const request of pending.values()) request.finish(error); };
+  const recordFailure = () => { failure ??= fail("Worker probe returned an invalid correlated record"); rejectPending(failure); };
   const lines = createInterface({ input: child.stdout });
+  lines.on("error", recordFailure);
+  // Readline removes its input error handler on close; keep the pipe protected during teardown.
+  child.stdout.on("error", recordFailure);
+  child.stderr.on("error", recordFailure);
   lines.on("line", (line) => {
+    if (stopping) return;
     try {
+      const receivedAt = hostNow(); const receivedWallEpochMs = Date.now();
       if (line.length > 4_096) throw fail("Worker probe response exceeded its budget");
       const value = JSON.parse(line);
-      if (value.kind === "ready") ready = true;
-      else if (value.kind === "health") {
+      if (value.kind === "ready" && !ready) { ready = true; return; }
+      const request = pending.get(value.id);
+      if (!request || value.kind !== request.kind) throw fail("Unexpected worker probe reply");
+      if (value.kind === "health") {
         if (samples.length >= 30_000) throw fail("Worker probe sample budget exceeded");
-        samples.push({ sequence: value.sequence, atEpochMs: value.atEpochMs, monotonicMs: value.monotonicMs,
-          ok: value.ok === true && typeof value.running === "boolean" && Number.isInteger(value.waiting) &&
-          value.waiting >= 0 && value.waiting <= 2 && Number.isSafeInteger(value.sequence) && Number.isFinite(value.atEpochMs) && Number.isFinite(value.monotonicMs),
-          running: value.running, waiting: value.waiting, hostReceivedAt: Date.now() });
-      } else if (value.kind === "memory") memory.push({ ...value, hostReceivedAt: Date.now() });
-      const waiter = pending.get(value.id);
-      if (waiter) { pending.delete(value.id); waiter(value); }
-    } catch { failure = fail("Worker probe returned an invalid bounded record"); }
+        samples.push(healthRecord(value, request, samples.at(-1), receivedAt));
+      } else {
+        if (memory.length >= 1_200) throw fail("Worker memory probe budget exceeded");
+        memory.push({ ...value, hostSentAt: request.hostSentAt, hostReceivedAt: receivedAt, hostWallEpochMs: receivedWallEpochMs });
+      }
+      request.finish(null, value);
+    } catch { recordFailure(); }
   });
   child.stderr.resume();
-  child.stdin.on("error", () => { if (!closing) failure = fail("Worker probe control pipe failed"); });
-  child.on("error", () => { failure = fail("Worker probe could not start"); });
-  const exited = new Promise((resolve) => child.once("exit", (code) => { ended = true; if (code) failure = fail("Worker probe exited unsuccessfully"); resolve(); }));
+  child.stdin.on("error", () => { if (!stopping) recordFailure(); });
+  child.on("error", recordFailure);
+  const exited = new Promise((resolve) => child.once("exit", (code) => {
+    ended = true; if (code || !stopping) recordFailure(); resolve();
+  }));
   const check = () => { if (failure) throw failure; };
   const command = async (kind) => {
     check();
-    if (ended) throw fail("Worker probe stopped before the run completed");
+    if (ended || stopping) throw fail("Worker probe stopped before the run completed");
+    if (kind === "health" && [...pending.values()].some((entry) => entry.kind === "health")) throw fail("Only one health request may be in flight");
     const id = ++nextId;
-    let result;
-    pending.set(id, (value) => { result = value; });
-    const sentAt = Date.now();
-    child.stdin.write(`${JSON.stringify({ kind, id })}\n`);
-    try { await waitFor(() => { check(); return result !== undefined; }, 5_000, signal); }
-    finally { pending.delete(id); }
-    return { value: result, sentAt, receivedAt: Date.now() };
+    return new Promise((resolve, reject) => {
+      const finish = (error, value) => {
+        if (!pending.delete(id)) return;
+        clearTimeout(timer); signal?.removeEventListener("abort", aborted);
+        if (error) reject(error); else resolve(value);
+      };
+      const aborted = () => finish(fail("Worker probe control request interrupted"));
+      const timer = setTimeout(() => finish(fail("Worker probe control request timed out")), 5_000);
+      pending.set(id, { kind, id, hostSentAt: hostNow(), hostSentWallEpochMs: Date.now(), finish });
+      signal?.addEventListener("abort", aborted, { once: true });
+      if (signal?.aborted) { aborted(); return; }
+      child.stdin.write(`${JSON.stringify({ kind, id })}\n`, (error) => { if (error) finish(fail("Worker probe control pipe failed")); });
+    });
   };
-  const clock = async () => {
-    for (let index = 0; index < 3; index += 1) {
-      const result = await command("clock");
-      echoes.push({ sentAt: result.sentAt, receivedAt: result.receivedAt, probeAt: result.value.atEpochMs });
+  const poll = async () => {
+    let lastMemory = hostNow();
+    while (!stopping && !ended) {
+      if (samples.length >= 30_000) throw fail("Worker probe sample budget exceeded");
+      await command("health");
+      const recordMemory = hostNow() - lastMemory >= 1_000;
+      if (recordMemory) lastMemory = hostNow();
+      await Promise.all([new Promise((resolve) => setTimeout(resolve, 25)), ...(recordMemory ? [command("memory")] : [])]);
     }
-    return clockBounds(echoes);
   };
-  const close = () => closing ??= (async () => {
+  const close = () => closePromise ??= (async () => {
+    stopping = true; rejectPending(fail("Worker probe stopped"));
     if (!ended) child.stdin.end(`${JSON.stringify({ kind: "stop" })}\n`);
+    await polling;
     await Promise.race([exited, new Promise((resolve) => { const timer = setTimeout(resolve, 3_000); timer.unref(); })]);
     if (!ended) { child.kill(); throw fail("Worker probe stop could not be confirmed; stdin EOF and remote deadline bound its lifetime"); }
     lines.close();
@@ -123,13 +149,14 @@ export async function startProbe(binding, signal) {
   })();
   try {
     await waitFor(() => { check(); return ready; }, 10_000, signal);
-    await clock();
-    return { samples, memory, echoes, clock, close, check, container: identifier,
+    polling = poll().catch(() => { if (!stopping) recordFailure(); });
+    await waitFor(() => { check(); return samples.length > 0; }, 5_000, signal);
+    return { samples, memory, close, check, container: identifier,
       sequence: () => samples.at(-1)?.sequence ?? 0,
       async waitState(running, after = 0) {
         await waitFor(() => { check(); return samples.some((entry) => entry.sequence > after && entry.ok && entry.running === running && entry.waiting === 0); }, 5_000, signal);
       },
-      async memoryNow() { return (await command("memory")).value; },
+      async memoryNow() { return command("memory"); },
     };
   } catch (error) { await close().catch(() => undefined); throw error; }
 }
