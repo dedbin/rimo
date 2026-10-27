@@ -14,6 +14,7 @@ let board: BoardDocument;
 let presence: BoardPresence;
 let svg: SVGSVGElement;
 let runtime: BoardRuntime;
+const stateListeners = new Set<() => void>();
 
 function pointer(x: number, y: number): PointerEvent<SVGSVGElement> {
   return { clientX: x, clientY: y, pressure: 0.5, buttons: 1, button: 0, pointerId: 1,
@@ -30,6 +31,7 @@ function setup() {
 }
 
 beforeEach(() => {
+  stateListeners.clear();
   board = new BoardDocument();
   presence = emptyPresence();
   svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -37,7 +39,9 @@ beforeEach(() => {
   Object.assign(svg, { setPointerCapture: vi.fn(() => { captured = true; }),
     releasePointerCapture: vi.fn(() => { captured = false; }), hasPointerCapture: () => captured,
     getBoundingClientRect: () => ({ left: 0, top: 0 }) });
-  runtime = { board, getSelf: () => ({ presence }), updatePresence: (patch: Partial<BoardPresence>) => {
+  runtime = { board, getSelf: () => ({ presence }), subscribeState: (listener: () => void) => {
+    stateListeners.add(listener); return () => stateListeners.delete(listener);
+  }, updatePresence: (patch: Partial<BoardPresence>) => {
     presence = { ...presence, ...patch };
   } } as unknown as BoardRuntime;
   vi.stubGlobal("requestAnimationFrame", vi.fn(() => 1));
@@ -115,5 +119,25 @@ describe("canvas gesture lifecycle", () => {
     expect(layer).toMatchObject({ type: LayerType.Path, width: 40, height: 50 });
     expect(result.current.canvasState.mode).toBe(BoardCanvasMode.Pencil);
     expect(presence.pencilDraft).toBeNull();
+  });
+
+  it("immediately cancels an active drag on loss of writability and promotion cannot revive it", () => {
+    const [id] = board.insert([createLayer(LayerType.Rectangle, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })]);
+    const { result, unmount } = setup();
+    const updates = vi.fn(); board.doc.on("update", updates);
+    act(() => result.current.onLayerPointerDown(pointer(0, 0), id));
+    act(() => result.current.onPointerMove(pointer(100, 100)));
+    expect(svg.hasPointerCapture(1)).toBe(true);
+    act(() => { board.setWritable(false); stateListeners.forEach((listener) => listener()); });
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.None);
+    expect(result.current.preview.ids).toHaveLength(0);
+    expect(svg.hasPointerCapture(1)).toBe(false);
+    expect(presence).toMatchObject({ drag: null, pencilDraft: null, eraserDraft: null });
+    act(() => { board.setWritable(true); stateListeners.forEach((listener) => listener()); });
+    act(() => result.current.onPointerUp(pointer(100, 100)));
+    expect(board.getLayer(id)).toMatchObject({ x: 0, y: 0 });
+    expect(updates).not.toHaveBeenCalled();
+    unmount();
+    expect(stateListeners.size).toBe(0);
   });
 });

@@ -22,7 +22,15 @@ export function useCanvasClipboard({ color, cancel, setCanvasState }: Options) {
   const pending = useRef(new Set<AbortController>());
   useEffect(() => {
     const operations = pending.current;
-    return () => { operations.forEach((controller) => controller.abort()); operations.clear(); };
+    const abort = () => { operations.forEach((controller) => controller.abort()); operations.clear(); };
+    let writable = runtime.board.canEdit;
+    const unsubscribe = runtime.subscribeState(() => {
+      const next = runtime.board.canEdit;
+      const lost = writable && !next;
+      writable = next;
+      if (lost) abort();
+    });
+    return () => { unsubscribe(); abort(); };
   }, [runtime]);
 
   const runInsertion = useCallback(async (operation: (signal: AbortSignal) => Promise<string[]>, fallback: string) => {

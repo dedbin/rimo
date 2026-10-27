@@ -42,11 +42,14 @@ function delayedResponse() {
 }
 function mountClipboard(target: BoardDocument) {
   const updatePresence = vi.fn();
+  const listeners = new Set<() => void>();
   const runtime = { board: target, session: { board: { id: destination } }, updatePresence,
+    subscribeState: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); },
     getSelf: () => ({ presence: emptyPresence() }),
   } as unknown as BoardRuntime;
   const wrapper = ({ children }: PropsWithChildren) => <BoardRuntimeContext.Provider value={runtime}>{children}</BoardRuntimeContext.Provider>;
-  return { ...renderHook(() => useCanvasClipboard({ color, cancel: () => {}, setCanvasState: () => {} }), { wrapper }), updatePresence };
+  return { ...renderHook(() => useCanvasClipboard({ color, cancel: () => {}, setCanvasState: () => {} }), { wrapper }), updatePresence,
+    notifyState: () => listeners.forEach((listener) => listener()), listeners };
 }
 function pasteFiles(files: File[]) {
   const event = new Event("paste", { bubbles: true, cancelable: true });
@@ -149,6 +152,26 @@ describe("clipboard asset transfer", () => {
     await act(async () => { request.finish(response({ assets: { [SOURCE]: asset() } })); });
     expect(target.getSnapshot().layerIds).toHaveLength(0);
     expect(result.updatePresence).not.toHaveBeenCalled();
+  });
+
+  it("aborts an in-flight paste on demotion and promotion before its late response cannot revive it", async () => {
+    const target = board(); const request = delayedResponse();
+    const hook = mountClipboard(target);
+    const payload = clipboard();
+    const event = new Event("paste", { bubbles: true, cancelable: true });
+    Object.defineProperty(event, "clipboardData", { value: { getData: (type: string) => type === BOARD_CLIPBOARD_MIME
+      ? serializeLayers(payload.layers, payload.richText) : "" } });
+    act(() => fireEvent(window, event));
+    const signal = request.fetchMock.mock.calls[0][1]?.signal;
+    expect(signal?.aborted).toBe(false);
+    act(() => { target.setWritable(false); hook.notifyState(); });
+    expect(signal?.aborted).toBe(true);
+    act(() => { target.setWritable(true); hook.notifyState(); });
+    await act(async () => { request.finish(response({ assets: { [SOURCE]: asset() } })); });
+    expect(target.getSnapshot().layerIds).toHaveLength(0);
+    expect(hook.updatePresence).not.toHaveBeenCalled();
+    hook.unmount();
+    expect(hook.listeners.size).toBe(0);
   });
 });
 

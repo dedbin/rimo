@@ -53,6 +53,11 @@ export function useConnectionState() {
   return useSyncExternalStore(runtime.subscribeState, runtime.getState, runtime.getState);
 }
 
+export function useBoardRole() {
+  const runtime = useBoardRuntime();
+  return useSyncExternalStore(runtime.subscribeState, runtime.getRole, runtime.getRole);
+}
+
 export function useBoardHistory() {
   const { board } = useBoardRuntime();
   const manager = board.undoManager;

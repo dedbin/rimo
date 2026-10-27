@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { requestJson } from "@/lib/api-client";
 import { BoardSummary } from "@/types/service";
-import { useBoardRuntime, useBoardSnapshot, useConnectionState, useSelection } from "@/lib/collaboration/react";
+import { useBoardRole, useBoardRuntime, useBoardSnapshot, useConnectionState, useSelection } from "@/lib/collaboration/react";
 import { Hint } from "@/components/hint";
 import { useRenameModal } from "@/store/use-rename-modal";
 import { BoardCopyLinkAction } from "@/components/copy-link";
@@ -37,6 +37,7 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
   const { t } = useTranslation();
 
   const runtime = useBoardRuntime();
+  const role = useBoardRole();
   const snapshot = useBoardSnapshot();
   const selection = useSelection();
   const connection = useConnectionState();
@@ -80,7 +81,7 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
         <Button
           variant="board"
           className="px-2 text-base font-normal"
-          disabled={runtime.session.role !== "owner"}
+          disabled={role !== "owner"}
           onClick={() => handleOpen(data.id, data.title)}
         >
           {data.title}
@@ -88,10 +89,10 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
       </Hint>
       <TabSeparator />
       <BoardCopyLinkAction boardId={data.id}>
-        {runtime.session.role === "owner" && <BoardArchiveActions boardId={data.id}
+        {role === "owner" && <BoardArchiveActions boardId={data.id}
           revision={connection.revision} disabled={!connection.saved || !connection.connected} />}
       </BoardCopyLinkAction>
-      {runtime.session.role === "owner" && <BoardShareButton boardId={data.id} />}
+      {role === "owner" && <BoardShareButton boardId={data.id} />}
       <BoardExportDialog boardId={data.id} revision={connection.revision}
         saved={connection.saved && connection.connected} canEdit={runtime.board.canEdit}
         selection={selection} snapshot={snapshot}

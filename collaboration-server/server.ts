@@ -3,6 +3,7 @@ import type { Socket } from "node:net";
 import { IncomingMessage, MessageType, Server } from "@hocuspocus/server";
 import * as Y from "yjs";
 
+import type { AccessRoleMessage } from "../lib/collaboration/protocol";
 import { AccessGuard } from "./access-guard";
 import { AwarenessGuard } from "./awareness";
 import { withDeadline } from "./deadline";
@@ -109,6 +110,8 @@ export function createCollaborationServer(
         connection.webSocket.close(1008, "Connection activation failed");
         return;
       }
+      const role: AccessRoleMessage = { type: "access-role", role: connection.context.role };
+      connection.sendStateless(JSON.stringify(role));
       const acknowledgement = persistence.getAcknowledgement(documentName);
       if (acknowledgement) connection.sendStateless(JSON.stringify(acknowledgement));
     },

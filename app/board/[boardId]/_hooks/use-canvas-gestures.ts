@@ -121,6 +121,16 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     setCanvasState({ mode: BoardCanvasMode.None });
   }, [runtime, setCanvasState, svgRef]);
 
+  useEffect(() => {
+    let writable = runtime.board.canEdit;
+    return runtime.subscribeState(() => {
+      const next = runtime.board.canEdit;
+      const lost = writable && !next;
+      writable = next;
+      if (lost) cancel();
+    });
+  }, [runtime, cancel]);
+
   const begin = (event: PointerEvent, ids: string[], mode: BoardCanvasMode, bounds: XYWH | null = null, corner: side | null = null) => {
     if (event.button !== 0 && event.button !== 1) return;
     const svg = svgRef.current;

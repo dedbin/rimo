@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { Connection } from "@hocuspocus/server";
 
+import type { AccessRoleMessage } from "../lib/collaboration/protocol";
 import { withDeadline } from "./deadline";
 import { CollaborationRejection } from "./types";
 import type {
@@ -107,11 +108,16 @@ export class AccessGuard {
       this.reservations.delete(id);
       return;
     }
+    const previousRole = entry.context.role;
     entry.checkedAt = Date.now();
     entry.context = { ...entry.context, role };
     if (entry.connection) {
       entry.connection.context = entry.context;
       entry.connection.readOnly = role === "viewer";
+      if (previousRole !== role) {
+        const snapshot: AccessRoleMessage = { type: "access-role", role };
+        entry.connection.sendStateless(JSON.stringify(snapshot));
+      }
     }
   }
 

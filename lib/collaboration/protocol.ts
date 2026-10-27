@@ -1,16 +1,22 @@
+import type { BoardRole } from "../../types/service";
+
 export interface PersistedMessage {
   type: "persisted";
   revision: number;
   snapshot: string;
   savedAt: string;
 }
-
 export interface PersistenceErrorMessage {
   type: "persistence-error";
   message: string;
 }
 
-export type ServerMessage = PersistedMessage | PersistenceErrorMessage;
+export interface AccessRoleMessage {
+  type: "access-role";
+  role: BoardRole;
+}
+
+export type ServerMessage = PersistedMessage | PersistenceErrorMessage | AccessRoleMessage;
 
 const MAX_MESSAGE_LENGTH = 8 * 1024 * 1024;
 
@@ -21,6 +27,12 @@ export function parseServerMessage(payload: string): ServerMessage | null {
     const value: unknown = JSON.parse(payload);
     if (typeof value !== "object" || value === null) return null;
     if (!("type" in value)) return null;
+
+    if (value.type === "access-role") {
+      return Object.keys(value).length === 2 && "role" in value &&
+        (value.role === "owner" || value.role === "editor" || value.role === "viewer")
+        ? { type: value.type, role: value.role } : null;
+    }
 
     if (value.type === "persistence-error") {
       return "message" in value && typeof value.message === "string"
@@ -51,3 +63,4 @@ export function parseServerMessage(payload: string): ServerMessage | null {
     return null;
   }
 }
+

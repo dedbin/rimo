@@ -1,6 +1,6 @@
 import { HocuspocusProvider } from "@hocuspocus/provider";
 import * as Y from "yjs";
-import { BoardSession } from "@/types/service";
+import { BoardRole, BoardSession } from "@/types/service";
 import { BOARD_SCHEMA_VERSION } from "@/lib/board/model";
 import { BoardDocument } from "./document";
 import { BoardParticipant, BoardPresence, emptyPresence, parseParticipant } from "./presence";
@@ -31,6 +31,7 @@ export class BoardRuntime {
   private others: readonly BoardParticipant[] = [];
   private destroyed = false;
   private accessDenied = false;
+  private effectiveRole: BoardRole | null = null;
 
   constructor(session: BoardSession) {
     this.session = session;
@@ -44,33 +45,31 @@ export class BoardRuntime {
       url: session.connection.url, name: session.board.id,
       token: session.connection.token, document: this.board.doc,
       onStatus: ({ status }) => {
-        if (status !== "connected") this.board.setWritable(false);
+        if (status !== "connected") this.effectiveRole = null;
         this.updateState({ connected: status === "connected", ...(status !== "connected" ? { synced: false } : {}) });
       },
       onSynced: ({ state }) => {
         const schema = this.board.doc.getMap("meta").get("schemaVersion");
         if (state && schema !== BOARD_SCHEMA_VERSION) {
-          this.board.setWritable(false);
-          this.updateState({ error: "Версия документа не поддерживается. Обновите страницу." });
+          this.updateState({ synced: false, error: "Версия документа не поддерживается. Обновите страницу." });
           return;
         }
-        this.board.setWritable(state && session.role !== "viewer" && !this.accessDenied);
         this.updateState({ synced: state });
         if (state) this.provider.sendStateless(JSON.stringify({ type: "persistence-status" }));
       },
       onAuthenticationFailed: () => {
         this.accessDenied = true;
-        this.board.setWritable(false);
+        this.effectiveRole = null;
         this.updateState({ connected: false, synced: false, error: "Доступ к доске прекращён. Откройте действующее приглашение." });
       },
       onClose: ({ event }) => {
-        this.board.setWritable(false);
+        this.effectiveRole = null;
         if (event.code === 1008 || /access revoked|read.only|board removed|permission denied/i.test(event.reason)) this.accessDenied = true;
         this.updateState({ connected: false, synced: false,
           ...(this.accessDenied ? { error: "Доступ к доске прекращён. Обновите страницу или откройте новое приглашение." } : {}) });
       },
       onDisconnect: () => {
-        this.board.setWritable(false);
+        this.effectiveRole = null;
         this.updateState({ connected: false, synced: false });
       },
       onStateless: ({ payload }) => this.handleServerMessage(payload),
@@ -80,6 +79,7 @@ export class BoardRuntime {
   }
 
   getState = (): ConnectionState => this.state;
+  getRole = (): BoardRole | null => this.effectiveRole;
   getSelf = (): BoardParticipant => this.self;
   getOthers = (): readonly BoardParticipant[] => this.others;
   subscribeState = (listener: () => void): (() => void) => {
@@ -120,6 +120,8 @@ export class BoardRuntime {
     const saved = matchesPersistedSnapshot(this.board.doc, this.committedSnapshot);
     this.state = { ...this.state, ...patch, saved,
       pending: saved ? false : patch.pending ?? this.state.pending };
+    this.board.setWritable(this.state.connected && this.state.synced && !this.state.error && !this.accessDenied &&
+      this.effectiveRole !== null && this.effectiveRole !== "viewer");
     for (const listener of this.stateListeners) listener();
   }
 
@@ -130,15 +132,19 @@ export class BoardRuntime {
   private handleServerMessage(payload: string): void {
     const message = parseServerMessage(payload);
     if (!message) return;
+    if (message.type === "access-role") {
+      if (this.accessDenied || !this.state.connected || this.destroyed) return;
+      this.effectiveRole = message.role;
+      this.updateState({});
+      return;
+    }
     if (message.type === "persistence-error") {
-      this.board.setWritable(false);
       this.updateState({ error: message.message });
       return;
     }
     if (message.revision < this.state.revision) return;
     try {
       this.committedSnapshot = decodePersistedSnapshot(message.snapshot);
-      this.board.setWritable(this.state.synced && this.session.role !== "viewer" && !this.accessDenied);
       this.updateState({ revision: message.revision, savedAt: message.savedAt,
         ...(!this.accessDenied ? { error: null } : {}) });
     } catch {
