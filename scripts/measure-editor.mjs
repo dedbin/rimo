@@ -33,8 +33,8 @@ async function main() {
   const trials = positiveInteger(values.trials, "trials", 20);
   const steps = positiveInteger(values.steps, "steps", 2_000);
   const report = { kind: "editor-performance", version: 1, status: "running", targetOrigin: new URL(values["base-url"]).origin, environment: await environment(values.label),
-    sceneVersion: SCENE_VERSION, gestureProtocolVersion: 2, methodology: {
-      reaction: "capture pointermove -> SVG drag transform mutation -> next requestAnimationFrame; DOM/rAF proxy, not compositor input-to-photon",
+    sceneVersion: SCENE_VERSION, gestureProtocolVersion: 2, measurementProtocolVersion: 3, methodology: {
+      reaction: "capture pointermove -> actual SVG preview delta (overlay transform or parent CSS variables) -> next requestAnimationFrame; DOM/rAF proxy, not compositor input-to-photon",
       dragReaction: "earliest pending pointermove after the production 3px screen threshold -> transform -> rAF; raw proxy and startup remain separate",
       gesture: "180 moves by default; first move 4px along the trajectory, total displacement120x40; no synthetic warmup or discarded first-preview sample",
       frames: "requestAnimationFrame intervals during the gesture and two settling frames; nearest-rank p95",
@@ -51,7 +51,7 @@ async function main() {
   const controller = new AbortController();
   const removeInterruptHandlers = installLoadInterruptHandlers(controller);
   controller.signal.addEventListener("abort", () => { void browser?.close().catch(() => {}); }, { once: true });
-  const watchdog = setTimeout(() => { process.exitCode = 1; controller.abort(); }, 120_000);
+  const watchdog = setTimeout(() => { process.exitCode = 1; controller.abort(); }, Math.max(120_000, 30_000 + trials * (steps * 50 + 10_000)));
   watchdog.unref();
   const phase = (name) => { report.phase = name; process.stdout.write(`${JSON.stringify({ event: "editor_progress", phase: name })}\n`); };
   try {
@@ -175,6 +175,8 @@ async function main() {
       const metrics = await page.evaluate(() => window.__rimoPerformance.stop());
       const result = { trial: trial + 1, frameMs: distribution(metrics.frames), reactionProxyMs: distribution(metrics.reactions),
         activeDragReactionProxyMs: distribution(metrics.dragReactions), startup: metrics.startup,
+        contentRetention: { layout: metrics.layout, before: metrics.contentNodesBefore,
+          firstPreview: metrics.firstPreviewRetainedContent, after: metrics.contentNodesRetainedAfter },
         inputEvents: metrics.inputs, observedInputHz: metrics.inputs / (metrics.elapsedMs / 1_000), elapsedMs: metrics.elapsedMs,
         longTasksMs: distribution(metrics.longTasks), eventTimingSupported: metrics.eventTimingSupported,
         nativeEventTiming: metrics.eventTiming, pointerEvents: metrics.pointerEvents,

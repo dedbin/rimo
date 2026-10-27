@@ -61,12 +61,16 @@ export async function waitUntilUsable(page, count) {
   await page.waitForFunction((expected) => {
     const camera = document.querySelector('svg[aria-label="Холст доски"] > g[style*="scale"]');
     if (!camera) return false;
-    // Canvas renders stored layers, then one transform preview, then presence.
-    // Remote transforms belong to the earlier layer wrappers and remain layers.
-    const groups = [...camera.children].filter((item) => item.localName === "g" && item.getAttribute("aria-hidden") !== "true");
-    const preview = groups.at(-1);
-    if (!preview?.hasAttribute("transform")) return false;
-    const layers = groups.slice(0, -1);
+    let layers;
+    if (camera.getAttribute("data-board-layers") === "true") {
+      layers = [...camera.querySelectorAll(":scope > g[data-layer-id]")];
+    } else {
+      // Historical images render stored layers followed by one transform preview.
+      const groups = [...camera.children].filter((item) => item.localName === "g" && item.getAttribute("aria-hidden") !== "true");
+      const preview = groups.at(-1);
+      if (!preview?.hasAttribute("transform")) return false;
+      layers = groups.slice(0, -1);
+    }
     return layers.length === expected && layers.every((group) => group.childElementCount === 1 &&
       ["rect", "ellipse", "path", "foreignObject"].includes(group.firstElementChild.localName));
   }, count);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useBoardHistory, useBoardRuntime, useBoardSnapshot, useConnectionState, useLayer, useOthers, usePencilDraft, useSelection } from "@/lib/collaboration/react";
 import { getBounds, intersectsViewport } from "@/lib/board/geometry";
 import { connectionIdToColor, rgbToCss } from "@/lib/utils";
@@ -13,7 +13,7 @@ import { BoardParticipants } from "./participants";
 import { BoardToolbar } from "./toolbar";
 import { CursorsPresence } from "./cursors-presence";
 import { GridBackground } from "./grid-background";
-import { LayerPreview } from "./layer-preview";
+import { CanvasLayers } from "./canvas-layers";
 import { Path } from "./path";
 import { SelectionBox } from "./selection-box";
 import { SelectionTools } from "./selection-tools";
@@ -78,12 +78,10 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     return transforms;
   }, [others]);
   const movingIds = useMemo(() => new Set(preview.ids), [preview.ids]);
-  const movingLayers = useMemo(() => preview.ids.map((id) => {
-    const stored = snapshot.layers.get(id);
-    if (!stored) return null;
-    return <LayerPreview key={id} id={id} onLayerPointerDown={gestures.onLayerPointerDown}
-      selectionColor={selectionColors[id]} layerOverride={preview.resize ? { ...stored, ...preview.resize } : undefined} />;
-  }), [preview.ids, preview.resize, snapshot, gestures.onLayerPointerDown, selectionColors]);
+  const cameraStyle: CSSProperties & Record<"--rimo-preview-x" | "--rimo-preview-y", string> = {
+    transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`, transformOrigin: "0 0",
+    "--rimo-preview-x": `${preview.delta.x}px`, "--rimo-preview-y": `${preview.delta.y}px`,
+  };
   const selectionBounds = useMemo(() => {
     if (preview.resize) return preview.resize;
     if (!preview.ids.length) return null;
@@ -113,15 +111,10 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
           : canvasState.mode === BoardCanvasMode.Inserting ? "crosshair"
             : canvasState.mode === BoardCanvasMode.Panning ? "grabbing" : "default" }}>
       <GridBackground camera={camera} />
-      <g style={{ transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`, transformOrigin: "0 0" }}>
-        {visibleIds.map((id) => {
-          if (movingIds.has(id) || preview.erased.has(id)) return null;
-          const remote = remoteTransforms.get(id);
-          return <g key={id} transform={remote ? `translate(${remote.x} ${remote.y})` : undefined}>
-            <LayerPreview id={id} onLayerPointerDown={gestures.onLayerPointerDown} selectionColor={selectionColors[id]} />
-          </g>;
-        })}
-        <g transform={`translate(${preview.delta.x} ${preview.delta.y})`}>{movingLayers}</g>
+      <g data-board-layers="true" style={cameraStyle}>
+        <CanvasLayers snapshot={snapshot} visibleIds={visibleIds} movingIds={movingIds} previewIds={preview.ids}
+          erased={preview.erased.size ? preview.erased : null} resize={preview.resize}
+          remoteTransforms={remoteTransforms} selectionColors={selectionColors} onLayerPointerDown={gestures.onLayerPointerDown} />
         <SelectionBox onResizeHandlePointerDown={gestures.onResizeHandlePointerDown} boundsOverride={selectionBounds} />
         {canvasState.mode === BoardCanvasMode.SelectionNet && canvasState.current && <rect
           className="fill-blue-500/5 stroke-blue-500 stroke-1"

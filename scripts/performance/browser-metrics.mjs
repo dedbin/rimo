@@ -9,6 +9,8 @@ export async function installBrowserMetrics(page) {
     let pendingOrdinal = 0;
     let pendingDragInput = null;
     let pointerOrigin = null;
+    let previewDelta;
+    let retainedNodes = [];
     let start = 0;
     let data;
     let frame;
@@ -48,8 +50,16 @@ export async function installBrowserMetrics(page) {
     }
     const observer = new MutationObserver((records) => {
       if (!active || pendingInput === null) return;
-      const overlay = camera.querySelector(":scope > g[transform]");
-      if (!overlay || !records.some((record) => record.target === overlay && record.attributeName === "transform")) return;
+      if (camera.getAttribute("data-board-layers") === "true") {
+        if (!records.some((record) => record.target === camera && record.attributeName === "style")) return;
+        const delta = [camera.style.getPropertyValue("--rimo-preview-x"), camera.style.getPropertyValue("--rimo-preview-y")];
+        if (delta.every((value, index) => value === previewDelta[index])) return;
+        previewDelta = delta;
+      } else {
+        const overlay = camera.querySelector(":scope > g[transform]");
+        if (!overlay || !records.some((record) => record.target === overlay && record.attributeName === "transform")) return;
+      }
+      data.firstPreviewRetainedContent ??= retainedNodes.filter((node) => node.isConnected).length;
       const input = pendingInput;
       const inputOrdinal = pendingOrdinal;
       const dragInput = pendingDragInput;
@@ -72,7 +82,7 @@ export async function installBrowserMetrics(page) {
         }
       });
     });
-    observer.observe(camera, { attributes: true, subtree: true, attributeFilter: ["transform"] });
+    observer.observe(camera, { attributes: true, subtree: true, attributeFilter: ["transform", "style"] });
     const supported = PerformanceObserver.supportedEntryTypes ?? [];
     const entries = (items) => {
       if (!active) return;
@@ -92,16 +102,20 @@ export async function installBrowserMetrics(page) {
     }
     window.__rimoPerformance = {
       start() {
+        retainedNodes = [...camera.querySelectorAll(".katex, img")];
+        previewDelta = [camera.style.getPropertyValue("--rimo-preview-x"), camera.style.getPropertyValue("--rimo-preview-y")];
         data = { frames: [], reactions: [], dragReactions: [], inputs: 0, longTasks: [], eventTiming: [],
           pointerEvents: [], inputTrace: [], reactionTrace: [], firstMoveMs: null, pointerDownMs: null,
-          dragIntentMs: null, firstPreviewMs: null };
+          dragIntentMs: null, firstPreviewMs: null, firstPreviewRetainedContent: null,
+          contentNodesBefore: retainedNodes.length, layout: camera.getAttribute("data-board-layers") === "true" ? "stable-keyed-layers" : "group-overlay" };
         previousFrame = null; pendingInput = null; pendingDragInput = null; pointerOrigin = null;
         start = performance.now(); active = true;
       },
       stop() {
         observers.forEach((entry) => entries(entry.takeRecords()));
         active = false;
-        return { ...data, elapsedMs: performance.now() - start, eventTimingSupported: supported.includes("event"),
+        return { ...data, elapsedMs: performance.now() - start,
+          contentNodesRetainedAfter: retainedNodes.filter((node) => node.isConnected).length, eventTimingSupported: supported.includes("event"),
           startup: { screenThresholdPx: 3,
             firstMoveToThresholdMs: data.dragIntentMs === null || data.firstMoveMs === null ? null : data.dragIntentMs - data.firstMoveMs,
             pointerDownToThresholdMs: data.dragIntentMs === null || data.pointerDownMs === null ? null : data.dragIntentMs - data.pointerDownMs,
@@ -127,6 +141,7 @@ export async function browserEnvironment(page, browser) {
 export async function renderedObjects(page) {
   return page.evaluate(() => {
     const camera = document.querySelector('svg[aria-label="Холст доски"] > g[style*="scale"]');
+    if (camera.getAttribute("data-board-layers") === "true") return camera.querySelectorAll(":scope > g[data-layer-id]").length;
     return [...camera.children].filter((element) => element.tagName.toLowerCase() === "g" && element.childElementCount > 0).length;
   });
 }
