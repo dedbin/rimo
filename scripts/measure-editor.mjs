@@ -33,8 +33,8 @@ async function main() {
   const trials = positiveInteger(values.trials, "trials", 20);
   const steps = positiveInteger(values.steps, "steps", 2_000);
   const report = { kind: "editor-performance", version: 1, status: "running", targetOrigin: new URL(values["base-url"]).origin, environment: await environment(values.label),
-    sceneVersion: SCENE_VERSION, gestureProtocolVersion: 2, measurementProtocolVersion: 3, methodology: {
-      reaction: "capture pointermove -> actual SVG preview delta (overlay transform or parent CSS variables) -> next requestAnimationFrame; DOM/rAF proxy, not compositor input-to-photon",
+    sceneVersion: SCENE_VERSION, gestureProtocolVersion: 2, measurementProtocolVersion: 4, methodology: {
+      reaction: "capture pointermove -> actual SVG preview transform or parent CSS variables -> next requestAnimationFrame; DOM/rAF proxy, not compositor input-to-photon",
       dragReaction: "earliest pending pointermove after the production 3px screen threshold -> transform -> rAF; raw proxy and startup remain separate",
       gesture: "180 moves by default; first move 4px along the trajectory, total displacement120x40; no synthetic warmup or discarded first-preview sample",
       frames: "requestAnimationFrame intervals during the gesture and two settling frames; nearest-rank p95",
@@ -176,7 +176,8 @@ async function main() {
       const result = { trial: trial + 1, frameMs: distribution(metrics.frames), reactionProxyMs: distribution(metrics.reactions),
         activeDragReactionProxyMs: distribution(metrics.dragReactions), startup: metrics.startup,
         contentRetention: { layout: metrics.layout, before: metrics.contentNodesBefore,
-          firstPreview: metrics.firstPreviewRetainedContent, after: metrics.contentNodesRetainedAfter },
+          firstPreview: metrics.firstPreviewRetainedContent, after: metrics.contentNodesRetainedAfter,
+          byKind: { before: metrics.contentNodesByKind, firstPreview: metrics.firstPreviewContentByKind, after: metrics.contentNodesAfterByKind } },
         inputEvents: metrics.inputs, observedInputHz: metrics.inputs / (metrics.elapsedMs / 1_000), elapsedMs: metrics.elapsedMs,
         longTasksMs: distribution(metrics.longTasks), eventTimingSupported: metrics.eventTimingSupported,
         nativeEventTiming: metrics.eventTiming, pointerEvents: metrics.pointerEvents,

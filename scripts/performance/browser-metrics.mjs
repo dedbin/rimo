@@ -3,6 +3,7 @@ export async function installBrowserMetrics(page) {
     const svg = document.querySelector('svg[aria-label="Холст доски"]');
     const camera = svg?.querySelector(':scope > g[style*="scale"]');
     if (!camera) throw new Error("The production SVG camera group was not found");
+    const previewGroup = camera.querySelector(":scope > g[data-preview-group]");
     let active = false;
     let previousFrame = null;
     let pendingInput = null;
@@ -51,15 +52,18 @@ export async function installBrowserMetrics(page) {
     const observer = new MutationObserver((records) => {
       if (!active || pendingInput === null) return;
       if (camera.getAttribute("data-board-layers") === "true") {
-        if (!records.some((record) => record.target === camera && record.attributeName === "style")) return;
+        const transformed = previewGroup && records.some((record) => record.target === previewGroup && record.attributeName === "transform");
+        if (!transformed && !records.some((record) => record.target === camera && record.attributeName === "style")) return;
         const delta = [camera.style.getPropertyValue("--rimo-preview-x"), camera.style.getPropertyValue("--rimo-preview-y")];
-        if (delta.every((value, index) => value === previewDelta[index])) return;
+        if (!transformed && delta.every((value, index) => value === previewDelta[index])) return;
         previewDelta = delta;
       } else {
         const overlay = camera.querySelector(":scope > g[transform]");
         if (!overlay || !records.some((record) => record.target === overlay && record.attributeName === "transform")) return;
       }
       data.firstPreviewRetainedContent ??= retainedNodes.filter((node) => node.isConnected).length;
+      data.firstPreviewContentByKind ??= { math: retainedNodes.filter((node) => node.matches(".katex") && node.isConnected).length,
+        images: retainedNodes.filter((node) => node.localName === "img" && node.isConnected).length };
       const input = pendingInput;
       const inputOrdinal = pendingOrdinal;
       const dragInput = pendingDragInput;
@@ -107,7 +111,10 @@ export async function installBrowserMetrics(page) {
         data = { frames: [], reactions: [], dragReactions: [], inputs: 0, longTasks: [], eventTiming: [],
           pointerEvents: [], inputTrace: [], reactionTrace: [], firstMoveMs: null, pointerDownMs: null,
           dragIntentMs: null, firstPreviewMs: null, firstPreviewRetainedContent: null,
-          contentNodesBefore: retainedNodes.length, layout: camera.getAttribute("data-board-layers") === "true" ? "stable-keyed-layers" : "group-overlay" };
+          contentNodesBefore: retainedNodes.length, firstPreviewContentByKind: null,
+          contentNodesByKind: { math: retainedNodes.filter((node) => node.matches(".katex")).length,
+            images: retainedNodes.filter((node) => node.localName === "img").length },
+          layout: previewGroup ? "stable-shared-group" : camera.getAttribute("data-board-layers") === "true" ? "stable-keyed-layers" : "group-overlay" };
         previousFrame = null; pendingInput = null; pendingDragInput = null; pointerOrigin = null;
         start = performance.now(); active = true;
       },
@@ -116,6 +123,8 @@ export async function installBrowserMetrics(page) {
         active = false;
         return { ...data, elapsedMs: performance.now() - start,
           contentNodesRetainedAfter: retainedNodes.filter((node) => node.isConnected).length, eventTimingSupported: supported.includes("event"),
+          contentNodesAfterByKind: { math: retainedNodes.filter((node) => node.matches(".katex") && node.isConnected).length,
+            images: retainedNodes.filter((node) => node.localName === "img" && node.isConnected).length },
           startup: { screenThresholdPx: 3,
             firstMoveToThresholdMs: data.dragIntentMs === null || data.firstMoveMs === null ? null : data.dragIntentMs - data.firstMoveMs,
             pointerDownToThresholdMs: data.dragIntentMs === null || data.pointerDownMs === null ? null : data.dragIntentMs - data.pointerDownMs,
@@ -141,7 +150,10 @@ export async function browserEnvironment(page, browser) {
 export async function renderedObjects(page) {
   return page.evaluate(() => {
     const camera = document.querySelector('svg[aria-label="Холст доски"] > g[style*="scale"]');
-    if (camera.getAttribute("data-board-layers") === "true") return camera.querySelectorAll(":scope > g[data-layer-id]").length;
+    if (camera.getAttribute("data-board-layers") === "true") {
+      const layers = camera.querySelector(":scope > g[data-preview-group]") ?? camera;
+      return layers.querySelectorAll(":scope > g[data-layer-id]").length;
+    }
     return [...camera.children].filter((element) => element.tagName.toLowerCase() === "g" && element.childElementCount > 0).length;
   });
 }

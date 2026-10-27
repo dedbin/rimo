@@ -78,9 +78,13 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     return transforms;
   }, [others]);
   const movingIds = useMemo(() => new Set(preview.ids), [preview.ids]);
+  // A fully moving rendered set shares one native SVG transform.
+  const sharedTranslation = canvasState.mode === BoardCanvasMode.Translating && preview.ids.length > 0 &&
+    !preview.resize && preview.erased.size === 0 && visibleIds.every((id) => movingIds.has(id));
   const cameraStyle: CSSProperties & Record<"--rimo-preview-x" | "--rimo-preview-y", string> = {
     transform: `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`, transformOrigin: "0 0",
-    "--rimo-preview-x": `${preview.delta.x}px`, "--rimo-preview-y": `${preview.delta.y}px`,
+    "--rimo-preview-x": `${sharedTranslation ? 0 : preview.delta.x}px`,
+    "--rimo-preview-y": `${sharedTranslation ? 0 : preview.delta.y}px`,
   };
   const selectionBounds = useMemo(() => {
     if (preview.resize) return preview.resize;
@@ -112,9 +116,12 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
             : canvasState.mode === BoardCanvasMode.Panning ? "grabbing" : "default" }}>
       <GridBackground camera={camera} />
       <g data-board-layers="true" style={cameraStyle}>
-        <CanvasLayers snapshot={snapshot} visibleIds={visibleIds} movingIds={movingIds} previewIds={preview.ids}
-          erased={preview.erased.size ? preview.erased : null} resize={preview.resize}
-          remoteTransforms={remoteTransforms} selectionColors={selectionColors} onLayerPointerDown={gestures.onLayerPointerDown} />
+        <g data-preview-group="true" data-shared-preview={sharedTranslation ? "true" : undefined}
+          transform={`translate(${sharedTranslation ? preview.delta.x : 0} ${sharedTranslation ? preview.delta.y : 0})`}>
+          <CanvasLayers snapshot={snapshot} visibleIds={visibleIds} movingIds={movingIds} previewIds={preview.ids}
+            erased={preview.erased.size ? preview.erased : null} resize={preview.resize} sharedTranslation={sharedTranslation}
+            remoteTransforms={remoteTransforms} selectionColors={selectionColors} onLayerPointerDown={gestures.onLayerPointerDown} />
+        </g>
         <SelectionBox onResizeHandlePointerDown={gestures.onResizeHandlePointerDown} boundsOverride={selectionBounds} />
         {canvasState.mode === BoardCanvasMode.SelectionNet && canvasState.current && <rect
           className="fill-blue-500/5 stroke-blue-500 stroke-1"

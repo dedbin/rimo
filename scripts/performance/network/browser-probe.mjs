@@ -63,7 +63,8 @@ export async function waitUntilUsable(page, count) {
     if (!camera) return false;
     let layers;
     if (camera.getAttribute("data-board-layers") === "true") {
-      layers = [...camera.querySelectorAll(":scope > g[data-layer-id]")];
+      const container = camera.querySelector(":scope > g[data-preview-group]") ?? camera;
+      layers = [...container.querySelectorAll(":scope > g[data-layer-id]")];
     } else {
       // Historical images render stored layers followed by one transform preview.
       const groups = [...camera.children].filter((item) => item.localName === "g" && item.getAttribute("aria-hidden") !== "true");
