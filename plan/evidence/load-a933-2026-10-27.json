@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "scenario": "hourFiftyConnectionsTenWritersA933",
+  "rawRelativePath": "temp/performance/load-hour-a933-budget1024-old512-semi64.json",
+  "rawSha256": "3aa7eb44ef741a2bbdb8471621931bcfe7c5d58c6b2affb1ccffdd616f631d20",
+  "rawBytes": 2049201,
+  "rawStatus": "failed",
+  "fullHourAccepted": false,
+  "failureKind": "receive-limit",
+  "closeCode": 1000,
+  "harnessCheckoutCommit": "a933227e45d0d6b51b3faeb46ea638c7877dd96d",
+  "harnessSourceSha256": "efb048612be64952692d75e8553ff87e122e0b7d075297c24f7c1c679e6a6150",
+  "runtimeBuildCommitRecordedInRaw": false,
+  "runtimeImages": {
+    "app": "sha256:f0c30b895fc449fbe362ac6daaa91daa0cd74a7e04ac1a45892e1370b0a87faa",
+    "collaboration": "sha256:f0c30b895fc449fbe362ac6daaa91daa0cd74a7e04ac1a45892e1370b0a87faa",
+    "db": "sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc",
+    "export-worker": "sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23",
+    "caddy": "sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489"
+  },
+  "parameters": {
+    "requestedSeconds": 3600,
+    "rooms": 5,
+    "connections": 50,
+    "writers": 10,
+    "objectsPerRoom": 3000,
+    "editHz": 2,
+    "presenceHz": 10,
+    "batchSize": 500,
+    "batchEverySeconds": 30,
+    "sampleSeconds": 10,
+    "uniqueUsers": 2
+  },
+  "runtimeBudget": {
+    "containerMemoryCapsBytes": {
+      "app": 805306368,
+      "collaboration": 1073741824,
+      "db": 805306368,
+      "export-worker": 805306368,
+      "caddy": 134217728
+    },
+    "aggregateContainerMemoryCapsBytes": 3623878656.0,
+    "collaborationNanoCpus": 0,
+    "collaborationCpuQuota": 0,
+    "collaborationCpuPeriod": 0,
+    "realVpsAcceptance": false
+  },
+  "criteria": {
+    "editCadenceAtLeast95Percent": true,
+    "fullRequestedHourCompleted": false,
+    "noPendingDeliveriesAtEnd": false,
+    "noMissingDeliveries": true
+  },
+  "result": {
+    "steadyDurationSeconds": 3092.1460926,
+    "sentChanges": 60620,
+    "causallyObservedDeliveries": 545199,
+    "actualEditsPerWriterHz": 1.9604507091393046,
+    "propagationP50Ms": 282.853375,
+    "propagationP95Ms": 566.231039,
+    "propagationMaximumMs": 3365.928959,
+    "pendingAtEnd": 43,
+    "highestPendingChanges": 50,
+    "missingDeliveries": 0,
+    "highestClientBufferedBytes": 0
+  },
+  "runtimeAfterLoad": {
+    "available": true,
+    "rssBytes": 697638912,
+    "heapUsedBytes": 424452736,
+    "heapTotalBytes": 533454848,
+    "heapLimitBytes": 738197504,
+    "serverProcessUptimeMs": 3015454,
+    "lifetimeGcTotalMs": 38362.50155043602,
+    "lifetimeGcMaximumMs": 14.825617998838425,
+    "lifetimeEventLoopP95Ms": 191.234047,
+    "lifetimeEventLoopMaximumMs": 523.501567,
+    "gcFractionOverHostElapsedInferred": false
+  },
+  "quartileMethod": {
+    "grouping": "consecutive-checkpoints-floor-q-times-N-over-four",
+    "groups": 4,
+    "totalCheckpoints": 309,
+    "cpuSeries": "collaboration-Docker-CPUPerc",
+    "aggregation": "arithmetic-mean-and-nearest-rank-p95",
+    "timeWeighted": false,
+    "derivedMetricsRoundedToDecimalPlaces": 6,
+    "terminalPendingIncluded": false,
+    "lastPeakRootCauseEstablished": false
+  },
+  "checkpointQuartiles": [
+    {
+      "quartile": 1,
+      "firstCheckpointIndexInclusive": 0,
+      "lastCheckpointIndexExclusive": 77,
+      "checkpointCount": 77,
+      "elapsedFirstSeconds": 0.007694,
+      "elapsedLastSeconds": 760.600397,
+      "sampledPendingMean": 4.0,
+      "sampledPendingP95": 10.0,
+      "sampledPendingMaximum": 10.0,
+      "sampledPendingLast": 9,
+      "cpuSamplesAvailable": 77,
+      "cpuSamplesUnavailable": 0,
+      "sampledCpuPercentMean": 69.111429,
+      "sampledCpuPercentP95": 97.03,
+      "sampledCpuPercentMaximum": 114.99
+    },
+    {
+      "quartile": 2,
+      "firstCheckpointIndexInclusive": 77,
+      "lastCheckpointIndexExclusive": 154,
+      "checkpointCount": 77,
+      "elapsedFirstSeconds": 770.609124,
+      "elapsedLastSeconds": 1531.192145,
+      "sampledPendingMean": 5.077922,
+      "sampledPendingP95": 10.0,
+      "sampledPendingMaximum": 10.0,
+      "sampledPendingLast": 10,
+      "cpuSamplesAvailable": 77,
+      "cpuSamplesUnavailable": 0,
+      "sampledCpuPercentMean": 92.422987,
+      "sampledCpuPercentP95": 133.59,
+      "sampledCpuPercentMaximum": 139.36
+    },
+    {
+      "quartile": 3,
+      "firstCheckpointIndexInclusive": 154,
+      "lastCheckpointIndexExclusive": 231,
+      "checkpointCount": 77,
+      "elapsedFirstSeconds": 1541.197738,
+      "elapsedLastSeconds": 2301.787442,
+      "sampledPendingMean": 6.428571,
+      "sampledPendingP95": 10.0,
+      "sampledPendingMaximum": 18.0,
+      "sampledPendingLast": 2,
+      "cpuSamplesAvailable": 77,
+      "cpuSamplesUnavailable": 0,
+      "sampledCpuPercentMean": 116.363896,
+      "sampledCpuPercentP95": 152.9,
+      "sampledCpuPercentMaximum": 163.26
+    },
+    {
+      "quartile": 4,
+      "firstCheckpointIndexInclusive": 231,
+      "lastCheckpointIndexExclusive": 309,
+      "checkpointCount": 78,
+      "elapsedFirstSeconds": 2311.791256,
+      "elapsedLastSeconds": 3082.32967,
+      "sampledPendingMean": 8.833333,
+      "sampledPendingP95": 19.0,
+      "sampledPendingMaximum": 21.0,
+      "sampledPendingLast": 19,
+      "cpuSamplesAvailable": 78,
+      "cpuSamplesUnavailable": 0,
+      "sampledCpuPercentMean": 153.682821,
+      "sampledCpuPercentP95": 224.61,
+      "sampledCpuPercentMaximum": 243.36
+    }
+  ],
+  "guardObservation": {
+    "source": "rootProvidedDockerLogObservation",
+    "presentAsRawReportField": false,
+    "kind": "queued-messages",
+    "queuedFrames": 32,
+    "queuedBytes": 8302,
+    "totalQueuedBytes": 52359,
+    "incomingBytes": 302
+  },
+  "postRunObservation": {
+    "source": "rootVerifiedDockerAfterCompletion",
+    "presentAsRawReportField": false,
+    "rootReportedNoOom": true,
+    "rootReportedRestartCount": 0
+  },
+  "errors": {
+    "cleanupFailures": 0,
+    "closeErrors": 0
+  }
+}
