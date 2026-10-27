@@ -137,4 +137,3 @@ Node propagation p95 470,5 мс / max 2936,0 мс; документы около
 loop max 396,6 мс. Очистка и closeErrors пустые. Raw:
 `temp/performance/load-hour-b17-semi64.json`. Час не принят, настройка не
 перенесена в постоянную конфигурацию.
-

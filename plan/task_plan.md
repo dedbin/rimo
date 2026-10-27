@@ -51,8 +51,9 @@ R06: `.rimo` и backup/restore проверены на чистых БД/Compose
 
 Текущий общий прогон на исходниках `662234d` — 784 passed и 17 opt-in skipped,
 107 test files, 67,89 с; lint и TypeScript прошли. GitHub Actions
-`f7c6305` прошёл весь CI на официальном Playwright job container:784/17,
-PDF/дваextractor/build/UI/standalone/audit. Предыдущий CI662234d был отменён
+`f7c6305` [прошёл весь CI](https://github.com/dedbin/rimo/actions/runs/40581522989)
+на официальном Playwright job container: 784/17, 14/14 PDF,
+два extractor, build/UI/standalone/audit. Предыдущий CI662234d был отменён
 на установке Chromium; готовый образ устраняет эту повторную установку.
 Свежий Docker image `535ac` прошёл 5/5 UI за 1,1 мин. Windows production-сборка `0e9a474` ранее
 прошла standalone с тремя runtime WebSocket URL без пересборки. Локальный
@@ -87,14 +88,24 @@ Linux self/peer-проверка аватаров прошла все 14 кри�
 Перераспределение app/collaboration в768/1024МиБ и heap old512/semi64
 сохраняет сумму пяти steady caps3,375ГиБ; оно перенесено в Compose.
 
-С20:18UTC выполняется полный3600с профиль50/10/5досок/3000объектов на
-двух логических CPU Docker VM. До завершения — только source/docs review,
-без новых сборок, тестов, браузера и сервисных нагрузок. Артефакты:
-`temp/performance/cpu-budget/97f76032-26ff-46d2-a109-40f45afec2c4/`.
-Этот CPU ceiling и сумма caps не подтверждают настоящий VPS с ОС4ГБ.
+Профиль 3600 с, 50 подключений / 10 writers / 5 досок по 3000 объектов на
+двух логических CPU Docker VM отказал через 2875,1961284 с (47 мин 55 с):
+56 440 операций / 507 484 доставок, cadence соблюдён, missing0/pending60/max94.
+Guard достиг 64 кадров при 16 820 байтах (incoming302, общие116185); cleanup и
+closeErrors пустые, OOM/restart во время измерения не было. G07 остаётся не принят.
+Wrapper не подтвердил reset CPUset: исходный `budget.json` с
+`affinityRestored=false` сохранён. Отдельный recovery подтверждает ручное
+пересоздание только пяти наших сервисов с теми же images/volumes/RAM, пустой CPUset,
+удалённые приватные копии и освобождённый lock. Это не превращает отказ в успех.
+[Безопасная сводка и хеши raw](evidence/load-cpu-budget-2026-10-27.json).
+Этот CPU ceiling и сумма caps не подтверждают настоящий VPS с ОС 4 ГБ.
 
 Для владельца подготовлен [отчёт со скриншотами](progress-report-2026-10-27/Rimo-progress-2026-10-27.pdf)
-и отдельный чат проекта. Полнота исходного плана проверяется в
+и обновлён последними замерами535ac: R08 max59,4мс (3/20 превышения50), mixed10
+Node p95335,65мс/worst pair375,31мс при пределе300; функциональная часть,
+все доставки/Saved/durable и cleanup прошли. Строгие G05/G06 не приняты.
+Подробности: [безопасная сводка](evidence/acceptance-final-2026-10-27.json).
+Для чтения отчёта создан отдельный чат проекта. Полнота исходного плана проверяется в
 [матрице требований](acceptance-matrix-2026-10-27.md), включая незакрытые условия.
 
 Внешняя копия, настоящий VPS, публичный TLS, ответы по правовой модели и занятия

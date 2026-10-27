@@ -71,7 +71,7 @@ def verify_report(root: Path) -> dict[str, Any]:
         bitmap.close()
         page.close()
     text = "\n\n".join(primary)
-    for phrase in ["696", "2329,11", "53,1", "52,6", "359", "300", "16 вопросов владельцу"]:
+    for phrase in ["784", "47 мин 55 с", "59,4", "336", "300", "16 вопросов владельцу"]:
         assert compact(phrase) in compact(text), phrase
     assert not re.search(r"[\u4e00-\u9fff]", text), "Unexpected language"
     links = []

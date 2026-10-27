@@ -29,18 +29,18 @@
 - Node: host 22.15.0, app/collaboration 22.23.4, PDF worker 24.22.1.
   PostgreSQL 18.6 в Docker и18.1 для локального PG-suite, Chromium156.0.8078.4, Next15.5.28,
   Hocuspocus 4.7.1, Yjs 13.6.33.
-- Исторические профили не ограничивали сервис двумя CPU. Новый час с20:18UTC
-  применяет CPUset0,1 к пяти сервисам; результат ещё ожидается. Сумма steady caps
-  3,375ГиБ не является лимитом ОС4ГиБ. Размер и стоимость VPS не проверены.
+- Исторические профили не ограничивали сервис двумя CPU. Последний профиль
+  применял CPUset0,1 к пяти сервисам и отказал через 2875,1961284 с (47 мин 55 с).
+  Сумма steady caps 3,375 ГиБ не является лимитом ОС 4 ГиБ; размер и стоимость VPS не проверены.
 
 ## Выполненные проверки
 
 | Сценарий | Наблюдаемый результат |
 | --- | --- |
 | Полный набор с PostgreSQL | На исходниках `662234d`: 784 passed, 17 opt-in skipped; 107 test files (101 passed / 6 skipped), 67,89 с; lint и TypeScript прошли. Лог: `temp/queue64-full-pg-suite.log`, SHA256457bb5e3ba5cf807dc7ba08ac5fe527884e8d29317961567c32e59bdcba46b2a |
-| Последний полностью успешный GitHub Actions | На `f7c6305` [verify успешно](https://github.com/dedbin/rimo/actions/runs/40581522989): официальный Playwright container, Node22/Python3.12, npm ci, PostgreSQL/migrate, lint/type/784tests, PDF с двумя extractor, build, UI E2E, standalone и audit. Предыдущий CI662234d был отменён на установке Chromium и не считается полностью успешным |
+| Последний полностью успешный GitHub Actions | На `f7c6305` [verify успешно](https://github.com/dedbin/rimo/actions/runs/40581522989): официальный Playwright container, Node22/Python3.12, npm ci, PostgreSQL/migrate, lint/type, 784 passed / 17 opt-in skipped, 14/14 PDF с двумя extractor, build, UI E2E, standalone и audit. Предыдущий CI662234d был отменён на установке Chromium и не считается полностью успешным |
 | UI через Caddy на текущем535ac | 5/5 E2E за1,1мин: clipboard, collaboration/Undo/revoke, PDF/archive, rich text/math/Markdown/reload, живые роли. Лог: `temp/acceptance-queue64-docker.log` |
-| UI через Caddy на текущем f0c | 5/5 E2E за 58,8 с: clipboard, два редактора/своя отмена/отзыв, фреймы/PDF/архив, текст/формулы/Markdown/reload, живые роли. Лог: `temp/acceptance-ingress-a933-docker.log` |
+| Исторический UI через Caddy на f0c | 5/5 E2E за 58,8 с: clipboard, два редактора/своя отмена/отзыв, фреймы/PDF/архив, текст/формулы/Markdown/reload, живые роли. Лог: `temp/acceptance-ingress-a933-docker.log` |
 | Production UI на Windows | Свежий production build на `0e9a474`, 5/5 E2E за 1,0 мин, включая живую смену ролей и штатную остановку трёх дочерних серверов; порты освобождены |
 | UI через Caddy на образе 221b | 5/5 E2E за 1,1 мин: collaboration, rich text, clipboard, PDF/archive и live roles; функциональный прогон шёл параллельно отдельному TLS-стенду и unit suite |
 | Переносимый архив | На14967a7 [CI](https://github.com/dedbin/rimo/actions/runs/40568460151) проверил итоговый .rimo → новая пустая БД → PDF после удаления source schema/files: rich text, LaTeX, точные WebP, новые IDs/revision; pypdf+pdfminer подтвердили две страницы и обратный frame order. Отдельный тест7,869с; весь PDF-набор14/14 за9,83с |
@@ -253,11 +253,36 @@ p95566,23мс/max3365,93мс. Cleanup/closeErrors пустые, OOM/restart0.
 Средний sampled pending и CPU росли по квартилям; источник последнего
 ожидания (ACL/gate/CPU) raw отдельно не измеряет. Полный час не принят.
 Raw: temp/performance/load-hour-a933-budget1024-old512-semi64.json.
-Следующий кандидат увеличивает только число кадров до64 при прежних
-байтовых/скоростных ограничениях и ACLdeadline3с; это запас очереди,
-не доказанное исправление throughput. Требуется новый полный профиль.
+Кандидат `662234d` увеличил число кадров до 64 при прежних байтовых/скоростных
+ограничениях и ACL deadline 3 с. Полный профиль на двух логических CPU Docker VM
+тоже отказал: 2875,1961284 с (47 мин 55 с), 56 440 операций / 507 484 доставок,
+cadence соблюдён, missing 0, pending 60 / max 94. Guard: queued-messages,
+64 кадра / 16 820 байт, incoming 302, общие 116 185 байт. Cleanup/closeErrors пустые;
+во время измерения ни один сервис не рестартовал и не получил OOM. G07 не принят.
+Средний sampled pending по четырём равным группам: 4,125 → 4,569 → 5,833 → 14,236;
+CPU: 56,267 → 71,018 → 88,134 → 115,204%. Причина последнего пика отдельно не установлена.
+Wrapper не подтвердил автоматический reset CPUset: исходный `budget.json`
+с `affinityRestored=false` сохранён. Отдельный `recovery.json` подтверждает ручное
+пересоздание только наших пяти сервисов с прежними images/volumes/RAM, пустой CPUset,
+удаление приватных копий авторизации и освобождение lock. Это не исправляет отказ нагрузки.
+Числа, хеши исходных raw и оба исхода: [безопасная сводка CPU-прогона](evidence/load-cpu-budget-2026-10-27.json).
 
 Подробная методика: [performance.md](../docs/performance.md).
+
+## Последние короткие замеры на 535ac
+
+После ручного восстановления CPUset пустой; эти замеры не ограничены двумя CPU.
+Продуктовый source662234d, harness checkout2b325cb; другие тесты/сборки не запускались.
+[Безопасная сводка и хеши трёх raw](evidence/acceptance-final-2026-10-27.json).
+
+- R08, protocol5, все20 trials: frame p95 24–31,9мс, reaction p95 21,7–29,3мс.
+  Max59,4мс; 3 превышения50мс. Все20: ноль ранних coordinate writes,
+  одна transaction/1000fields, один Undo вернул все500. Errors/cleanup0.
+- Mixed10,120с после успешной повторной калибровки текущего helper:
+  браузеры p95195,9/198,2мс; Node aggregate335,6494мс, worst pair375,3124мс.
+  Все1920 Node операций/13440доставок и240 браузерных операций, cadence,
+  Saved и fresh durable audit прошли; pending/missing0, cleanup35/35.
+  Node критерий300мс не пройден, итог `not-accepted`; G05/G06 остаются открыты.
 
 ## Открытые условия
 
@@ -265,9 +290,9 @@ Raw: temp/performance/load-hour-a933-budget1024-old512-semi64.json.
   TLS/ACME, DNS и настоящий сервер остаются внешними условиями;
   методика и результат: [tls-testing.md](../docs/tls-testing.md).
 - Часовой профиль 50/10 и рост состояния/памяти в течение него.
-- Максимум реакции50 мс: protocol5 зарегистрировал53,1 и52,6 мс. Бюджет
+- Максимум реакции50 мс: последний protocol5 зарегистрировал max59,4мс. Бюджет
   frame p95 33 мс прошёл20/20, данные/Undo сохраняются.
-- Десять активных клиентов: Node p95 359,0 мс выше300 мс, хотя два настоящих
+- Десять активных клиентов: последний Node p95 335,65 мс выше300 мс, хотя два настоящих
   браузера и сохранность прошли. PDF overlap после исправления принят20/20.
 - Предел записи пилота 5 МиБ уже предложенных в плане 20 МиБ;
   его почти предельный сетевой профиль прошёл, повышение требует новой приёмки.
