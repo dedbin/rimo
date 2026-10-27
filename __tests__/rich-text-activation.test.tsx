@@ -22,7 +22,7 @@ describe("active rich-text editor lifecycle", () => {
     const board = new BoardDocument();
     const [id] = board.insert([createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })]);
     const self = { presence: { ...emptyPresence(), selection: [id] } };
-    let state: ConnectionState = { connected: true, synced: true, saved: true, error: null, revision: 0, savedAt: null, pending: false };
+    let state: ConnectionState = { connected: true, synced: true, saved: true, error: null, revision: 0, savedAt: null, pending: false, writeRejection: null };
     const stateListeners = new Set<() => void>();
     const runtime = { board, getSelf: () => self, getState: () => state,
       subscribeState: (listener: () => void) => { stateListeners.add(listener); return () => stateListeners.delete(listener); },
@@ -46,7 +46,7 @@ describe("active rich-text editor lifecycle", () => {
     const [id] = board.insert([createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })]);
     const listeners = new Set<() => void>();
     let self = { presence: { ...emptyPresence(), selection: [id] } };
-    const state: ConnectionState = { connected: true, synced: true, saved: true, error: null, revision: 0, savedAt: null, pending: false };
+    const state: ConnectionState = { connected: true, synced: true, saved: true, error: null, revision: 0, savedAt: null, pending: false, writeRejection: null };
     const runtime = { board, getSelf: () => self, getState: () => state,
       subscribeState: () => () => {}, subscribePresence: (listener: () => void) => { listeners.add(listener); return () => listeners.delete(listener); },
       updatePresence: (patch: Partial<typeof self.presence>) => { self = { presence: { ...self.presence, ...patch } }; listeners.forEach((listener) => listener()); },

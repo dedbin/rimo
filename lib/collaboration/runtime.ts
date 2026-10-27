@@ -7,6 +7,20 @@ import { BoardParticipant, BoardPresence, emptyPresence, parseParticipant } from
 import { parseServerMessage } from "./protocol";
 import { decodePersistedSnapshot, matchesPersistedSnapshot } from "./save-state";
 
+export type WriteRejection = "storage-limit" | "object-limit";
+
+const ACCESS_DENIED_MESSAGE = "Доступ к доске прекращён. Обновите страницу или откройте действующее приглашение.";
+const WRITE_REJECTION_MESSAGES: Record<WriteRejection, string> = {
+  "storage-limit": "Достигнут предел размера доски. Последние изменения не сохранены.",
+  "object-limit": "Достигнут предел количества объектов. Последние изменения не сохранены.",
+};
+
+function rejectedWrite(reason: string): WriteRejection | null {
+  if (reason === "Board storage limit reached") return "storage-limit";
+  if (reason === "Board object limit reached") return "object-limit";
+  return null;
+}
+
 export interface ConnectionState {
   connected: boolean;
   synced: boolean;
@@ -15,6 +29,7 @@ export interface ConnectionState {
   revision: number;
   savedAt: string | null;
   pending: boolean;
+  writeRejection: WriteRejection | null;
 }
 
 export class BoardRuntime {
@@ -22,7 +37,7 @@ export class BoardRuntime {
   readonly session: BoardSession;
   readonly provider: HocuspocusProvider;
   private state: ConnectionState = {
-    connected: false, synced: false, saved: false, error: null, revision: 0, savedAt: null, pending: false,
+    connected: false, synced: false, saved: false, error: null, revision: 0, savedAt: null, pending: false, writeRejection: null,
   };
   private readonly stateListeners = new Set<() => void>();
   private readonly presenceListeners = new Set<() => void>();
@@ -49,6 +64,7 @@ export class BoardRuntime {
         this.updateState({ connected: status === "connected", ...(status !== "connected" ? { synced: false } : {}) });
       },
       onSynced: ({ state }) => {
+        if (this.accessDenied || this.state.writeRejection) return;
         const schema = this.board.doc.getMap("meta").get("schemaVersion");
         if (state && schema !== BOARD_SCHEMA_VERSION) {
           this.updateState({ synced: false, error: "Версия документа не поддерживается. Обновите страницу." });
@@ -60,13 +76,19 @@ export class BoardRuntime {
       onAuthenticationFailed: () => {
         this.accessDenied = true;
         this.effectiveRole = null;
-        this.updateState({ connected: false, synced: false, error: "Доступ к доске прекращён. Откройте действующее приглашение." });
+        this.updateState({ connected: false, synced: false });
       },
       onClose: ({ event }) => {
         this.effectiveRole = null;
         if (event.code === 1008 || /access revoked|read.only|board removed|permission denied/i.test(event.reason)) this.accessDenied = true;
-        this.updateState({ connected: false, synced: false,
-          ...(this.accessDenied ? { error: "Доступ к доске прекращён. Обновите страницу или откройте новое приглашение." } : {}) });
+        const rejection = rejectedWrite(event.reason);
+        if (!this.accessDenied && rejection && !this.state.writeRejection) {
+          this.updateState({ connected: false, synced: false, writeRejection: rejection });
+          // This provider owns its socket. Stop reconnect/replay without destroying the local draft.
+          this.provider.disconnect();
+          return;
+        }
+        this.updateState({ connected: false, synced: false });
       },
       onDisconnect: () => {
         this.effectiveRole = null;
@@ -94,7 +116,7 @@ export class BoardRuntime {
   updatePresence = (patch: Partial<BoardPresence>, broadcast = true): void => {
     if (this.destroyed) return;
     this.self = { ...this.self, presence: { ...this.self.presence, ...patch } };
-    if (broadcast) this.provider.awareness?.setLocalStateField("presence", this.self.presence);
+    if (broadcast && !this.accessDenied && !this.state.writeRejection) this.provider.awareness?.setLocalStateField("presence", this.self.presence);
     for (const listener of this.presenceListeners) listener();
   };
 
@@ -117,11 +139,14 @@ export class BoardRuntime {
 
   private updateState(patch: Partial<ConnectionState>): void {
     if (this.destroyed) return;
-    const saved = matchesPersistedSnapshot(this.board.doc, this.committedSnapshot);
-    this.state = { ...this.state, ...patch, saved,
-      pending: saved ? false : patch.pending ?? this.state.pending };
+    const writeRejection = this.accessDenied ? null : this.state.writeRejection ?? patch.writeRejection ?? null;
+    const saved = !this.accessDenied && !writeRejection && matchesPersistedSnapshot(this.board.doc, this.committedSnapshot);
+    this.state = { ...this.state, ...patch, writeRejection, saved,
+      pending: writeRejection ? true : saved ? false : patch.pending ?? this.state.pending,
+      ...(this.accessDenied || writeRejection ? { connected: false, synced: false,
+        error: this.accessDenied ? ACCESS_DENIED_MESSAGE : WRITE_REJECTION_MESSAGES[writeRejection!] } : {}) };
     this.board.setWritable(this.state.connected && this.state.synced && !this.state.error && !this.accessDenied &&
-      this.effectiveRole !== null && this.effectiveRole !== "viewer");
+      !writeRejection && this.effectiveRole !== null && this.effectiveRole !== "viewer");
     for (const listener of this.stateListeners) listener();
   }
 
@@ -130,10 +155,11 @@ export class BoardRuntime {
   };
 
   private handleServerMessage(payload: string): void {
+    if (this.destroyed || this.accessDenied || this.state.writeRejection) return;
     const message = parseServerMessage(payload);
     if (!message) return;
     if (message.type === "access-role") {
-      if (this.accessDenied || !this.state.connected || this.destroyed) return;
+      if (!this.state.connected) return;
       this.effectiveRole = message.role;
       this.updateState({});
       return;

@@ -14,6 +14,7 @@ vi.mock("@hocuspocus/provider", () => ({
     awareness = { getStates: () => new Map(), on: vi.fn(), off: vi.fn(),
       setLocalState: vi.fn(), setLocalStateField: vi.fn() };
     sendStateless = vi.fn();
+    disconnect = vi.fn();
     destroy = vi.fn();
     constructor(options: HocuspocusProviderConfiguration) { mocked.options = options; }
   },
@@ -44,6 +45,71 @@ beforeEach(() => {
 afterEach(() => runtime.destroy());
 
 describe("board connection lifecycle", () => {
+  it.each([
+    ["Board storage limit reached", "storage-limit", "предел размера"],
+    ["Board object limit reached", "object-limit", "предел количества объектов"],
+  ])("preserves a rejected local draft and blocks replay after logical quota close: %s", (reason, rejection, message) => {
+    const beforeDraft = { ...runtime.getState() };
+    const previousAck = JSON.stringify({ type: "persisted", revision: beforeDraft.revision, savedAt: beforeDraft.savedAt,
+      snapshot: btoa(String.fromCharCode(...Y.encodeSnapshot(Y.snapshot(runtime.board.doc)))) });
+    const [id] = runtime.board.insert([createLayer(LayerType.Rectangle, { x: 10, y: 20 }, { r: 0, g: 0, b: 0 })]);
+    const draft = Y.encodeStateAsUpdate(runtime.board.doc);
+    const listener = vi.fn(() => expect(runtime.board.canEdit).toBe(false));
+    const unsubscribe = runtime.subscribeState(listener);
+    vi.mocked(runtime.provider.sendStateless).mockClear();
+    options().onClose?.({ event: { code: 1000, reason } });
+    expect(runtime.getState()).toMatchObject({ writeRejection: rejection, saved: false, pending: true, connected: false, synced: false });
+    expect(runtime.getState().error).toContain(message);
+    expect(runtime.provider.disconnect).toHaveBeenCalledTimes(1);
+    expect(runtime.provider.destroy).not.toHaveBeenCalled();
+    options().onStateless?.({ payload: previousAck });
+    acknowledge(); // Even an ACK that matches this draft must not erase the terminal rejection.
+    options().onStateless?.({ payload: JSON.stringify({ type: "persistence-error", message: "later error" }) });
+    options().onStatus?.({ status: WebSocketStatus.Connected });
+    role("owner");
+    options().onSynced?.({ state: true });
+    options().onDisconnect?.({ event: { code: 1006, reason: "" } });
+    options().onClose?.({ event: { code: 1000, reason } });
+    expect(runtime.getState()).toMatchObject({ writeRejection: rejection, saved: false, pending: true, connected: false, synced: false,
+      revision: beforeDraft.revision, savedAt: beforeDraft.savedAt });
+    expect(runtime.getState().error).toContain(message);
+    expect(runtime.getRole()).toBeNull();
+    expect(runtime.provider.disconnect).toHaveBeenCalledTimes(1);
+    expect(runtime.provider.sendStateless).not.toHaveBeenCalled();
+    expect(runtime.board.insert([createLayer(LayerType.Rectangle, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })])).toEqual([]);
+    runtime.board.undo(); runtime.board.redo();
+    expect(runtime.board.getLayer(id)).toMatchObject({ x: 10, y: 20 });
+    expect(Y.encodeStateAsUpdate(runtime.board.doc)).toEqual(draft);
+    expect(listener).toHaveBeenCalled(); unsubscribe();
+  });
+
+  it.each(["Board storage limit reached", "Board object limit reached"].flatMap((reason) =>
+    ["authentication", "acl-close"].map((denial) => [reason, denial])))("keeps ACL denial ahead of the earlier quota rejection: %s / %s", (reason, denial) => {
+    runtime.board.insert([createLayer(LayerType.Rectangle, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })]);
+    const draft = Y.encodeStateAsUpdate(runtime.board.doc);
+    options().onClose?.({ event: { code: 1000, reason } });
+    if (denial === "authentication") options().onAuthenticationFailed?.({ reason: "Access denied" });
+    else options().onClose?.({ event: { code: 1000, reason: "Access revoked or unavailable" } });
+    const denied = runtime.getState().error;
+    expect(denied).toContain("Доступ");
+    options().onClose?.({ event: { code: 1000, reason } });
+    acknowledge();
+    options().onStatus?.({ status: WebSocketStatus.Connected }); role("owner"); options().onSynced?.({ state: true });
+    expect(runtime.getState()).toMatchObject({ error: denied, writeRejection: null, saved: false, pending: true, connected: false, synced: false });
+    expect(runtime.getRole()).toBeNull(); expect(runtime.board.canEdit).toBe(false);
+    expect(Y.encodeStateAsUpdate(runtime.board.doc)).toEqual(draft);
+  });
+
+  it.each(["Board storage limit reached", "Board object limit reached"])("does not mask an ACL close with a late quota callback: %s", (reason) => {
+    options().onClose?.({ event: { code: 1000, reason: "Access revoked or unavailable" } });
+    options().onClose?.({ event: { code: 1000, reason } });
+    acknowledge(); role("owner");
+    expect(runtime.getState()).toMatchObject({ writeRejection: null, saved: false });
+    expect(runtime.getState().error).toContain("Доступ");
+    expect(runtime.getRole()).toBeNull(); expect(runtime.board.canEdit).toBe(false);
+    expect(runtime.provider.disconnect).not.toHaveBeenCalled();
+  });
+
   it("locks edits and explains a logical ACL close with code 1000", () => {
     options().onClose?.({ event: { code: 1000, reason: "Access revoked or unavailable" } });
     expect(runtime.board.canEdit).toBe(false);
