@@ -92,6 +92,18 @@ node node_modules/vitest/vitest.mjs run __tests__/tls-acceptance.test.ts
 реального прогона на текущих разрешённых image ID; старый результат не является
 измерением новой сборки.
 
+Постоянный helper повторно прошёл в `03:38:31 UTC` на app/collaboration
+`sha256:48116dd68d90d8b09293440075e97dea48f6f0f120d4dc5fc6239e0a586d9ce2`
+и worker
+`sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23`.
+Время — 45,625 с; source SHA-256 —
+`2c157b43601ab03123822599760aee623c3c8906bfd5c5d619b787f220975364`.
+Отчёт: `temp/tls-acceptance/result-1793072356735-8188651a331642c9.json`.
+HTTP/1.1 и HTTP/2 проверили собственную CA; два contexts получили Secure cookies,
+HTTP-запрос без session-cookie вернул308, WSS передал78кадров, Saved/reload,
+private image и PDF preview прошли. Page/mixed-content/socket errors —0.
+Все контейнеры, сети, тома и временный run-каталог удалены и проверены.
+
 Windows Chromium того окружения возвращал 499 до входа; прямые проверенные
 HTTP/1.1 и HTTP/2 запросы и Linux browser возвращали 200. Поэтому helper
 воспроизводимо использует отдельный Linux browser container.

@@ -34,6 +34,7 @@
 | Standalone | Один BUILD_ID, три runtime WebSocket URL без пересборки, CSS/woff2 совпадают через HTTP; dotenv в артефакте отсутствует |
 | Границы комнат | Реальные WS/PG регрессии для uppercase UUID, параллельного auth при лимите комнат, ошибок load, TTL и stop |
 | Живые права | editor→viewer отменяет активный текст и начатый drag; viewer→editor снова разрешает изменение без reload; readonly и auth-failure остаются серверными ограничениями |
+| HTTPS/WSS на текущих образах | Постоянный isolated helper: 45,625с, Node CA/SNI HTTP1/H2, два Linux Chromium contexts, Secure/HttpOnly/Lax cookies, HTTP308 без secure cookie, WSS/Saved/reload, private image и PDF preview; cleanup verified |
 
 Команды и границы отказов: [failure-testing.md](../docs/failure-testing.md).
 Браузерные сценарии: [e2e/README.md](../e2e/README.md).
@@ -105,10 +106,9 @@ JSON старого prefix не меняет delta, но меняет полно
 
 ## Открытые условия
 
-- Локальный HTTPS/WSS путь прошёл на историческом C49/4e стенде: Linux Chromium
-  sandbox, Secure/HttpOnly cookie, redirect HTTP→HTTPS, два клиента, private image,
-  PDF preview и reload. Постоянная версия harness и повтор на текущих образах
-  готовятся отдельно. Публичный TLS/ACME этим не проверяется.
+- Локальный HTTPS/WSS путь повторно прошёл постоянным harness на текущих образах.
+  Публичный TLS/ACME, DNS и настоящий сервер остаются внешними условиями;
+  методика и результат: [tls-testing.md](../docs/tls-testing.md).
 - Часовой профиль 50/10 и рост состояния/памяти в течение него.
 - Остаточный максимум first-preview 69,8 мс при бюджете 50 мс.
 - Внешнее зашифрованное хранилище и расписание копий: назначения пока нет.
