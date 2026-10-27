@@ -7,6 +7,11 @@ import { CLOCK_SKEW_MS, COMMAND_TIMEOUT_MS, METADATA_TIMEOUT_MS, ResticFailure,
   readSnapshots, readSummary, resticEnvironment, resticOptions, runRestic, SNAPSHOT_ID, verifyLocalBackup,
   snapshotSourceTime, sourceFreshness, sourceTag } from "./restic-common.mjs";
 
+/**
+ * @param {{input?: string, project: string, checkAge?: boolean}} options
+ * @param {Record<string, string | undefined>} environment
+ * @param {{run?: typeof runRestic, verify?: typeof verifyLocalBackup, clock?: () => number, host?: string, signal?: AbortSignal}} [dependencies]
+ */
 export async function performRestic(options, environment, {
   run = runRestic, verify = verifyLocalBackup, clock = Date.now, host = hostname(), signal,
 } = {}) {
