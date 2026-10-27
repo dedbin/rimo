@@ -7,19 +7,22 @@ import { chromium } from "playwright";
 import { api, createBoard, distribution, environment, fail, ownerContext, openProvider, removeBoards, safeError, viewerContext, waitFor, writeReport, Y,
   dockerEnvironment } from "../common.mjs";
 import { idAt, imageAsset, seedScene, VIEWPORT } from "../fixture.mjs";
+import { inspectProject } from "../service-target.mjs";
 
 import { collaborationRoundTrip, imagesReady, instrument, measureMove, waitUntilUsable } from "./browser-probe.mjs";
 import { cleanupStep, NETWORK_CALIBRATION_FILE, NETWORK_GUEST_STATE_FILE, networkSourceHash, startHelper } from "./helper.mjs";
 import { createRunLifecycle } from "./lifecycle.mjs";
+import { prepareUpperFixture, upperDocumentBudget, validateUpperDocument } from "./upper-fixture.mjs";
 
 const { values } = parseArgs({ options: {
   help: { type: "boolean" }, "allow-service-test": { type: "boolean", default: false },
+  "upper-document": { type: "boolean", default: false },
   "base-url": { type: "string", default: "http://localhost:3080" }, "storage-state": { type: "string", default: "temp/performance/network-owner-storage.json" },
   "compose-project": { type: "string", default: "rimo-rework" }, label: { type: "string", default: "network-diagnostic-not-accepted" },
   output: { type: "string", default: "temp/performance/network-service.json" },
 } });
 
-if (values.help) process.stdout.write("node --import=tsx scripts/performance/network/measure-network.mjs --allow-service-test --storage-state FILE [--label LABEL] [--output FILE]\n");
+if (values.help) process.stdout.write("node --import=tsx scripts/performance/network/measure-network.mjs --allow-service-test --storage-state FILE [--upper-document] [--label LABEL] [--output FILE]\n");
 else await main().catch(() => { process.stderr.write("Network acceptance setup failed.\n"); process.exitCode = 1; });
 
 async function main() {
@@ -27,8 +30,14 @@ async function main() {
   assert.equal(new URL(values["base-url"]).origin, "http://localhost:3080", "Only the isolated local Docker test origin is supported");
   const calibration = JSON.parse(await readFile(NETWORK_CALIBRATION_FILE, "utf8"));
   assert.equal(calibration.status, "complete", "Calibrate the network helper before measuring the service");
+  const sourceHash = await networkSourceHash();
+  assert.equal(calibration.networkSourceSha256, sourceHash, "Network sources changed; recalibrate after the final source freeze");
+  assert.ok(["websocketDelayAdded", "httpDelayAdded", "oneAndSixConnectionsShareDownloadCap", "sixConnectionsShareUploadCap"]
+    .every((name) => calibration.checks?.[name] === true), "Network calibration checks must all pass before service access");
+  const projectBinding = await inspectProject(values["compose-project"]);
   const report = { kind: "two-browser-network-acceptance", status: "running", at: new Date().toISOString(),
-    environment: await environment(values.label), service: await dockerEnvironment(values["compose-project"]), networkSourceSha256: await networkSourceHash(),
+    environment: await environment(values.label), service: await dockerEnvironment(values["compose-project"]), networkSourceSha256: sourceHash,
+    projectBinding, documentProfile: values["upper-document"] ? "upper-document" : "base",
     calibration, helperAttempts: [], helpers: [], browsers: [], createdBoards: [], coldOpens: [], reopens: [], roundtripMs: [], propagationMs: [], pageErrors: [], cleanup: [],
     manualReviewRequired: ["Reopen heap and time trends: inspect all ten observations; automatic5s checks alone do not establish absence of sustained growth"],
     methodology: {
@@ -61,10 +70,24 @@ async function main() {
     report.createdBoards.push(boardId);
     await progress("fixture-created");
     seed = await openProvider(owner, values["base-url"], boardId, lifecycle.signal);
-    scene = seedScene(seed.document, 3_000, await imageAsset(owner, boardId));
+    const assetUrl = await imageAsset(owner, boardId);
+    let upper;
+    if (values["upper-document"]) {
+      lifecycle.check();
+      const prepared = prepareUpperFixture(seed.document, assetUrl);
+      lifecycle.check();
+      let updates = 0;
+      const countUpdate = () => { updates += 1; };
+      seed.document.on("update", countUpdate);
+      try { Y.applyUpdate(seed.document, prepared.update); }
+      finally { seed.document.off("update", countUpdate); }
+      assert.equal(updates, 1, "The upper fixture must publish one final update");
+      scene = prepared.scene;
+      upper = { ...prepared.metadata, ...upperDocumentBudget(Y.encodeStateAsUpdate(seed.document).byteLength), publishedUpdates: updates };
+    } else scene = seedScene(seed.document, 3_000, assetUrl);
     await waitFor(() => seed.isPersisted(), 15_000, lifecycle.signal);
     report.fixture = { objects: scene.objects, visibleObjects: scene.visibleObjects, images: scene.visibleDistribution[5],
-      documentBytes: Y.encodeStateAsUpdate(seed.document).byteLength };
+      documentBytes: Y.encodeStateAsUpdate(seed.document).byteLength, ...(upper ?? {}) };
     await seed.close(); seed = undefined;
     const invite = await api(owner, "POST", `/api/boards/${boardId}/invites`, { role: "editor", expiresInHours: 1 });
     await api(guest.context, "POST", "/api/invites/accept", { token: invite.token, name: "Network fixture editor" });
@@ -148,6 +171,12 @@ async function main() {
     for (const [id, original] of scene.positions) {
       const layer = finalAudit.document.getMap("layers").get(id);
       assert.equal(layer.get("x"), original.x); assert.equal(layer.get("y"), original.y);
+    }
+    if (values["upper-document"]) {
+      const finalBytes = validateUpperDocument(finalAudit.document);
+      report.fixture.afterMovesAndUndo = { actualDocumentBytes: finalBytes,
+        actualSlackBytes: report.fixture.documentLimitBytes - finalBytes, strictValidation: true };
+      assert.ok(finalBytes <= report.fixture.documentLimitBytes, "The twenty moves and undo exhausted the document budget");
     }
     report.criteria = { coldFirstUsableWithin5seconds: report.coldOpens.every((entry) => entry.firstUsableMs <= 5_000),
       allTenReopensWithin5seconds: report.reopens.every((entry) => entry.firstUsableMs <= 5_000),

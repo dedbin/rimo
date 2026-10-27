@@ -23,7 +23,8 @@ async function fingerprint(files) {
 }
 
 export async function networkSourceHash() {
-  return fingerprint((await readdir(directory)).filter((name) => name.endsWith(".mjs") || ["Dockerfile", "tinyproxy.conf", ".dockerignore"].includes(name)));
+  const local = (await readdir(directory)).filter((name) => name.endsWith(".mjs") || ["Dockerfile", "tinyproxy.conf", ".dockerignore"].includes(name));
+  return fingerprint([...local, "../common.mjs", "../cookies.mjs", "../fixture.mjs", "../service-target.mjs"]);
 }
 
 export async function cleanupStep(report, step, operation) {
