@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { Editor } from "@tiptap/core";
 import { ySyncPluginKey } from "@tiptap/y-tiptap";
 import * as Y from "yjs";
@@ -38,7 +38,7 @@ function setup(doc = new Y.Doc()) {
 }
 
 describe("document-owned text undo", () => {
-  it("orders text and geometry in one history while ignoring automatic height updates", () => {
+  it("orders text and geometry in one history while ignoring automatic height updates", async () => {
     const board = new BoardDocument();
     const [textId, shapeId] = board.insert([
       createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 }),
@@ -53,6 +53,7 @@ describe("document-owned text undo", () => {
       board.translate([shapeId], { x: 50, y: 50 });
       editor.commands.insertContent({ type: "text", text: "B" });
       board.setMeasuredTextHeight(textId, 64);
+      await vi.waitFor(() => expect(board.getLayer(textId)?.height).toBe(64));
       editor.destroy();
       board.undo();
       expect(JSON.stringify(board.getRichText(textId))).toContain("A");

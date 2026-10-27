@@ -15,6 +15,8 @@ export interface BoardSnapshot {
   readonly frameIds: readonly string[];
 }
 
+interface PendingTextHeight { readonly height: number; readonly baseline: number; readonly layer: Y.Map<unknown> }
+
 export class BoardDocument {
   readonly doc: Y.Doc;
   readonly layers: Y.Map<Y.Map<unknown>>;
@@ -30,6 +32,9 @@ export class BoardDocument {
   private readonly textSnapshots = new Map<string, RichTextDocument>();
   private readonly emptyText = plainTextDocument("");
   private readonly measurementOrigin = Symbol("text-measurement");
+  private readonly pendingTextHeights = new Map<string, PendingTextHeight>();
+  private cancelHeightFlush: (() => void) | null = null;
+  private destroyed = false;
   private orderChanged = true;
   private framesChanged = true;
   private writable: boolean;
@@ -79,9 +84,12 @@ export class BoardDocument {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   };
-  setWritable(writable: boolean): void { this.writable = writable; }
+  setWritable(writable: boolean): void {
+    this.writable = writable && !this.destroyed;
+    if (!this.writable) this.cancelMeasuredTextHeights();
+  }
   get canEdit(): boolean { return this.writable; }
-  isLocalOrigin(origin: unknown): boolean { return this.undoManager.trackedOrigins.has(origin); }
+  isLocalOrigin(origin: unknown): boolean { return origin === this.measurementOrigin || this.undoManager.trackedOrigins.has(origin); }
 
   private refresh = (transaction?: Y.Transaction): void => {
     for (const name of this.doc.share.keys()) {
@@ -170,8 +178,47 @@ export class BoardDocument {
   setMeasuredTextHeight(id: string, height: number): void {
     const layer = this.getLayer(id);
     if (!this.writable || !Number.isFinite(height) || height < 1 || height > 1_000_000 ||
-      (layer?.type !== LayerType.Text && layer?.type !== LayerType.Sticker) || Math.abs(layer.height - height) < 1) return;
-    this.doc.transact(() => { this.layers.get(id)?.set("height", height); }, this.measurementOrigin);
+      (layer?.type !== LayerType.Text && layer?.type !== LayerType.Sticker)) return;
+    if (Math.abs(layer.height - height) < 1) {
+      this.pendingTextHeights.delete(id);
+      if (!this.pendingTextHeights.size) this.cancelMeasuredTextHeights();
+      return;
+    }
+    const stored = this.layers.get(id);
+    if (!(stored instanceof Y.Map)) return;
+    const previous = this.pendingTextHeights.get(id);
+    this.pendingTextHeights.set(id, { height, baseline: previous?.baseline ?? layer.height, layer: previous?.layer ?? stored });
+    if (this.cancelHeightFlush) return;
+    if (typeof requestAnimationFrame === "function" && typeof cancelAnimationFrame === "function") {
+      const frame = requestAnimationFrame(this.flushMeasuredTextHeights);
+      this.cancelHeightFlush = () => cancelAnimationFrame(frame);
+    } else {
+      const timer = setTimeout(this.flushMeasuredTextHeights, 16);
+      this.cancelHeightFlush = () => clearTimeout(timer);
+    }
+  }
+
+  private flushMeasuredTextHeights = (): void => {
+    this.cancelHeightFlush = null;
+    const pending = [...this.pendingTextHeights];
+    this.pendingTextHeights.clear();
+    if (!this.writable || this.destroyed || !pending.length) return;
+    // One board update per frame; measurements persist without entering local undo.
+    this.doc.transact(() => {
+      for (const [id, measurement] of pending) {
+        const layer = this.layers.get(id);
+        if (layer !== measurement.layer || !(layer instanceof Y.Map) ||
+            (layer.get("type") !== LayerType.Text && layer.get("type") !== LayerType.Sticker) ||
+            layer.get("height") !== measurement.baseline || Math.abs(measurement.baseline - measurement.height) < 1) continue;
+        layer.set("height", measurement.height);
+      }
+    }, this.measurementOrigin);
+  };
+
+  private cancelMeasuredTextHeights(): void {
+    this.cancelHeightFlush?.();
+    this.cancelHeightFlush = null;
+    this.pendingTextHeights.clear();
   }
 
   translate(ids: readonly string[], delta: Point): void {
@@ -259,6 +306,9 @@ export class BoardDocument {
   redo = (): void => { if (this.writable) this.undoManager.redo(); };
 
   destroy(): void {
+    if (this.destroyed) return;
+    this.destroyed = true;
+    this.setWritable(false);
     this.doc.off("afterTransaction", this.refresh);
     this.undoManager.destroy();
     this.listeners.clear();
