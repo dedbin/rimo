@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { Connection } from "@hocuspocus/server";
 
 import type { AccessRoleMessage } from "../lib/collaboration/protocol";
-import { withDeadline } from "./deadline";
+import { DeadlineExceededError, withDeadline } from "./deadline";
 import { CollaborationRejection } from "./types";
 import type {
   BoardRole,
@@ -13,6 +13,8 @@ import type {
   CollaborationPrincipal,
   ConnectionReservation,
 } from "./types";
+
+type AccessCheckFailure = "timeout" | "dependency-error" | "denied" | "editor-limit";
 
 export class AccessGuard {
   private readonly reservations = new Map<string, ConnectionReservation>();
@@ -88,9 +90,11 @@ export class AccessGuard {
     if (existing) return existing;
     const entry = this.reservations.get(id);
     if (!entry) return;
+    const started = performance.now();
     const pending = withDeadline(this.dependencies.revalidate(entry.context), this.limits.aclCheckTimeoutMs)
-      .then((role) => this.applyRole(id, role))
-      .catch(() => this.applyRole(id, null));
+      .then((role) => this.applyRole(id, role, started, "denied"))
+      .catch((error: unknown) => this.applyRole(id, null, started,
+        error instanceof DeadlineExceededError ? "timeout" : "dependency-error"));
     this.checks.set(id, pending);
     try {
       await pending;
@@ -99,11 +103,13 @@ export class AccessGuard {
     }
   }
 
-  private applyRole(id: string, role: BoardRole | null): void {
+  private applyRole(id: string, role: BoardRole | null, started: number, kind: AccessCheckFailure): void {
     const entry = this.reservations.get(id);
     if (!entry) return;
     const promoted = entry.context.role === "viewer" && role !== "viewer";
     if (!role || (promoted && this.editorCount() >= this.limits.maxEditors)) {
+      console.warn(JSON.stringify({ event: "collaboration_access_check_failed", kind: role ? "editor-limit" : kind,
+        elapsedMs: Math.max(0, Math.round(performance.now() - started)) }));
       entry.connection?.close({ code: 1008, reason: "Access revoked or unavailable" });
       this.reservations.delete(id);
       return;

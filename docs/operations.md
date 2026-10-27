@@ -94,6 +94,16 @@ Compose использует встроенный Docker `local` driver с ро�
 
 ## Проверка изменений
 
+Событие `collaboration_access_check_failed` в журнале collaboration содержит
+только `kind` и `elapsedMs`. `timeout` означает истечение трёхсекундного
+ожидания проверки, включая очередь запросов и задержки event loop;
+`dependency-error` — отказ внутренней операции; `denied` — отсутствие действующей
+сессии или доступа; `editor-limit` — повышение до редактора при заполненном лимите
+записывающих соединений. Идентификаторы, cookies и текст SQL не выводятся.
+Сервис прекращает доступ при неуспешной проверке; это событие помогает отличать
+отзыв прав от перегрузки или ошибки БД. Обычная разрешённая смена роли не создаёт
+такое событие.
+
 ```sh
 node --env-file-if-exists=.env.local scripts/test-integration.mjs __tests__/operations.integration.test.ts
 npx vitest run __tests__/operations-status.test.ts
