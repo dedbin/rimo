@@ -71,30 +71,58 @@ async function port() {
   return value;
 }
 
-export function createDockerRunner(environment, signal, phase, program = "docker") {
+/** @param {{spawnProcess?: typeof spawn}} [options] */
+export function createDockerRunner(environment, signal, phase, program = "docker", { spawnProcess = spawn } = {}) {
+  /**
+   * @param {string[]} args
+   * @param {{input?: string | Uint8Array, timeout?: number, cleanup?: boolean, relay?: boolean}} [options]
+   */
   return async function docker(args, { input, timeout = 30_000, cleanup = false, relay = false } = {}) {
   if (signal.aborted && !cleanup) throw signal.reason;
   return new Promise((resolve, reject) => {
-    const child = spawn(program, args, { env: environment, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
+    let child;
+    try { child = spawnProcess(program, args, { env: environment, shell: false, windowsHide: true, stdio: ["pipe", "pipe", "pipe"] }); }
+    catch { reject(new Error("TLS_DOCKER_SPAWN")); return; }
     const stdout = []; const stderr = [];
-    let size = 0; let failure; let remainder = "";
-    const stop = () => { failure = new Error("TLS_COMMAND_DEADLINE"); child.kill("SIGKILL"); };
-    const timer = setTimeout(stop, timeout);
-    if (!cleanup) signal.addEventListener("abort", stop, { once: true });
-    const collect = (target, chunk) => { size += chunk.length; if (size > 524_288) stop(); else target.push(chunk); };
+    let size = 0; let failure; let remainder = ""; let settled = false; let force;
+    const finish = (error, output) => {
+      if (settled) return;
+      settled = true; clearTimeout(timer); clearTimeout(force); signal.removeEventListener("abort", abort);
+      if (failure || error) reject(failure ?? error); else resolve(output);
+    };
+    const stop = (code) => {
+      if (settled || failure) return;
+      failure = new Error(code);
+      force = setTimeout(() => {
+        for (const stream of [child.stdin, child.stdout, child.stderr]) { try { stream.destroy(); } catch { /* Continue bounded settlement. */ } }
+        try { child.unref(); } catch { /* The caller must still reach finally. */ }
+        finish(failure);
+      }, 1_000);
+      try { child.kill("SIGKILL"); } catch { /* The fallback still rejects safely. */ }
+    };
+    const abort = () => stop("TLS_COMMAND_DEADLINE");
+    const timer = setTimeout(abort, timeout);
+    if (!cleanup) signal.addEventListener("abort", abort, { once: true });
+    const collect = (target, chunk) => {
+      if (settled || failure) return false;
+      size += chunk.length;
+      if (size > 524_288) { stop("TLS_COMMAND_OUTPUT_LIMIT"); return false; }
+      target.push(chunk); return true;
+    };
     child.stdout.on("data", (chunk) => {
-      collect(stdout, chunk);
-      if (!relay) return;
+      if (!collect(stdout, chunk) || !relay) return;
       remainder += chunk.toString("utf8");
       const lines = remainder.split("\n"); remainder = lines.pop() ?? "";
-      for (const line of lines) { const match = /^TLS_PHASE ([a-z-]{1,60})$/.exec(line); if (match && !signal.aborted) phase(match[1]); }
+      for (const line of lines) { const match = /^TLS_PHASE ([a-z-]{1,60})$/.exec(line); if (match && !signal.aborted && !failure && !settled) phase(match[1]); }
     });
     child.stderr.on("data", (chunk) => collect(stderr, chunk));
-    child.stdin.on("error", () => undefined);
-    child.once("error", () => { clearTimeout(timer); signal.removeEventListener("abort", stop); reject(new Error("TLS_DOCKER_SPAWN")); });
+    child.stdout.on("error", () => stop("TLS_DOCKER_STDOUT_STREAM"));
+    child.stderr.on("error", () => stop("TLS_DOCKER_STDERR_STREAM"));
+    child.stdin.on("error", () => stop("TLS_DOCKER_STDIN_STREAM"));
+    child.on("error", () => stop("TLS_DOCKER_SPAWN"));
     child.once("close", (code) => {
-      clearTimeout(timer); signal.removeEventListener("abort", stop);
-      if (failure) return reject(failure);
+      if (settled) return;
+      if (failure) return finish(failure);
       if (code !== 0) {
         const text = Buffer.concat(stderr).toString("utf8");
         const error = new Error(`TLS_DOCKER_EXIT_${code}`);
@@ -102,11 +130,12 @@ export function createDockerRunner(environment, signal, phase, program = "docker
           : /no healthcheck/i.test(text) ? "no-healthcheck"
             : /didn.t complete successfully|exited.*code/i.test(text) ? "service-exit"
               : /seccomp/i.test(text) ? "seccomp" : /address already in use|port.*allocated/i.test(text) ? "port-binding" : "unclassified";
-        return reject(error);
+        return finish(error);
       }
-      resolve(Buffer.concat(stdout).toString("utf8"));
+      finish(undefined, Buffer.concat(stdout).toString("utf8"));
     });
-    child.stdin.end(input);
+    if (!cleanup && signal.aborted) abort();
+    try { child.stdin.end(input); } catch { stop("TLS_DOCKER_STDIN_STREAM"); }
   });
   };
 }
@@ -166,7 +195,7 @@ export async function runTlsAcceptance({ appImage = "rimo:local", workerImage = 
         migrate: { image: expectedImage, command: ["node", "--import=tsx", "scripts/migrate.ts"], environment: serviceEnvironment, networks: ["backend"], depends_on: { db: { condition: "service_healthy" } }, mem_limit: "384m", cpus: 0.5, restart: "no" },
         app: { image: expectedImage, environment: { ...serviceEnvironment, PDF_WORKER_URL: "http://export-worker:3100", PDF_WORKER_TOKEN: "${TLS_PDF_TOKEN}" }, volumes: ["assets:/app/data/assets"], networks: ["backend", "exports"], depends_on: { migrate: { condition: "service_completed_successfully" } }, healthcheck: health("http://127.0.0.1:3000/api/health"), mem_limit: "768m", cpus: 0.5, restart: "no" },
         collaboration: { image: expectedImage, command: ["node", "--enable-source-maps", "dist/collaboration/index.mjs"], environment: { ...serviceEnvironment, COLLABORATION_HOST: "0.0.0.0", COLLABORATION_PORT: "1234" }, networks: ["backend"], depends_on: { migrate: { condition: "service_completed_successfully" } }, healthcheck: health("http://127.0.0.1:1234/healthz"), mem_limit: "512m", cpus: 0.5, restart: "no" },
-        "export-worker": { image: expectedWorker, environment: { PDF_WORKER_HOST: "0.0.0.0", PDF_WORKER_PORT: "3100", PDF_WORKER_TOKEN: "${TLS_PDF_TOKEN}", PDF_CHROMIUM_SANDBOX: "true" }, networks: ["exports"], read_only: true, tmpfs: ["/tmp:size=201326592,mode=1777"], security_opt: ["no-new-privileges:true", `seccomp=${path.join(directory, "seccomp.json")}`], cap_drop: ["ALL"], mem_limit: "768m", cpus: 0.5, shm_size: "128m", pids_limit: 256, healthcheck: health("http://127.0.0.1:3100/healthz"), restart: "no" },
+        "export-worker": { image: expectedWorker, init: true, environment: { PDF_WORKER_HOST: "0.0.0.0", PDF_WORKER_PORT: "3100", PDF_WORKER_TOKEN: "${TLS_PDF_TOKEN}", PDF_CHROMIUM_SANDBOX: "true" }, networks: ["exports"], read_only: true, tmpfs: ["/tmp:size=201326592,mode=1777"], security_opt: ["no-new-privileges:true", `seccomp=${path.join(directory, "seccomp.json")}`], cap_drop: ["ALL"], mem_limit: "768m", cpus: 0.5, shm_size: "128m", pids_limit: 256, healthcheck: health("http://127.0.0.1:3100/healthz"), restart: "no" },
         caddy: { image: caddy, ports: [`127.0.0.1:${httpPort}:${httpPort}`, `127.0.0.1:${httpsPort}:${httpsPort}`], volumes: [`${path.join(directory, "Caddyfile")}:/etc/caddy/Caddyfile:ro`, "caddy-data:/data", "caddy-config:/config"], networks: { backend: {}, ingress: { aliases: ["rimo.test"] } }, depends_on: { app: { condition: "service_healthy" }, collaboration: { condition: "service_healthy" } }, mem_limit: "128m", cpus: 0.25, restart: "no" },
         browser: { image: expectedWorker, command: ["node", "-e", "setTimeout(()=>process.exit(124),240000)"], networks: ["ingress"], read_only: true,
           tmpfs: ["/tmp:size=201326592,mode=1777"], security_opt: ["no-new-privileges:true", `seccomp=${path.join(directory, "seccomp.json")}`], cap_drop: ["ALL"],

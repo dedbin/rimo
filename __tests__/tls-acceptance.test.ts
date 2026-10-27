@@ -1,17 +1,116 @@
 // @vitest-environment node
-import { execFile } from "node:child_process";
+import { execFile, type spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { EventEmitter } from "node:events";
 import { mkdir, readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import { PassThrough } from "node:stream";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+import { createDockerRunner } from "../scripts/tls-acceptance/run.mjs";
 
 const execute = promisify(execFile);
 const script = path.resolve("scripts/tls-acceptance/run.mjs");
 const scriptUrl = pathToFileURL(script).href;
 const root = path.resolve("temp/tls-acceptance/unit");
+
+function runnerFixture() {
+  vi.useFakeTimers();
+  const controller = new AbortController();
+  const phase = vi.fn();
+  const child = Object.assign(new EventEmitter(), {
+    stdin: new PassThrough(), stdout: new PassThrough(), stderr: new PassThrough(),
+    kill: vi.fn(() => true), unref: vi.fn(),
+  });
+  const remove = vi.spyOn(controller.signal, "removeEventListener");
+  const spawnProcess = vi.fn(() => child) as unknown as typeof spawn;
+  const runner = createDockerRunner({}, controller.signal, phase, "fake-docker", { spawnProcess });
+  return { controller, child, phase, remove, runner };
+}
+
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+describe("TLS Docker runner private stream failures", () => {
+  it.each(["stdout", "stderr", "stdin"] as const)("rejects %s errors before a late successful exit and reaches finally", async stream => {
+    const { controller, child, phase, remove, runner } = runnerFixture();
+    const privateText = "private-stream-error-sentinel";
+    let finalized = false;
+    const outcome = runner(["ignored"], { input: Buffer.from(privateText), relay: true, timeout: 5_000 })
+      .catch(error => error as Error).finally(() => { finalized = true; });
+    child.stdout.write(`TLS_PHASE active\n${privateText}\n`);
+    child.stderr.write(privateText);
+    expect(() => child[stream].emit("error", new Error(privateText))).not.toThrow();
+    controller.abort(new Error("later-private-abort"));
+    child.stdout.write("TLS_PHASE after-error\n");
+    child.emit("close", 0);
+    const result = await outcome;
+    expect(result).toBeInstanceOf(Error);
+    expect((result as Error).message).toBe(`TLS_DOCKER_${stream.toUpperCase()}_STREAM`);
+    expect(String(result)).not.toContain(privateText);
+    expect(finalized).toBe(true);
+    expect(child.kill).toHaveBeenCalledExactlyOnceWith("SIGKILL");
+    expect(phase.mock.calls).toEqual([["active"]]);
+    expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
+    expect(vi.getTimerCount()).toBe(0);
+    expect(() => {
+      child[stream].emit("error", new Error("late-private-stream"));
+      child.emit("error", new Error("late-private-process"));
+      child.emit("close", 0);
+    }).not.toThrow();
+  });
+
+  it("settles safely when kill throws and the child never emits close", async () => {
+    const { child, remove, runner } = runnerFixture();
+    child.kill.mockImplementation(() => { throw new Error("private-kill-failure"); });
+    let finalized = false;
+    const outcome = runner(["ignored"], { timeout: 5_000 }).catch(error => error as Error)
+      .finally(() => { finalized = true; });
+    child.stdout.emit("error", new Error("private-output-failure"));
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect((await outcome as Error).message).toBe("TLS_DOCKER_STDOUT_STREAM");
+    expect(finalized).toBe(true);
+    expect(child.kill).toHaveBeenCalledExactlyOnceWith("SIGKILL");
+    expect(child.unref).toHaveBeenCalledOnce();
+    expect([child.stdin.destroyed, child.stdout.destroyed, child.stderr.destroyed]).toEqual([true, true, true]);
+    expect(remove).toHaveBeenCalledWith("abort", expect.any(Function));
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("keeps a deadline as the first failure after a later stream error", async () => {
+    const { child, runner } = runnerFixture();
+    const outcome = runner(["ignored"], { timeout: 5 }).catch(error => error as Error);
+    await vi.advanceTimersByTimeAsync(5);
+    child.stderr.emit("error", new Error("later-private-stream"));
+    child.emit("close", 7);
+    expect((await outcome as Error).message).toBe("TLS_COMMAND_DEADLINE");
+    expect(child.kill).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("rejects a synchronous stdin write failure instead of accepting exit zero", async () => {
+    const { child, runner } = runnerFixture();
+    vi.spyOn(child.stdin, "end").mockImplementationOnce(() => { throw new Error("private-input-failure"); });
+    const outcome = runner(["ignored"], { input: Buffer.from("private-input") }).catch(error => error as Error);
+    child.emit("close", 0);
+    expect((await outcome as Error).message).toBe("TLS_DOCKER_STDIN_STREAM");
+    expect(child.kill).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it("replaces a synchronous spawn error with a safe failure", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const add = vi.spyOn(controller.signal, "addEventListener");
+    const spawnProcess = vi.fn(() => { throw new Error("private-spawn-failure"); }) as unknown as typeof spawn;
+    const runner = createDockerRunner({}, controller.signal, vi.fn(), "fake-docker", { spawnProcess });
+    await expect(runner(["ignored"])).rejects.toThrow(/^TLS_DOCKER_SPAWN$/);
+    expect(add).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});
 
 describe("TLS acceptance opt-in and interruption boundary without Docker/browser", () => {
   it("shows help from another working directory without starting a service", async () => {
