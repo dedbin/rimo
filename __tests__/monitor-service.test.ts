@@ -139,7 +139,7 @@ describe("one-shot Compose monitor", () => {
     const report = parseFilesystems(lines.join("\n"));
     expect(report.status).toBe(status);
     expect(report.reasonCodes).toEqual(status === "healthy" ? [] : [`${role === "pgdata" ? "PGDATA" : "PG_WAL"}_SPACE_LOW`]);
-    expect(report.data[index]).toEqual({ role, freeBytes: 8 * GiB + offset, totalBytes: 40 * GiB });
+    expect(report.data?.[index]).toEqual({ role, freeBytes: 8 * GiB + offset, totalBytes: 40 * GiB });
   });
 
   it("aggregates an 80 percent WAL warning without waiting for a critical reserve", async () => {
