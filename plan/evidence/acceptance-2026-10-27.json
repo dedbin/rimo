@@ -1,0 +1,279 @@
+{
+  "version": 1,
+  "completedHistoricalArtifactsOnly": true,
+  "activeA933LoadIncluded": false,
+  "commitsDescribeHarnessCheckout": true,
+  "metricRoundingDecimalPlaces": 6,
+  "allIncludedCriteriaPassed": false,
+  "artifacts": [
+    {
+      "scenario": "editorProtocol5TwentyTrials",
+      "rawRelativePath": "temp/performance/editor-221b-protocol5-20trials.json",
+      "rawSha256": "3e8f88a19a29bf2b94dbfcae3f701ba64b07e1441cab19c1f5d30e31aa7c2897",
+      "rawBytes": 194140,
+      "rawStatus": "complete",
+      "harnessCheckoutCommit": "9cd0514da238a5a22eff565dfcfa5ad4b926ee53",
+      "runtimeImageIds": null,
+      "criteria": {
+        "frameP95AtMost33ms": true,
+        "localReactionProxyAtMost50ms": false,
+        "oneFinalCoordinateTransaction": true,
+        "noPageErrors": true
+      },
+      "metrics": {
+        "measurementProtocolVersion": 5,
+        "trials": 20,
+        "objects": 3000,
+        "visibleObjects": 500,
+        "frameP95MinimumMs": 30.3,
+        "frameP95MaximumMs": 30.4,
+        "reactionP95MinimumMs": 21.5,
+        "reactionP95MaximumMs": 27.5,
+        "reactionMaximumMs": 53.1,
+        "reactionBudgetExceededTrials": 2,
+        "reactionMaximumByTrialMs": [
+          53.1,
+          32.2,
+          46.9,
+          39.7,
+          44.0,
+          39.0,
+          45.1,
+          30.3,
+          36.3,
+          52.6,
+          39.8,
+          38.8,
+          42.7,
+          33.2,
+          30.2,
+          49.7,
+          42.3,
+          45.1,
+          45.5,
+          37.0
+        ],
+        "totalCoordinateWritesBeforeRelease": 0.0,
+        "singleCoordinateTransactionTrials": 20,
+        "coordinateFieldsPerTrialMinimum": 1000.0,
+        "coordinateFieldsPerTrialMaximum": 1000.0,
+        "singleUndoRestoredAllObjectsTrials": 20
+      },
+      "errors": {
+        "pageErrors": 0,
+        "cleanupFailures": 0,
+        "closeErrors": 0
+      }
+    },
+    {
+      "scenario": "mixedTenActors",
+      "rawRelativePath": "temp/performance/active-room/candidate221b/report.json",
+      "rawSha256": "8f07ce6d58b6c1a64438480607e94f8b8d3a3989c76ea0d1f044aa8ae9d01dfd",
+      "rawBytes": 188750,
+      "rawStatus": "not-accepted",
+      "harnessCheckoutCommit": "9cd0514da238a5a22eff565dfcfa5ad4b926ee53",
+      "runtimeImageIds": [
+        "sha256:221b1d0d4ea7f6539b173147714e65d87536a57e4b91241824a70aa213e16f0b",
+        "sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23",
+        "sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489",
+        "sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc"
+      ],
+      "criteria": {
+        "tenConnectionsThroughoutWindow": true,
+        "everyWriterMaintainedCadence": true,
+        "browserFinalDomP95Within300ms": true,
+        "nodeCausalP95Within300ms": false,
+        "allCausalOperationsDelivered": true,
+        "tenCalibratedPathsWithMeasuredTraffic": true,
+        "nodeConnectAndBrowserUpgradeConfirmed": true,
+        "savedOnlyAfterAllWritersStopped": true,
+        "freshDurableAuditAfterTenActorsClosed": true,
+        "noRuntimeErrors": true
+      },
+      "metrics": {
+        "requestedSeconds": 120,
+        "minimumConnections": 10,
+        "maximumConnections": 10,
+        "realBrowserActors": 2,
+        "nodeActors": 8,
+        "browserEdits": 240.0,
+        "nodeEdits": 1920.0,
+        "causalDeliveries": 13440,
+        "missingDeliveries": 0,
+        "pendingOperations": 0,
+        "nodeCausalP95Ms": 359.0368,
+        "worstPairP95Ms": 371.8659,
+        "browserFinalDomP95Ms": [
+          207.0,
+          205.699951
+        ],
+        "freshDurableAuditPassed": true
+      },
+      "errors": {
+        "actorFailures": 0,
+        "cleanupSteps": 35,
+        "cleanupFailures": 0
+      }
+    },
+    {
+      "scenario": "pdfDuringLesson",
+      "rawRelativePath": "temp/performance/pdf-lesson/candidate221b-init-release2/report.json",
+      "rawSha256": "5a0cd3ed4d8775cd5bcf5b8104dfccb13a6fc377d843a295b35953c4a710a93d",
+      "rawBytes": 1073217,
+      "rawStatus": "accepted",
+      "harnessCheckoutCommit": "96f649dcd89689c127806e1960d5475a435f72bb",
+      "runtimeImageIds": [
+        "sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23",
+        "sha256:221b1d0d4ea7f6539b173147714e65d87536a57e4b91241824a70aa213e16f0b",
+        "sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489",
+        "sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc"
+      ],
+      "criteria": {
+        "declaredExportsCompleted": true,
+        "allExportsHaveTwentyVerifiedPages": true,
+        "allExportsWithin30Seconds": true,
+        "fixedRevisionThroughout": true,
+        "bothEditorsParticipated": true,
+        "atLeastTwentyOverlappingFinalOperations": true,
+        "fullPropagationP95Within300ms": true,
+        "overlapPropagationP95Within300ms": true,
+        "measuredRoundtripNear100ms": true,
+        "calibrated50Mbit": true,
+        "causalProbeObservationsValid": true,
+        "browserMonotonicEpochClocksCompatible": true,
+        "probeHealthyAndQueueUncontended": true,
+        "everyMoveSavedAndUndone": true,
+        "finalStateDurable": true,
+        "noPageErrors": true,
+        "workerMemoryRecorded": true,
+        "noRuntimeFailure": true,
+        "noInterruption": true
+      },
+      "metrics": {
+        "requestedExports": 20,
+        "completedExports": 20,
+        "verifiedPagesPerExportMinimum": 20.0,
+        "verifiedPagesPerExportMaximum": 20.0,
+        "overlappingOperations": 20,
+        "propagationP95Ms": 157.584717,
+        "propagationMaximumMs": 161.275391,
+        "overlapPropagationP95Ms": 157.584717,
+        "overlapPropagationMaximumMs": 161.275391,
+        "exportRequestMinimumMs": 565.5,
+        "exportRequestMaximumMs": 650.199951
+      },
+      "errors": {
+        "pageErrors": 0,
+        "boardCleanupFailures": 0,
+        "cleanupSteps": 11,
+        "cleanupFailures": 0
+      }
+    },
+    {
+      "scenario": "hourFiftyConnectionsTenWritersB17",
+      "rawRelativePath": "temp/performance/load-hour-b17-semi64.json",
+      "rawSha256": "13cb6cf8c65a0b55ec2ddbefda13f817f31904449d4d8ad2b0bcd1efe1db3e0c",
+      "rawBytes": 1533932,
+      "rawStatus": "failed",
+      "harnessCheckoutCommit": "7b39e41debf5d4db75eb0e815dc10e61da526410",
+      "runtimeImageIds": [
+        "sha256:2f10ad2a9ba420c16c21e304634b5e968f7c7d29133face0b864678cab6f48c4",
+        "sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23",
+        "sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489",
+        "sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc"
+      ],
+      "failureKind": "receive-limit",
+      "closeCode": 1000,
+      "requested": {
+        "seconds": 3600,
+        "rooms": 5,
+        "connections": 50,
+        "writers": 10,
+        "objectsPerRoom": 3000,
+        "uniqueUsers": 2
+      },
+      "criteria": {
+        "editCadenceAtLeast95Percent": true,
+        "fullRequestedHourCompleted": false,
+        "noPendingDeliveriesAtEnd": false,
+        "noMissingDeliveries": true
+      },
+      "metrics": {
+        "steadySeconds": 2329.109118,
+        "sentChanges": 45730,
+        "confirmedDeliveries": 411228,
+        "actualEditsPerWriterHz": 1.963412,
+        "propagationP50Ms": 261.619711,
+        "propagationP95Ms": 470.548479,
+        "propagationMaximumMs": 2936.012799,
+        "pendingAtEnd": 38,
+        "highestPendingChanges": 45,
+        "missingDeliveries": 0,
+        "highestClientBufferedBytes": 0
+      },
+      "runtimeAfterLoad": {
+        "available": true,
+        "rssBytes": 619921408,
+        "heapUsedBytes": 357335856,
+        "heapLimitBytes": 603979776,
+        "lifetimeGcTotalMs": 42184.116618,
+        "lifetimeGcMaximumMs": 85.84551,
+        "lifetimeEventLoopMaximumMs": 396.623871,
+        "serverUptimeRecorded": false
+      },
+      "errors": {
+        "cleanupFailures": 0,
+        "closeErrors": 0
+      }
+    },
+    {
+      "scenario": "localBackupResticRestoreAndMonitor",
+      "rawRelativePath": "temp/operations-acceptance/5fd53f68-dedb-4ab9-a13c-6bf8f5795465.json",
+      "rawSha256": "f3a02dab4c6375a36283140d432fe15747c556015a99a5e8956699dbb3a0ea1a",
+      "rawBytes": 12882,
+      "rawStatus": "complete",
+      "harnessCheckoutCommit": null,
+      "sourceRuntimeImages": {
+        "app": "sha256:ff68a3a0245139b074ec291b2b8da249c7a7aff747501084c50dcff649788150",
+        "collaboration": "sha256:ff68a3a0245139b074ec291b2b8da249c7a7aff747501084c50dcff649788150",
+        "export-worker": "sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23",
+        "db": "sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc",
+        "caddy": "sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489"
+      },
+      "destinationRuntimeImages": {
+        "app": "sha256:ff68a3a0245139b074ec291b2b8da249c7a7aff747501084c50dcff649788150",
+        "collaboration": "sha256:ff68a3a0245139b074ec291b2b8da249c7a7aff747501084c50dcff649788150",
+        "export-worker": "sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23",
+        "db": "sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc",
+        "caddy": "sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489"
+      },
+      "criteria": {
+        "localServiceBackup": true,
+        "sameSourceAndDestinationImages": true,
+        "restoredDatabaseFilesLoginHttp": true,
+        "sourceDataAfterDatabaseRestart": true,
+        "overwriteGuard": true,
+        "interruptedBackupResumesWriters": true,
+        "failedBackupResumesWriters": true
+      },
+      "resticCriteria": {
+        "repositoryInitialized": true,
+        "backupFreshAndDataChecked": true,
+        "freshAgeExactSnapshot": true,
+        "localEncryptedRepositoryOnly": true,
+        "restoreVerifyCommand": true,
+        "restoredManifestAndHashes": true
+      },
+      "metrics": {
+        "durationMs": 94499,
+        "monitorObservations": 9,
+        "monitorObservationsPassed": 9
+      },
+      "cleanup": {
+        "checks": 4,
+        "failures": 0,
+        "postCleanupPassed": true
+      }
+    }
+  ]
+}
