@@ -15,6 +15,7 @@ import { cleanupStep, NETWORK_CALIBRATION_FILE, NETWORK_GUEST_STATE_FILE, networ
 import { createRunLifecycle } from "../network/lifecycle.mjs";
 import { inspectProject } from "../service-target.mjs";
 import { reservePdfDirectory } from "./artifacts.mjs";
+import { consecutiveBusyPair } from "./causal.mjs";
 import { acceptanceStatus, criteria, overlapEvidence } from "./criteria.mjs";
 import { hostNow } from "./clock.mjs";
 import { auditLesson, controlImage, prepareSnapshot, seedLesson } from "./fixture.mjs";
@@ -64,12 +65,12 @@ async function main() {
   assert.ok(output.startsWith(`${path.resolve("temp")}${path.sep}`), "PDF lesson artifacts must remain inside temp");
   await mkdir(path.dirname(output), { recursive: true });
   const claim = await open(output, "wx", 0o600); await claim.close();
-  const report = { kind: "pdf-parallel-two-browser-lesson", measurementVersion: 3, status: "running", at: new Date().toISOString(), requestedExports,
+  const report = { kind: "pdf-parallel-two-browser-lesson", measurementVersion: 3, releaseProtocolVersion: 2, status: "running", at: new Date().toISOString(), requestedExports,
     environment: null, service: null, harnessSha256: null,
     networkSourceSha256: networkHash, calibration, helperAttempts: [], helpers: [], browsers: [], createdBoards: [], operations: [],
     roundtripMs: [], pageErrors: [], cleanup: [], probe: {},
     methodology: { stimulus: "declared sequential exports, one public request at a time; same fixed 20-page snapshot; no hidden retry or artificial print delay",
-      input: "prepare real alternating owner/editor 20px drag before POST, release on observed running; peer persistent style mutation minus source pointerup; clock-bounded upper delay, raw delta also retained; one undo after each, both Saved",
+      input: "prepare real alternating owner/editor 20px drag before POST, release after the latest two consecutive correlated running/waiting0 replies; completed PDF without a pair still releases input without inferred overlap; peer persistent style mutation minus source pointerup; clock-bounded upper delay, raw delta also retained; one undo after each, both Saved",
       pdf: "prepare/inspect before timing via owner API; POST download via real owner Chromium fetch and proxy; Blob download to local file, no PDF bytes in JSON",
       overlap: "correlated health{id} through persistent docker exec; one request in flight; pointerup after first running hostReceivedAt+2 and before last running hostSentAt-2; contiguous running/waiting0 observations and own browser POST; queue occupancy proxy, not CPU print/job identity",
       clocks: "host performance.timeOrigin+performance.now brackets every health request; remote clocks diagnostic only, no clock-rate assumption; browser performance epoch echoes constrained to +/-5ms and <=50ms bounds",
@@ -147,10 +148,16 @@ async function main() {
       const downloading = downloadPdf(pages[0], boardId, snapshot, filename).then((result) => { operation.pdf = result; return result; },
         (error) => { operation.pdfError = safeError(error); return null; });
       pendingDownloads.add(downloading); void downloading.finally(() => pendingDownloads.delete(downloading));
-      await waitFor(() => { probe.check(); return operation.pdf !== null || !!operation.pdfError ||
-        probe.samples.some((entry) => entry.sequence > operation.probeStartSequence && entry.ok && entry.running); }, 5_000, lifecycle.signal);
-      const trigger = probe.samples.find((entry) => entry.sequence > operation.probeStartSequence && entry.ok && entry.running);
-      operation.releaseTrigger = { hostAt: hostNow(), runningSequence: trigger?.sequence ?? null };
+      let trigger = null;
+      await waitFor(() => {
+        probe.check();
+        if (operation.pdf !== null || operation.pdfError) return true;
+        trigger = consecutiveBusyPair(probe.samples, operation.probeStartSequence);
+        return trigger !== null;
+      }, 5_000, lifecycle.signal);
+      operation.releaseTrigger = { hostAt: hostNow(), pdfCompleted: operation.pdf !== null, pdfFailed: !!operation.pdfError,
+        busyObservations: (trigger ?? []).map(({ sequence, requestId, replyId, hostSentAt, hostReceivedAt }) =>
+          ({ sequence, requestId, replyId, hostSentAt, hostReceivedAt })) };
       try { await prepared.release(); }
       finally { Object.assign(operation, await prepared.timing()); }
       if (!Number.isFinite(operation.propagationMs) || operation.propagationMs < 0) throw fail("Invalid monotonic browser input timing");

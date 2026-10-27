@@ -22,3 +22,10 @@ export function healthRecord(reply, request, previous, hostReceivedAt) {
 export function causalObservationsValid(samples) {
   return Array.isArray(samples) && samples.length > 1 && samples.every((entry, index) => validSample(entry, samples[index - 1]));
 }
+
+/** Only the latest consecutive busy replies may trigger input; an older pair can already be idle. */
+export function consecutiveBusyPair(samples, afterSequence) {
+  if (!Number.isSafeInteger(afterSequence) || afterSequence < 0 || !causalObservationsValid(samples)) return null;
+  const pair = samples.slice(-2);
+  return pair[0].sequence > afterSequence && pair.every((entry) => entry.ok && entry.running && entry.waiting === 0) ? pair : null;
+}
