@@ -218,3 +218,99 @@ describe("board connection lifecycle", () => {
     expect(runtime.board.canEdit).toBe(false);
   });
 });
+
+describe("presence while a connection is not synchronized", () => {
+  it("keeps the latest local cursor and listeners before first sync, then publishes once", () => {
+    runtime.destroy();
+    runtime = new BoardRuntime({ ...session, role: "viewer" });
+    const listener = vi.fn();
+    runtime.subscribePresence(listener);
+    const awareness = runtime.provider.awareness!;
+    expect(awareness.setLocalState).toHaveBeenCalledWith({ user: runtime.getSelf().info, presence: runtime.getSelf().presence });
+    options().onStatus?.({ status: WebSocketStatus.Connected });
+    for (let x = 0; x < 30; x += 1) runtime.updatePresence({ cursor: { x, y: 4 }, selection: [`layer-${x}`] });
+    expect(runtime.getSelf().presence).toMatchObject({ cursor: { x: 29, y: 4 }, selection: ["layer-29"] });
+    expect(listener).toHaveBeenCalledTimes(30);
+    expect(awareness.setLocalStateField).not.toHaveBeenCalled();
+    runtime.board.doc.getMap("meta").set("schemaVersion", 2);
+    options().onSynced?.({ state: true });
+    expect(awareness.setLocalStateField).toHaveBeenCalledTimes(1);
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith("presence", runtime.getSelf().presence);
+    options().onSynced?.({ state: true });
+    expect(awareness.setLocalStateField).toHaveBeenCalledTimes(1);
+    runtime.updatePresence({ cursor: { x: 30, y: 5 } });
+    expect(awareness.setLocalStateField).toHaveBeenCalledTimes(2);
+    expect(awareness.setLocalStateField).toHaveBeenLastCalledWith("presence", runtime.getSelf().presence);
+  });
+
+  it("coalesces a disconnected viewer gesture and waits past native OPEN until sync", () => {
+    role("viewer");
+    const awareness = runtime.provider.awareness!;
+    vi.mocked(awareness.setLocalStateField).mockClear();
+    options().onDisconnect?.({ event: { code: 1006, reason: "" } });
+    for (let x = 0; x < 30; x += 1) runtime.updatePresence({ cursor: { x, y: -x } });
+    expect(awareness.setLocalStateField).not.toHaveBeenCalled();
+    options().onStatus?.({ status: WebSocketStatus.Connected });
+    role("viewer");
+    expect(awareness.setLocalStateField).not.toHaveBeenCalled();
+    options().onSynced?.({ state: true });
+    expect(awareness.setLocalStateField).toHaveBeenCalledTimes(1);
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith("presence", runtime.getSelf().presence);
+    expect(runtime.getSelf().presence.cursor).toEqual({ x: 29, y: -29 });
+    expect(runtime.board.canEdit).toBe(false);
+  });
+
+  it("does not turn local-only updates into a publication when synchronization finishes", () => {
+    options().onDisconnect?.({ event: { code: 1006, reason: "" } });
+    const awareness = runtime.provider.awareness!;
+    vi.mocked(awareness.setLocalStateField).mockClear();
+    runtime.updatePresence({ cursor: { x: 10, y: 20 }, selection: ["private-selection"] }, false);
+    options().onStatus?.({ status: WebSocketStatus.Connected });
+    options().onSynced?.({ state: true });
+    expect(runtime.getSelf().presence.selection).toEqual(["private-selection"]);
+    expect(awareness.setLocalStateField).not.toHaveBeenCalled();
+  });
+
+  it("flushes the last requested snapshot without a later broadcast=false patch", () => {
+    options().onDisconnect?.({ event: { code: 1006, reason: "" } });
+    const awareness = runtime.provider.awareness!;
+    vi.mocked(awareness.setLocalStateField).mockClear();
+    runtime.updatePresence({ cursor: { x: 1, y: 2 }, selection: ["public-selection"] });
+    const requested = runtime.getSelf().presence;
+    runtime.updatePresence({ cursor: { x: 90, y: 91 }, selection: ["local-selection"] }, false);
+    options().onStatus?.({ status: WebSocketStatus.Connected });
+    options().onSynced?.({ state: true });
+    expect(awareness.setLocalStateField).toHaveBeenCalledTimes(1);
+    expect(awareness.setLocalStateField).toHaveBeenCalledWith("presence", requested);
+    expect(requested.cursor).toEqual({ x: 1, y: 2 });
+    expect(runtime.getSelf().presence.selection).toEqual(["local-selection"]);
+  });
+
+  it.each(["authentication", "acl-close", "storage-limit", "object-limit"])("never flushes presence after terminal %s", (kind) => {
+    options().onDisconnect?.({ event: { code: 1006, reason: "" } });
+    const awareness = runtime.provider.awareness!;
+    vi.mocked(awareness.setLocalStateField).mockClear();
+    runtime.updatePresence({ cursor: { x: 1, y: 2 } });
+    if (kind === "authentication") options().onAuthenticationFailed?.({ reason: "Access denied" });
+    else options().onClose?.({ event: { code: 1000, reason: kind === "acl-close" ? "Access revoked or unavailable"
+      : kind === "storage-limit" ? "Board storage limit reached" : "Board object limit reached" } });
+    runtime.updatePresence({ cursor: { x: 3, y: 4 } });
+    expect(runtime.getSelf().presence.cursor).toEqual({ x: 3, y: 4 });
+    options().onStatus?.({ status: WebSocketStatus.Connected });
+    options().onSynced?.({ state: true });
+    expect(awareness.setLocalStateField).not.toHaveBeenCalled();
+  });
+
+  it("requires connected state and a supported schema before publishing pending presence", () => {
+    options().onDisconnect?.({ event: { code: 1006, reason: "" } });
+    const awareness = runtime.provider.awareness!;
+    vi.mocked(awareness.setLocalStateField).mockClear();
+    runtime.updatePresence({ cursor: { x: 1, y: 2 } });
+    options().onSynced?.({ state: true });
+    expect(awareness.setLocalStateField).not.toHaveBeenCalled();
+    options().onStatus?.({ status: WebSocketStatus.Connected });
+    runtime.board.doc.getMap("meta").set("schemaVersion", 99);
+    options().onSynced?.({ state: true });
+    expect(awareness.setLocalStateField).not.toHaveBeenCalled();
+  });
+});

@@ -43,6 +43,7 @@ export class BoardRuntime {
   private readonly stateListeners = new Set<() => void>();
   private readonly presenceListeners = new Set<() => void>();
   private committedSnapshot: Y.Snapshot | null = null;
+  private pendingPresence: BoardPresence | null = null;
   private self: BoardParticipant;
   private others: readonly BoardParticipant[] = [];
   private destroyed = false;
@@ -72,7 +73,10 @@ export class BoardRuntime {
           return;
         }
         this.updateState({ synced: state });
-        if (state) this.provider.sendStateless(JSON.stringify({ type: "persistence-status" }));
+        if (state) {
+          this.flushPendingPresence();
+          this.provider.sendStateless(JSON.stringify({ type: "persistence-status" }));
+        }
       },
       onAuthenticationFailed: () => {
         this.accessDenied = true;
@@ -118,9 +122,19 @@ export class BoardRuntime {
   updatePresence = (patch: Partial<BoardPresence>, broadcast = true): void => {
     if (this.destroyed) return;
     this.self = { ...this.self, presence: { ...this.self.presence, ...patch } };
-    if (broadcast && !this.accessDenied && !this.state.writeRejection) this.provider.awareness?.setLocalStateField("presence", this.self.presence);
+    if (broadcast && !this.accessDenied && !this.state.writeRejection) {
+      this.pendingPresence = this.self.presence;
+      this.flushPendingPresence();
+    }
     for (const listener of this.presenceListeners) listener();
   };
+
+  private flushPendingPresence(): void {
+    if (this.destroyed || !this.state.connected || !this.state.synced || this.accessDenied || this.state.writeRejection || !this.pendingPresence) return;
+    const presence = this.pendingPresence;
+    this.pendingPresence = null;
+    this.provider.awareness?.setLocalStateField("presence", presence);
+  }
 
   private refreshOthers(): void {
     const states = this.provider?.awareness?.getStates();
@@ -142,6 +156,7 @@ export class BoardRuntime {
   private updateState(patch: Partial<ConnectionState>): void {
     if (this.destroyed) return;
     const writeRejection = this.accessDenied ? null : this.state.writeRejection ?? patch.writeRejection ?? null;
+    if (this.accessDenied || writeRejection) this.pendingPresence = null;
     const saved = !this.accessDenied && !writeRejection && matchesPersistedSnapshot(this.board.doc, this.committedSnapshot);
     this.state = { ...this.state, ...patch, writeRejection, saved,
       pending: writeRejection ? true : saved ? false : patch.pending ?? this.state.pending,
@@ -182,6 +197,7 @@ export class BoardRuntime {
 
   destroy(): void {
     this.destroyed = true;
+    this.pendingPresence = null;
     this.provider.awareness?.off("update", this.handleAwarenessUpdate);
     this.provider.destroy();
     this.board.doc.off("update", this.handleDocumentUpdate);
