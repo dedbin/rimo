@@ -14,7 +14,7 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:18-bookworm
+        image: postgres:18-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
         env:
           POSTGRES_DB: rimo_test
           POSTGRES_USER: rimo_test
@@ -27,7 +27,7 @@ jobs:
       DATABASE_URL: postgresql://rimo_test@localhost:5432/rimo_test
       RIMO_TEST_DATABASE_URL: postgresql://rimo_test@localhost:5432/rimo_test
       BETTER_AUTH_URL: http://localhost:3000
-      NEXT_PUBLIC_COLLABORATION_URL: ws://localhost:1234
+      COLLABORATION_PUBLIC_URL: ws://localhost:1234
       ASSET_STORAGE_PATH: temp/ci-assets
       NEXT_TELEMETRY_DISABLED: "1"
     steps:
@@ -38,12 +38,63 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-      - name: Generate ephemeral authentication secret
-        run: node -e "require('node:fs').appendFileSync(process.env.GITHUB_ENV, 'BETTER_AUTH_SECRET=' + require('node:crypto').randomBytes(48).toString('base64url') + '\n')"
+      - name: Generate ephemeral test configuration
+        run: |
+          node --input-type=module <<'NODE'
+          import { randomBytes, randomUUID } from 'node:crypto';
+          import { appendFileSync } from 'node:fs';
+          const settings = {
+            BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
+            PDF_WORKER_TOKEN: randomBytes(48).toString('base64url'),
+            RIMO_E2E_PASSWORD: randomBytes(24).toString('base64url'),
+          };
+          for (const value of Object.values(settings)) process.stdout.write(`::add-mask::${value}\n`);
+          settings.RIMO_E2E_EMAIL = `ci-${randomUUID()}@example.test`;
+          settings.PDF_WORKER_URL = 'http://localhost:3100';
+          appendFileSync(process.env.GITHUB_ENV, Object.entries(settings).map(([key, value]) => `${key}=${value}`).join('\n') + '\n');
+          NODE
       - run: npm ci
       - run: npm run db:migrate
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Install Chromium for browser acceptance
+        run: npx playwright install --with-deps chromium
+      - name: Verify PDF with real Chromium and PostgreSQL
+        run: npm test -- __tests__/pdf-worker.integration.test.ts __tests__/pdf-service.integration.test.ts
+        env:
+          RIMO_PDF_BROWSER_TEST: "1"
+          PDF_WORKER_BROWSER_CHANNEL: chromium
+          PDF_CHROMIUM_SANDBOX: "false"
+      - name: Verify copied Russian text and PDF page order
+        run: |
+          python3 -m venv temp/pdf-python
+          temp/pdf-python/bin/pip install pypdf==6.10.0 pdfplumber==0.11.9
+          temp/pdf-python/bin/python __tests__/pdf-readability.py temp/pdf-acceptance/rimo-control-20-pages.pdf
       - run: npm run build
+      - name: Provision an ephemeral browser-test owner
+        run: npm run owner:create
+        env:
+          OWNER_EMAIL: ${{ env.RIMO_E2E_EMAIL }}
+          OWNER_PASSWORD: ${{ env.RIMO_E2E_PASSWORD }}
+          OWNER_NAME: Проверка CI
+      - name: Verify complete browser workflows
+        run: npm run test:e2e
+        env:
+          RIMO_E2E_BROWSER_CHANNEL: chromium
+          PDF_WORKER_BROWSER_CHANNEL: chromium
+          PDF_CHROMIUM_SANDBOX: "false"
+      - name: Verify standalone resources and runtime configuration
+        run: npm run verify:standalone
       - run: npm audit --omit=dev --audit-level=high
+      - name: Retain failed browser evidence
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: browser-failure-evidence
+          path: |
+            test-results/e2e/
+            playwright-report/
+            temp/pdf-acceptance/
+          retention-days: 3
+          if-no-files-found: ignore
