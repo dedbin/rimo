@@ -1,5 +1,5 @@
 import { memo, ReactNode } from "react";
-import { renderJSONContentToReactElement } from "@tiptap/static-renderer/json/react";
+import { renderJSONContentToReactElement, type TiptapStaticRendererOptions } from "@tiptap/static-renderer/json/react";
 import { RichTextDocument, RichTextMark, RichTextNode } from "./types";
 import { validateRichTextDocument } from "./validation";
 import { renderSafeMath } from "./math";
@@ -18,7 +18,7 @@ export const MathFormula = memo(({ latex, display = false }: { latex: string; di
 });
 MathFormula.displayName = "MathFormula";
 
-const render = renderJSONContentToReactElement<RichTextMark, RenderNode>({
+const RENDER_OPTIONS: TiptapStaticRendererOptions<ReactNode, RichTextMark, RenderNode> = {
   nodeMapping: {
     doc: ({ children }) => <>{children}</>,
     text: ({ node }) => "text" in node ? node.text : "",
@@ -40,8 +40,10 @@ const render = renderJSONContentToReactElement<RichTextMark, RenderNode>({
     italic: ({ children }) => <em>{children}</em>,
     code: ({ children }) => <code>{children}</code>,
   },
-});
+};
 
 export function renderRichText(input: RichTextDocument): ReactNode {
+  // Reset generated keys per document while preserving mapping component identities.
+  const render = renderJSONContentToReactElement<RichTextMark, RenderNode>(RENDER_OPTIONS);
   return render({ content: validateRichTextDocument(input) });
 }
