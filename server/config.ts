@@ -68,11 +68,18 @@ export function getServerConfig(): ServerConfig {
   } else {
     collaborationUrl.pathname = "/collaboration";
   }
+  // The session API supplies this value at runtime. Reflection also protects the
+  // legacy public key from Next 15's post-minification NEXT_PUBLIC replacement.
+  const environment = process.env;
+  const legacyCollaborationUrl = Reflect.get(environment, "NEXT_PUBLIC_COLLABORATION_URL") as string | undefined;
   const configuredWebsocketUrl = new URL(
-    process.env.NEXT_PUBLIC_COLLABORATION_URL ?? collaborationUrl.toString(),
+    environment.COLLABORATION_PUBLIC_URL ?? legacyCollaborationUrl ?? collaborationUrl.toString(),
   );
   if (!["ws:", "wss:"].includes(configuredWebsocketUrl.protocol)) {
-    throw new Error("NEXT_PUBLIC_COLLABORATION_URL must be a WebSocket URL");
+    throw new Error("COLLABORATION_PUBLIC_URL must be a WebSocket URL");
+  }
+  if (configuredWebsocketUrl.username || configuredWebsocketUrl.password) {
+    throw new Error("COLLABORATION_PUBLIC_URL must not contain credentials");
   }
   return Object.freeze({
     ...getQuotaLimits(),
