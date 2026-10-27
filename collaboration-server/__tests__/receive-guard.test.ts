@@ -37,7 +37,7 @@ afterEach(() => {
 
 describe("aggregate collaboration receive budget", () => {
   it("preserves the production limits", () => {
-    expect(DEFAULT_LIMITS).toMatchObject({ maxConnections: 50, maxQueuedMessages: 32,
+    expect(DEFAULT_LIMITS).toMatchObject({ maxConnections: 50, maxQueuedMessages: 64,
       maxPayloadBytes: 6 * 1024 * 1024, maxQueuedBytes: 6 * 1024 * 1024, maxTotalQueuedBytes: 32 * 1024 * 1024,
       maxMessagesPerSecond: 120, maxBytesPerSecond: 2 * 1024 * 1024 });
   });
@@ -215,11 +215,11 @@ describe("aggregate collaboration receive budget", () => {
   it("reports queue pressure without identities or payloads", () => {
     const { attach } = fixture();
     const writer = attach("PRIVATE_RESERVATION");
-    for (let index = 0; index < 33; index += 1) writer.connection.handleMessage(new Uint8Array(1));
+    for (let index = 0; index < 65; index += 1) writer.connection.handleMessage(new Uint8Array(1));
     expect(console.warn).toHaveBeenCalledOnce();
     expect(JSON.parse(String(vi.mocked(console.warn).mock.calls[0][0]))).toEqual({
-      event: "collaboration_receive_limit", kind: "queued-messages", queuedFrames: 32,
-      queuedBytes: 32, totalQueuedBytes: 32, incomingBytes: 1,
+      event: "collaboration_receive_limit", kind: "queued-messages", queuedFrames: 64,
+      queuedBytes: 64, totalQueuedBytes: 64, incomingBytes: 1,
     });
     expect(String(vi.mocked(console.warn).mock.calls[0][0])).not.toContain("PRIVATE");
   });

@@ -69,7 +69,7 @@ export const DEFAULT_LIMITS: Readonly<CollaborationLimits> = Object.freeze({
   maxLayers: 10_000,
   maxMessagesPerSecond: 120,
   maxBytesPerSecond: 2 * 1024 * 1024,
-  maxQueuedMessages: 32,
+  maxQueuedMessages: 64,
   maxQueuedBytes: 6 * 1024 * 1024,
   maxTotalQueuedBytes: 32 * 1024 * 1024,
   aclRefreshMs: 5_000,
