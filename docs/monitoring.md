@@ -32,7 +32,7 @@ node scripts/monitor-service.mjs --project rimo --env-file /srv/rimo/.env --comp
 | `pdfQueue` | Только GET `/healthz` на loopback существующего worker; возвращаются `running` и `waiting` |
 | `collaborationEvents` | Известные persistence/ACL records выбранного collaboration за последние 300 секунд, с ограничением tail и объёма |
 
-Контейнер в состоянии, отличном от running, unhealthy или с OOM flag даёт critical. Отсутствующий/неоднозначный сервис — critical. Health `starting` и ненулевой lifetime restart count — warning. Обязательные Docker health checks ожидаются у app/collaboration/db. В текущем Compose у worker и Caddy их нет: worker дополнительно проверяется по HTTP, а Caddy здесь оценивается только по Docker state. Это не проверка публичного HTTPS, DNS или сертификата.
+Контейнер в состоянии, отличном от running, unhealthy или с OOM flag даёт critical. Отсутствующий/неоднозначный сервис — critical. Health `starting` и ненулевой lifetime restart count — warning. Обязательные Docker health checks ожидаются у app/collaboration/db. Закреплённый worker image также содержит Docker healthcheck; его очередь дополнительно проверяется по HTTP. У Caddy healthcheck отсутствует: здесь он оценивается по Docker state. Это не проверка публичного HTTPS, DNS или сертификата.
 
 Для обеих файловых систем PostgreSQL warning возникает при свободном месте ниже 2 ГиБ **или** 10%; critical — ниже 256 МиБ **или** 2%. Порог учитывает доступные текущему пользователю байты. Даже если PGDATA и WAL лежат на одном томе, оба результата показаны отдельно. Вывод `df` принимает только две строки целых неотрицательных чисел; имена устройств и пути наружу не передаются. Нужны GNU `df`, `timeout`, `awk` и Unix-пользователь postgres, как в закреплённом PostgreSQL 18 Bookworm image.
 
@@ -107,4 +107,4 @@ Exit 1 считается успешным завершением systemd unit, 
 npx vitest run __tests__/monitor-service.test.ts --maxWorkers 1
 ```
 
-Unit suite проверяет redaction, изоляцию project/service, недоступные checks, warning/exit consistency, PGDATA/WAL отдельно, busy PDF, ACL/persistence counters, output/deadline bounds. Отдельная приёмка должна запустить healthy и контролируемые faults в собственном изолированном Compose-проекте. Unit checks и такой локальный сценарий не доказывают установленное расписание или доставку уведомлений на будущем VPS.
+Unit suite проверяет redaction, изоляцию project/service, недоступные checks, warning/exit consistency, PGDATA/WAL отдельно, busy PDF, ACL/persistence counters, output/deadline bounds. Изолированная Compose-приёмка 27 октября прошла девять наблюдений: healthy, остановку и восстановление PDF/БД, предупреждение по квоте владельцев и помеченные synthetic ACL events. Она выполнена вместе с зашифрованным восстановлением за 94,5 с; отчёт `temp/operations-acceptance/5fd53f68-dedb-4ab9-a13c-6bf8f5795465.json`. Эти локальные проверки не доказывают установленное расписание или доставку уведомлений на будущем VPS.
