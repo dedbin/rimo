@@ -155,3 +155,7 @@ docker compose up --build -d --wait
 ## Лицензия
 
 MIT © 2025 dedbin.
+
+Уведомления о шрифтах: [FONT-NOTICES.txt](public/licenses/FONT-NOTICES.txt),
+в приложении — `/licenses/FONT-NOTICES.txt`.
+Границы проверки зависимостей описаны в [инвентаре компонентов](docs/legal/third-party-components.md).

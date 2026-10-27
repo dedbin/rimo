@@ -3,6 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --chown=pwuser:pwuser tsconfig.json ./
+COPY --chown=pwuser:pwuser LICENSE ./LICENSE
+COPY --chown=pwuser:pwuser public/licenses/FONT-NOTICES.txt ./licenses/FONT-NOTICES.txt
 COPY --chown=pwuser:pwuser export-worker ./export-worker
 COPY --chown=pwuser:pwuser lib/board ./lib/board
 COPY --chown=pwuser:pwuser types ./types

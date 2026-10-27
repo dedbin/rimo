@@ -20,6 +20,8 @@ COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_m
 COPY --from=builder --chown=node:node /app/.next/standalone ./
 COPY --from=builder --chown=node:node /app/dist/collaboration ./dist/collaboration
 COPY --chown=node:node package.json tsconfig.json ./
+COPY --chown=node:node LICENSE ./LICENSE
+COPY --chown=node:node public/licenses/FONT-NOTICES.txt ./licenses/FONT-NOTICES.txt
 COPY --chown=node:node server ./server
 COPY --chown=node:node collaboration-server ./collaboration-server
 COPY --chown=node:node lib ./lib
