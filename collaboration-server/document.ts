@@ -114,21 +114,32 @@ export function validateIncomingUpdate(
   const candidate = new Y.Doc();
   try {
     Y.applyUpdate(candidate, Y.encodeStateAsUpdate(document));
-    Y.applyUpdate(candidate, update);
-    validateDocument(candidate, limits);
-    for (const name of document.share.keys()) {
-      if (!positionMigrationLayerId(name)) continue;
-      const next = candidate.getMap(name);
-      for (const [key, record] of document.getMap(name)) {
-        if (!next.has(key) || !isDeepStrictEqual(record, next.get(key))) {
-          throw new CollaborationRejection("Text position metadata is append-only");
-        }
-      }
-    }
+    validateShadowUpdate(document, candidate, update, limits);
   } catch (error) {
     if (error instanceof CollaborationRejection) throw error;
     throw new CollaborationRejection("Invalid board update");
   } finally {
     candidate.destroy();
   }
+}
+
+/** The shadow must be aligned with the authoritative document before this call. */
+export function validateShadowUpdate(
+  document: Y.Doc,
+  candidate: Y.Doc,
+  update: Uint8Array,
+  limits: CollaborationLimits,
+): Uint8Array {
+  Y.applyUpdate(candidate, update);
+  const state = validateDocument(candidate, limits);
+  for (const name of document.share.keys()) {
+    if (!positionMigrationLayerId(name)) continue;
+    const next = candidate.getMap(name);
+    for (const [key, record] of document.getMap(name)) {
+      if (!next.has(key) || !isDeepStrictEqual(record, next.get(key))) {
+        throw new CollaborationRejection("Text position metadata is append-only");
+      }
+    }
+  }
+  return state;
 }

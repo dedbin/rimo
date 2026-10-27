@@ -66,7 +66,9 @@ export class AccessGuard {
   start(): void {
     this.timer = setInterval(() => {
       this.prunePending();
-      for (const id of this.reservations.keys()) void this.refresh(id);
+      for (const [id, entry] of this.reservations) {
+        if (entry.connection) void this.refresh(id);
+      }
     }, this.limits.aclRefreshMs);
     this.timer.unref();
   }

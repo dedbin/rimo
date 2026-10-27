@@ -6,12 +6,12 @@ import * as Y from "yjs";
 import { AccessGuard } from "./access-guard";
 import { AwarenessGuard } from "./awareness";
 import { withDeadline } from "./deadline";
-import { validateIncomingUpdate } from "./document";
 import { DocumentPersistence } from "./persistence";
 import { ReceiveGuard } from "./receive-guard";
 import { CollaborationRejection, DEFAULT_LIMITS } from "./types";
 import type { CollaborationContext, CollaborationDependencies, CollaborationLimits } from "./types";
 import { UpdateGate } from "./update-gate";
+import { ValidationCache } from "./validation-cache";
 
 export interface CollaborationServerOptions {
   readonly origins: readonly string[];
@@ -20,7 +20,8 @@ export interface CollaborationServerOptions {
   readonly limits?: Partial<CollaborationLimits>;
 }
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// PostgreSQL uuid folds case; Hocuspocus room names do not.
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export function createCollaborationServer(
   options: CollaborationServerOptions,
@@ -36,9 +37,12 @@ export function createCollaborationServer(
   const origins = new Set(options.origins);
   if (!origins.size || origins.has("*")) throw new Error("Exact allowed origins are required");
   const sockets = new Set<Socket>();
+  const rooms = new Map<string, Y.Doc | symbol>();
+  let stopping = false;
   const access = new AccessGuard(dependencies, limits);
   const awareness = new AwarenessGuard();
   const updates = new UpdateGate();
+  const validation = new ValidationCache(limits);
   const receive = new ReceiveGuard(limits, (id) => access.release(id));
   const persistence = new DocumentPersistence(dependencies.repository, limits, (document) => {
     void server.hocuspocus.unloadDocument(document);
@@ -62,7 +66,7 @@ export function createCollaborationServer(
     async onUpgrade({ request, socket: untypedSocket }) {
       const socket = untypedSocket as Socket;
       const origin = request.headers.origin;
-      if (!origin || !origins.has(origin) || sockets.size >= limits.maxConnections) {
+      if (stopping || !origin || !origins.has(origin) || sockets.size >= limits.maxConnections) {
         const status = origin && origins.has(origin) ? "503 Service Unavailable" : "403 Forbidden";
         socket.end(`HTTP/1.1 ${status}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
         // Hocuspocus treats a falsy rejection as an already-handled HTTP response.
@@ -72,12 +76,12 @@ export function createCollaborationServer(
       socket.once("close", () => sockets.delete(socket));
     },
 
-    async onConnect({ documentName, requestHeaders, instance }) {
+    async onConnect({ documentName, requestHeaders }) {
+      if (stopping) throw new CollaborationRejection("Server stopping");
       if (!UUID.test(documentName) || !origins.has(requestHeaders.get("origin") ?? "")) {
         throw new CollaborationRejection("Board or origin is not allowed");
       }
-      if (!instance.documents.has(documentName) && !instance.loadingDocuments.has(documentName) &&
-          instance.documents.size + instance.loadingDocuments.size >= limits.maxOpenDocuments) {
+      if (!rooms.has(documentName) && rooms.size >= limits.maxOpenDocuments) {
         throw new CollaborationRejection("Server open board limit reached");
       }
     },
@@ -85,14 +89,26 @@ export function createCollaborationServer(
     async onAuthenticate({ token, documentName, requestHeaders, socketId, connectionConfig }) {
       if (token !== "cookie") throw new CollaborationRejection("Authentication required");
       const principal = await withDeadline(dependencies.authenticate(requestHeaders, documentName), limits.aclCheckTimeoutMs);
+      if (stopping) throw new CollaborationRejection("Server stopping");
       if (!principal) throw new CollaborationRejection("Board access denied");
       connectionConfig.readOnly = principal.role === "viewer";
       return access.reserve(principal, socketId);
     },
 
     async connected({ connection, documentName }) {
-      access.activate(connection);
-      receive.attach(connection);
+      try {
+        access.activate(connection);
+        receive.attach(connection);
+      } catch {
+        const id = connection.context.reservationId;
+        access.release(id);
+        receive.release(id);
+        connection.readOnly = true;
+        // The SDK has registered this Connection before invoking connected.
+        connection.close({ code: 1008, reason: "Connection activation failed" });
+        connection.webSocket.close(1008, "Connection activation failed");
+        return;
+      }
       const acknowledgement = persistence.getAcknowledgement(documentName);
       if (acknowledgement) connection.sendStateless(JSON.stringify(acknowledgement));
     },
@@ -117,7 +133,7 @@ export function createCollaborationServer(
       await updates.acquire(document.name, connection.context.reservationId);
       try {
         if (connection.readOnly) throw new CollaborationRejection("This board is read-only");
-        validateIncomingUpdate(document, payload, limits);
+        validation.validate(document.name, document, payload);
       } catch (error) {
         updates.release(connection.context.reservationId);
         throw error;
@@ -134,9 +150,16 @@ export function createCollaborationServer(
     },
 
     async onLoadDocument({ document }) {
+      rooms.set(document.name, document);
+      document.on("destroy", () => {
+        if (rooms.get(document.name) === document) rooms.delete(document.name);
+      });
       try {
+        if (stopping) throw new CollaborationRejection("Server stopping");
         await persistence.load(document);
+        if (stopping) throw new CollaborationRejection("Server stopping");
       } catch (error) {
+        validation.forget(document.name, document);
         persistence.forget(document.name);
         throw error;
       }
@@ -151,6 +174,7 @@ export function createCollaborationServer(
     },
 
     async afterUnloadDocument({ documentName }) {
+      validation.forget(documentName);
       persistence.forget(documentName);
     },
 
@@ -188,11 +212,39 @@ export function createCollaborationServer(
     },
 
     async onDestroy() {
+      stopping = true;
       access.stop();
       receive.stop();
       persistence.stop();
+      validation.clear();
+      rooms.clear();
+      sockets.forEach((socket) => socket.destroy());
     },
   });
 
+  const createDocument = server.hocuspocus.createDocument.bind(server.hocuspocus);
+  server.hocuspocus.createDocument = async (...parameters) => {
+    const name = parameters[0];
+    let room = rooms.get(name);
+    try {
+      // Reserve synchronously after auth: the SDK loading map is still empty.
+      // Hocuspocus 4.7.1 does not forward the configuration onCreateDocument hook.
+      if (stopping) throw new CollaborationRejection("Server stopping");
+      if (!room) {
+        if (rooms.size >= limits.maxOpenDocuments) throw new CollaborationRejection("Server open board limit reached");
+        room = Symbol(name);
+        rooms.set(name, room);
+      }
+      return await createDocument(...parameters);
+    } catch (error) {
+      // Failed/shared loads have no Connection, so SDK onDisconnect never runs.
+      const reservationId = parameters[4]?.reservationId;
+      if (reservationId) access.release(reservationId);
+      if (typeof room === "symbol" && rooms.get(name) === room) rooms.delete(name);
+      throw error;
+    }
+  };
+  const destroy = server.destroy.bind(server);
+  server.destroy = () => { stopping = true; return destroy(); };
   return server;
 }
