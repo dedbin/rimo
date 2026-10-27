@@ -130,6 +130,26 @@ describe("one-shot Compose monitor", () => {
     expect(PG_FILESYSTEM_SCRIPT).not.toMatch(/rm\s|mkfs|dd\s|fallocate/);
   });
 
+  it.each([
+    ["pgdata", 0, 1, "healthy"], ["pgdata", 0, 0, "warning"], ["pgdata", 0, -1, "warning"],
+    ["pg_wal", 1, 1, "healthy"], ["pg_wal", 1, 0, "warning"], ["pg_wal", 1, -1, "warning"],
+  ] as const)("applies the 80 percent boundary to %s row %i with %i spare-byte offset", (role, index, offset, status) => {
+    const lines = [`${4 * GiB} ${16 * GiB}`, `${4 * GiB} ${16 * GiB}`];
+    lines[index] = `${8 * GiB + offset} ${40 * GiB}`;
+    const report = parseFilesystems(lines.join("\n"));
+    expect(report.status).toBe(status);
+    expect(report.reasonCodes).toEqual(status === "healthy" ? [] : [`${role === "pgdata" ? "PGDATA" : "PG_WAL"}_SPACE_LOW`]);
+    expect(report.data[index]).toEqual({ role, freeBytes: 8 * GiB + offset, totalBytes: 40 * GiB });
+  });
+
+  it("aggregates an 80 percent WAL warning without waiting for a critical reserve", async () => {
+    const report = await monitorService(options, { run: fakeRunner({ df: response(`${4 * GiB} ${16 * GiB}\n${8 * GiB} ${40 * GiB}\n`) }),
+      signal: new AbortController().signal });
+    expect(report.status).toBe("warning"); expect(exitCode(report.status)).toBe(1);
+    expect(report.reasonCodes).toEqual(["PG_WAL_SPACE_LOW"]);
+    expect(report.checks.application.status).toBe("healthy");
+  });
+
   it("treats a running PDF as healthy and a nonempty queue as warning", () => {
     expect(parsePdfHealth('{"ok":true,"running":true,"waiting":0}').status).toBe("healthy");
     expect(parsePdfHealth('{"ok":true,"running":true,"waiting":1}').status).toBe("warning");

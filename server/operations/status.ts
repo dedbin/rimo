@@ -1,8 +1,11 @@
 import type { Pool } from "pg";
 
+import { storageSpaceHealth } from "../../lib/storage-space.mjs";
 import type { QuotaLimits } from "../config";
 import { inspectStorage, OperationsError, safeNumber } from "./storage";
 import type { StorageMetrics } from "./storage";
+
+export { storageSpaceHealth };
 
 export type ServiceHealth = "healthy" | "warning" | "critical";
 export interface ServiceUsage {
@@ -14,13 +17,6 @@ export interface ServiceStatus {
   readonly version: 1; readonly checkedAt: string; readonly status: ServiceHealth; readonly reasonCodes: readonly string[];
   readonly database: { readonly reachable: boolean }; readonly usage: ServiceUsage | null;
   readonly quotas: QuotaLimits; readonly storage: StorageMetrics | null;
-}
-
-export function storageSpaceHealth(freeBytes: number, totalBytes: number): "low" | "critical" | null {
-  const fraction = totalBytes > 0 ? freeBytes / totalBytes : 0;
-  if (freeBytes < 256 * 1024 * 1024 || fraction < 0.02) return "critical";
-  if (freeBytes < 2 * 1024 * 1024 * 1024 || fraction <= 0.2) return "low";
-  return null;
 }
 
 async function databaseUsage(database: Pool): Promise<ServiceUsage> {

@@ -3,6 +3,8 @@ import { readFile, stat } from "node:fs/promises";
 import path from "node:path";
 import { parseArgs, parseEnv } from "node:util";
 
+import { storageSpaceHealth } from "../lib/storage-space.mjs";
+
 export const SERVICES = Object.freeze(["app", "collaboration", "db", "export-worker", "caddy"]);
 export const LIMITS = Object.freeze({ deadlineMs: 45_000, commandMs: 10_000, outputBytes: 65_536,
   logBytes: 262_144, logLines: 500, logWindowSeconds: 300 });
@@ -177,8 +179,8 @@ export function parseFilesystems(text) {
   });
   const codes = []; let status = "healthy";
   for (const entry of data) {
-    const level = entry.freeBytes < 256 * 1024 * 1024 || entry.freeBytes / entry.totalBytes < 0.02 ? "critical"
-      : entry.freeBytes < 2 * 1024 * 1024 * 1024 || entry.freeBytes / entry.totalBytes < 0.1 ? "warning" : "healthy";
+    const health = storageSpaceHealth(entry.freeBytes, entry.totalBytes);
+    const level = health === "critical" ? "critical" : health === "low" ? "warning" : "healthy";
     if (level !== "healthy") codes.push(`${entry.role === "pgdata" ? "PGDATA" : "PG_WAL"}_SPACE_${level === "critical" ? "CRITICAL" : "LOW"}`);
     if (exitCode(level) > exitCode(status)) status = level;
   }
