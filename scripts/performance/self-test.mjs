@@ -7,7 +7,7 @@ import { intersectsViewport } from "../../lib/board/geometry.ts";
 import { parseLayer } from "../../lib/board/model.ts";
 import { pickLayersInBox } from "../../lib/utils.ts";
 
-import { safeError, Y } from "./common.mjs";
+import { describeClose, safeError, Y } from "./common.mjs";
 import { dragOffset, seedScene, SELECT_BOX, VIEWPORT, VISIBLE_OBJECTS } from "./fixture.mjs";
 
 export function selfTest() {
@@ -32,6 +32,11 @@ export function selfTest() {
     assert.equal(message, "Operation failed");
     assert(!message.includes(secret));
     assert(!safeError(new Error(`Cookie: ${secret}`)).includes(secret));
+    assert.deepEqual(describeClose({ code: 1000, reason: "Access revoked or unavailable" }), { code: 1000, reason: "access-unavailable" });
+    assert.deepEqual(describeClose({ code: 1008, reason: "Connection receive limit reached" }), { code: 1008, reason: "receive-limit" });
+    assert.deepEqual(describeClose({ code: 1000, reason: "Board removed" }), { code: 1000, reason: "board-removed" });
+    assert.deepEqual(describeClose({ code: 1000, reason: secret }), { code: 1000, reason: "unclassified" });
+    assert.deepEqual(describeClose({}), { code: null, reason: "unspecified" });
     return { kind: "performance-fixture-check", objects: scene.objects, visible: VISIBLE_OBJECTS,
       documentBytes: state.byteLength, distribution: scene.distribution, errorCallLogRedacted: true };
   } finally { document.destroy(); }

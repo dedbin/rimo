@@ -137,5 +137,6 @@ export async function runLoad(rooms, options, signal, progress) {
         batchSizesPerRoom: rooms.map((room) => room.writers.map((writer) => writer.layerIds.length)) },
       samples, documents: rooms.map((room) => ({ boardId: room.boardId, bytes: Y.encodeStateAsUpdate(room.clients[0].document).byteLength,
         revision: room.clients[0].acknowledgement?.revision })),
-      clients: peers.map((peer) => ({ boardId: peer.boardId, role: peer.session.role, wire: peer.stats })) };
+      clients: peers.map((peer) => ({ boardId: peer.boardId, role: peer.session.role,
+        failure: peer.failure, closeEvent: peer.closeEvent, wire: peer.stats })) };
 }

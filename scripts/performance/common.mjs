@@ -34,6 +34,23 @@ export function safeError(error) {
   return `${operation ?? "Operation"} failed${code ? ` (${code})` : ""}`;
 }
 
+export function describeClose(event) {
+  // SDK logical closes all use code1000. Keep known server reasons, never arbitrary text.
+  const known = new Map([
+    ["Access revoked or unavailable", "access-unavailable"],
+    ["Connection receive limit reached", "receive-limit"],
+    ["Connection activation failed", "activation-failed"],
+    ["Board storage limit reached", "document-limit"],
+    ["Board no longer exists", "board-removed"],
+    ["Board removed", "board-removed"],
+    ["Server stopping", "server-stopping"],
+    ["Server closed the connection", "server-close"],
+    ["forced", "client-watchdog"],
+  ]);
+  return { code: Number.isSafeInteger(event?.code) ? event.code : null,
+    reason: known.get(event?.reason) ?? (event?.reason ? "unclassified" : "unspecified") };
+}
+
 export async function waitFor(predicate, timeout = 15_000, signal) {
   const deadline = performance.now() + timeout;
   while (!predicate()) {
@@ -182,6 +199,7 @@ export async function openProvider(context, baseURL, boardId, signal) {
   let acknowledgement;
   let closed = false;
   let failure = null;
+  let closeEvent = null;
   const document = new Y.Doc();
   const websocket = new HocuspocusProviderWebsocket({ url: session.connection.url, autoConnect: false,
     maxAttempts: 1, jitter: false, initialDelay: 0,
@@ -194,18 +212,23 @@ export async function openProvider(context, baseURL, boardId, signal) {
     },
   });
   const provider = new HocuspocusProvider({ name: boardId, document, token: session.connection.token, websocketProvider: websocket,
-    onAuthenticationFailed: () => { if (!closed) failure = "Authentication failed"; },
-    onClose: ({ event }) => { if (!closed) failure = `Connection closed (${event.code})`; },
+    onAuthenticationFailed: () => { if (!closed) failure ??= "Authentication failed"; },
+    onClose: ({ event }) => {
+      if (closed) return;
+      closeEvent ??= describeClose(event);
+      failure ??= `Connection closed (${closeEvent.code ?? "unknown"}/${closeEvent.reason})`;
+    },
     onStateless: ({ payload }) => {
       const message = parseServerMessage(payload);
       if (message?.type === "persisted") acknowledgement = { ...message, receivedAt: performance.now() };
-      if (message?.type === "persistence-error") failure = "Persistence failed without a database acknowledgement";
+      if (message?.type === "persistence-error") failure ??= "Persistence failed without a database acknowledgement";
     },
   });
   provider.attach();
   const result = {
     boardId, document, provider, websocket, session,
     get failure() { return failure; },
+    get closeEvent() { return closeEvent && { ...closeEvent }; },
     get stats() { return structuredClone(stats); },
     get acknowledgement() { return acknowledgement; },
     get bufferedAmount() { return websocket.webSocket?.bufferedAmount ?? 0; },
@@ -222,7 +245,7 @@ export async function openProvider(context, baseURL, boardId, signal) {
     },
   };
   try {
-    void websocket.connect().catch(() => { failure = "WebSocket connection failed"; });
+    void websocket.connect().catch(() => { failure ??= "WebSocket connection failed"; });
     await waitFor(() => { if (failure) throw fail(failure); return provider.isSynced; }, 15_000, signal);
     provider.sendStateless(JSON.stringify({ type: "persistence-status" }));
     await waitFor(() => { if (failure) throw fail(failure); return result.isPersisted(); }, 15_000, signal);
