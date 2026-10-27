@@ -6,6 +6,7 @@ export interface PersistedMessage {
   snapshot: string;
   savedAt: string;
 }
+
 export interface PersistenceErrorMessage {
   type: "persistence-error";
   message: string;
@@ -63,4 +64,3 @@ export function parseServerMessage(payload: string): ServerMessage | null {
     return null;
   }
 }
-
