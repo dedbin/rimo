@@ -24,7 +24,8 @@ async function fingerprint(files) {
 
 export async function networkSourceHash() {
   const local = (await readdir(directory)).filter((name) => name.endsWith(".mjs") || ["Dockerfile", "tinyproxy.conf", ".dockerignore"].includes(name));
-  return fingerprint([...local, "../common.mjs", "../cookies.mjs", "../fixture.mjs", "../service-target.mjs"]);
+  return fingerprint([...local, "../common.mjs", "../cookies.mjs", "../fixture.mjs", "../service-target.mjs",
+    "../../../lib/collaboration/offline-sync.ts", "../../../lib/collaboration/protocol.ts"]);
 }
 
 export async function cleanupStep(report, step, operation) {

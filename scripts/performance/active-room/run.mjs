@@ -27,6 +27,9 @@ async function sourceHash() {
   for (const name of ["common", "cookies", "fixture", "service-target"]) {
     const filename = `scripts/performance/${name}.mjs`; hash.update(filename); hash.update(await readFile(path.join(root, filename)));
   }
+  for (const filename of ["lib/collaboration/offline-sync.ts", "lib/collaboration/protocol.ts"]) {
+    hash.update(filename); hash.update(await readFile(path.join(root, filename)));
+  }
   return hash.digest("hex");
 }
 
