@@ -4,6 +4,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 
+import { escapeIdentifier, Pool } from "pg";
 import sharp from "sharp";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -107,6 +108,71 @@ describe.skipIf(!databaseUrl)("PostgreSQL auth and board integration", () => {
       name: "Unexpected", email: `blocked-${testId}@example.test`, password,
     }));
     expect(response.status).toBe(400);
+  });
+
+  describe("migration history preflight on an isolated PostgreSQL schema", () => {
+    const schema = `rimo_migration_test_${randomUUID().replaceAll("-", "")}`;
+    let admin: Pool | undefined;
+    let database: Pool;
+    let schemaCreated = false;
+    const history = async (): Promise<{ name: string; checksum: string }[]> =>
+      (await database.query<{ name: string; checksum: string }>("SELECT name, checksum FROM schema_migrations ORDER BY name")).rows;
+
+    beforeAll(async () => {
+      admin = new Pool({ connectionString: databaseUrl, connectionTimeoutMillis: 2_000, statement_timeout: 5_000 });
+      await admin.query(`CREATE SCHEMA ${escapeIdentifier(schema)}`);
+      schemaCreated = true;
+      const isolated = new URL(databaseUrl!);
+      isolated.searchParams.set("options", `-c search_path=${schema}`);
+      database = new Pool({ connectionString: isolated.toString(), max: 2, connectionTimeoutMillis: 2_000, statement_timeout: 5_000 });
+      const current = await database.query<{ schema: string }>("SELECT current_schema() AS schema");
+      expect(current.rows[0].schema).toBe(schema);
+      await runMigrations(database);
+    });
+
+    afterAll(async () => {
+      try { await database?.end(); }
+      finally {
+        try {
+          if (schemaCreated) {
+            if (!/^rimo_migration_test_[a-f0-9]{32}$/.test(schema)) throw new Error("Unsafe migration test schema");
+            await admin!.query(`DROP SCHEMA ${escapeIdentifier(schema)} CASCADE`);
+          }
+        } finally { await admin?.end(); }
+      }
+    });
+
+    it("rejects a newer database history, preserves it and succeeds after removing only its own future row", async () => {
+      const before = await history();
+      const future = { name: `999999-test-future-${randomUUID()}.sql`, checksum: "0".repeat(64) };
+      await database.query("INSERT INTO schema_migrations(name,checksum) VALUES($1,$2)", [future.name, future.checksum]);
+      try {
+        await expect(runMigrations(database)).rejects.toThrow(`Applied migration is missing from this image: ${future.name}`);
+        const rejected = await history();
+        expect(rejected.filter((entry) => entry.name !== future.name)).toEqual(before);
+        expect(rejected.find((entry) => entry.name === future.name)).toEqual(future);
+      } finally {
+        await database.query("DELETE FROM schema_migrations WHERE name=$1 AND checksum=$2", [future.name, future.checksum]);
+      }
+      expect(await history()).toEqual(before);
+      expect(await runMigrations(database)).toEqual([]);
+    });
+
+    it("rejects an altered historical checksum without rewriting it and succeeds after exact restoration", async () => {
+      const before = await history();
+      expect(before.length).toBeGreaterThan(0);
+      const original = before[0];
+      const changed = original.checksum === "0".repeat(64) ? "1".repeat(64) : "0".repeat(64);
+      await database.query("UPDATE schema_migrations SET checksum=$2 WHERE name=$1", [original.name, changed]);
+      try {
+        await expect(runMigrations(database)).rejects.toThrow(`Migration checksum differs: ${original.name}`);
+        expect(await history()).toEqual(before.map((entry) => entry.name === original.name ? { ...entry, checksum: changed } : entry));
+      } finally {
+        await database.query("UPDATE schema_migrations SET checksum=$2 WHERE name=$1 AND checksum=$3", [original.name, original.checksum, changed]);
+      }
+      expect(await history()).toEqual(before);
+      expect(await runMigrations(database)).toEqual([]);
+    });
   });
 
   it("requires a real session and rejects cross-site mutation", async () => {
