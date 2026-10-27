@@ -196,8 +196,8 @@ describe("room admission over real WebSocket connections", () => {
       await waitFor(() => loadStarted);
       const guard = reserving.mock.contexts[0] as AccessGuard;
       const expired = reserving.mock.results[0].value as CollaborationContext;
-      const realNow = Date.now;
-      vi.spyOn(Date, "now").mockImplementation(() => realNow() + 11_000);
+      const realNow = performance.now.bind(performance);
+      vi.spyOn(performance, "now").mockImplementation(() => realNow() + 11_000);
       // reserve() synchronously prunes old pending slots, without a timer race.
       const probe = guard.reserve({ ...expired, userId: "ttl-probe" }, "ttl-probe");
       guard.release(probe.reservationId);
@@ -239,8 +239,8 @@ describe("room admission over real WebSocket connections", () => {
     const pendingContext = reserving.mock.results[0].value as CollaborationContext;
     await expect(guard.checkAccess(pendingContext)).resolves.toBeUndefined();
     expect(context.server.hocuspocus.documents.size).toBe(0);
-    const realNow = Date.now;
-    vi.spyOn(Date, "now").mockImplementation(() => realNow() + 11_000);
+    const realNow = performance.now.bind(performance);
+    vi.spyOn(performance, "now").mockImplementation(() => realNow() + 11_000);
     const next = context.start(randomUUID());
     await waitFor(() => next.client.provider.isSynced || !!next.rejection());
     expect(next.rejection()).toBe("");
@@ -294,7 +294,7 @@ describe("room admission over real WebSocket connections", () => {
 
 it("expires pending reservations even while the periodic ACL check refreshes active peers", async () => {
   let now = 0;
-  vi.spyOn(Date, "now").mockImplementation(() => now);
+  vi.spyOn(performance, "now").mockImplementation(() => now);
   let activeChecks = 0;
   let pendingChecks = 0;
   const guard = new AccessGuard({

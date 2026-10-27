@@ -23,7 +23,7 @@ function fixture(revalidate: CollaborationDependencies["revalidate"], role: Boar
     name: "PRIVATE_NAME", role }, "PRIVATE_SOCKET");
   const connection = { context, readOnly: role === "viewer", close: vi.fn(), sendStateless: vi.fn() };
   guard.activate(connection as unknown as Connection<CollaborationContext>);
-  vi.setSystemTime(Date.now() + DEFAULT_LIMITS.aclRefreshMs);
+  vi.advanceTimersByTime(DEFAULT_LIMITS.aclRefreshMs);
   return { guard, context, connection };
 }
 

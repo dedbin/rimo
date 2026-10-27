@@ -1,7 +1,7 @@
 import { getBoardAccess } from "../server/access";
 import { getAuth } from "../server/auth";
+import { getCollaborationRole } from "../server/collaboration-access";
 import { getPool } from "../server/db";
-import { getSessionById } from "../server/session";
 
 import { createPostgresRepository } from "./postgres-repository";
 import type { CollaborationDependencies } from "./types";
@@ -24,10 +24,7 @@ export function createCollaborationDependencies(): CollaborationDependencies {
       };
     },
     async revalidate(principal) {
-      const session = await getSessionById(principal.sessionId, principal.userId);
-      if (!session) return null;
-      const access = await getBoardAccess(principal.boardId, principal.userId);
-      return access?.role ?? null;
+      return getCollaborationRole(principal.sessionId, principal.userId, principal.boardId);
     },
   };
 }

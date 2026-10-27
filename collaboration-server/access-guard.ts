@@ -38,7 +38,7 @@ export class AccessGuard {
     if (principal.role !== "viewer" && this.editorCount() >= this.limits.maxEditors) {
       throw new CollaborationRejection("Server editor limit reached");
     }
-    const now = Date.now();
+    const now = performance.now();
     const context = { ...principal, reservationId: randomUUID() };
     this.reservations.set(context.reservationId, {
       context, socketId, checkedAt: now,
@@ -59,7 +59,7 @@ export class AccessGuard {
   async checkAccess(context: CollaborationContext): Promise<void> {
     const entry = this.reservations.get(context.reservationId);
     if (!entry) throw new CollaborationRejection("Access revoked");
-    const now = Date.now();
+    const now = performance.now();
     if (now - entry.checkedAt >= this.limits.aclRefreshMs) {
       await this.refresh(context.reservationId);
       if (!this.reservations.has(context.reservationId)) throw new CollaborationRejection("Access revoked");
@@ -69,10 +69,11 @@ export class AccessGuard {
   start(): void {
     this.timer = setInterval(() => {
       this.prunePending();
+      const now = performance.now();
       for (const [id, entry] of this.reservations) {
-        if (entry.connection) void this.refresh(id);
+        if (entry.connection && now - entry.checkedAt >= this.limits.aclRefreshMs) void this.refresh(id);
       }
-    }, this.limits.aclRefreshMs);
+    }, Math.min(1_000, this.limits.aclRefreshMs));
     this.timer.unref();
   }
 
@@ -115,7 +116,8 @@ export class AccessGuard {
       return;
     }
     const previousRole = entry.context.role;
-    entry.checkedAt = Date.now();
+    // A slow response may describe the role at query start, not its completion.
+    entry.checkedAt = started;
     entry.context = { ...entry.context, role };
     if (entry.connection) {
       entry.connection.context = entry.context;
@@ -129,7 +131,7 @@ export class AccessGuard {
 
   private prunePending(): void {
     for (const [id, entry] of this.reservations) {
-      if (!entry.connection && Date.now() - entry.checkedAt > 10_000) this.reservations.delete(id);
+      if (!entry.connection && performance.now() - entry.checkedAt > 10_000) this.reservations.delete(id);
     }
   }
 }
