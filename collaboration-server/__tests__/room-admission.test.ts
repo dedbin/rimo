@@ -215,7 +215,7 @@ describe("room admission over real WebSocket connections", () => {
     } finally { socket.terminate(); }
   });
 
-  it("expires a reservation returned after its socket disconnected during authentication", async () => {
+  it("releases a reservation returned after its socket disconnected during authentication", async () => {
     const auth = barrier();
     const reserving = vi.spyOn(AccessGuard.prototype, "reserve");
     let authenticating = 0;
@@ -237,10 +237,8 @@ describe("room admission over real WebSocket connections", () => {
     await waitFor(() => reserving.mock.calls.length === 1);
     const guard = reserving.mock.contexts[0] as AccessGuard;
     const pendingContext = reserving.mock.results[0].value as CollaborationContext;
-    await expect(guard.checkAccess(pendingContext)).resolves.toBeUndefined();
+    await expect(guard.checkAccess(pendingContext)).rejects.toThrow("Access revoked");
     expect(context.server.hocuspocus.documents.size).toBe(0);
-    const realNow = performance.now.bind(performance);
-    vi.spyOn(performance, "now").mockImplementation(() => realNow() + 11_000);
     const next = context.start(randomUUID());
     await waitFor(() => next.client.provider.isSynced || !!next.rejection());
     expect(next.rejection()).toBe("");

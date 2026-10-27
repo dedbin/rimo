@@ -52,6 +52,7 @@ export interface CollaborationLimits {
   maxBytesPerSecond: number;
   maxQueuedMessages: number;
   maxQueuedBytes: number;
+  maxTotalQueuedBytes: number;
   aclRefreshMs: number;
   aclCheckTimeoutMs: number;
   persistenceDebounceMs: number;
@@ -70,6 +71,7 @@ export const DEFAULT_LIMITS: Readonly<CollaborationLimits> = Object.freeze({
   maxBytesPerSecond: 2 * 1024 * 1024,
   maxQueuedMessages: 32,
   maxQueuedBytes: 6 * 1024 * 1024,
+  maxTotalQueuedBytes: 32 * 1024 * 1024,
   aclRefreshMs: 5_000,
   aclCheckTimeoutMs: 3_000,
   persistenceDebounceMs: 500,

@@ -10,6 +10,7 @@ import { AwarenessGuard } from "./awareness";
 import { withDeadline } from "./deadline";
 import { DocumentPersistence } from "./persistence";
 import { ReceiveGuard } from "./receive-guard";
+import { installReceiveIngress } from "./receive-transport";
 import { RuntimeMetrics } from "./runtime-metrics";
 import { CollaborationRejection, DEFAULT_LIMITS } from "./types";
 import type { CollaborationContext, CollaborationDependencies, CollaborationLimits } from "./types";
@@ -88,23 +89,35 @@ export function createCollaborationServer(
       socket.once("close", () => sockets.delete(socket));
     },
 
-    async onConnect({ documentName, requestHeaders }) {
-      if (stopping) throw new CollaborationRejection("Server stopping");
-      if (!UUID.test(documentName) || !origins.has(requestHeaders.get("origin") ?? "")) {
-        throw new CollaborationRejection("Board or origin is not allowed");
-      }
-      if (!rooms.has(documentName) && rooms.size >= limits.maxOpenDocuments) {
-        throw new CollaborationRejection("Server open board limit reached");
-      }
+    async onConnect({ documentName, requestHeaders, request, connectionConfig }) {
+      try {
+        receive.connect(request, documentName, connectionConfig);
+        if (stopping) throw new CollaborationRejection("Server stopping");
+        if (!UUID.test(documentName) || !origins.has(requestHeaders.get("origin") ?? "")) {
+          throw new CollaborationRejection("Board or origin is not allowed");
+        }
+        if (!rooms.has(documentName) && rooms.size >= limits.maxOpenDocuments) {
+          throw new CollaborationRejection("Server open board limit reached");
+        }
+      } catch (error) { receive.failed(request, error, connectionConfig); throw error; }
     },
 
-    async onAuthenticate({ token, documentName, requestHeaders, socketId, connectionConfig }) {
-      if (token !== "cookie") throw new CollaborationRejection("Authentication required");
-      const principal = await withDeadline(dependencies.authenticate(requestHeaders, documentName), limits.aclCheckTimeoutMs);
-      if (stopping) throw new CollaborationRejection("Server stopping");
-      if (!principal) throw new CollaborationRejection("Board access denied");
-      connectionConfig.readOnly = principal.role === "viewer";
-      return access.reserve(principal, socketId);
+    async onAuthenticate({ token, documentName, requestHeaders, socketId, connectionConfig, request }) {
+      let context: CollaborationContext | undefined;
+      try {
+        if (token !== "cookie") throw new CollaborationRejection("Authentication required");
+        const principal = await withDeadline(dependencies.authenticate(requestHeaders, documentName), limits.aclCheckTimeoutMs);
+        if (stopping) throw new CollaborationRejection("Server stopping");
+        if (!principal) throw new CollaborationRejection("Board access denied");
+        connectionConfig.readOnly = principal.role === "viewer";
+        context = access.reserve(principal, socketId);
+        receive.authenticate(request, context, connectionConfig);
+        return context;
+      } catch (error) {
+        if (context) access.release(context.reservationId);
+        receive.failed(request, error, connectionConfig);
+        throw error;
+      }
     },
 
     async connected({ connection, documentName }) {
@@ -115,12 +128,11 @@ export function createCollaborationServer(
         access.release(connection.context.reservationId);
       });
       try {
-        access.activate(connection);
         receive.attach(connection);
+        access.activate(connection);
       } catch {
         const id = connection.context.reservationId;
         access.release(id);
-        receive.release(id);
         connection.readOnly = true;
         // The SDK has registered this Connection before invoking connected.
         connection.close({ code: 1008, reason: "Connection activation failed" });
@@ -133,7 +145,8 @@ export function createCollaborationServer(
       if (acknowledgement) connection.sendStateless(JSON.stringify(acknowledgement));
     },
 
-    async beforeHandleMessage({ context, update }) {
+    async beforeHandleMessage({ context, update, connection }) {
+      receive.attach(connection);
       await access.checkAccess(context);
       const message = new IncomingMessage(update);
       message.readVarString();
@@ -250,6 +263,7 @@ export function createCollaborationServer(
     },
   });
 
+  installReceiveIngress(server.hocuspocus, receive);
   const createDocument = server.hocuspocus.createDocument.bind(server.hocuspocus);
   server.hocuspocus.createDocument = async (...parameters) => {
     const name = parameters[0];
@@ -268,8 +282,12 @@ export function createCollaborationServer(
       // Failed/shared loads have no Connection, so SDK onDisconnect never runs.
       const reservationId = parameters[4]?.reservationId;
       if (reservationId) access.release(reservationId);
+      receive.failed(parameters[1], error, parameters[3]);
       if (typeof room === "symbol" && rooms.get(name) === room) rooms.delete(name);
       throw error;
+    } finally {
+      const reservationId = parameters[4]?.reservationId;
+      if (reservationId) receive.loadFinished(reservationId);
     }
   };
   const destroy = server.destroy.bind(server);
