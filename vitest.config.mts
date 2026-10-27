@@ -5,7 +5,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     maxWorkers: 4,
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'e2e/**', 'temp/**', 'dist/**', '.next/**'],
   },
   resolve: { tsconfigPaths: true },
   oxc: { jsx: { runtime: 'automatic' } },
