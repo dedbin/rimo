@@ -23,7 +23,8 @@ function projectInventory(hostIp = "127.0.0.1"): ProjectContainer[] {
 function completeReport() {
   const helper = { image: "fixture-image", helperConfigurationSha256: "fixture-hash", perDirectionBitsPerSecond: 50_000_000 };
   const verified = { pages: 20, russian_text_searchable: true, russian_text_copyable: true, page_order_verified: true, independent_pdfminer_exact_phrases: true };
-  const memory = { cgroupCurrentBytes: 100_000_000, cgroupLimitBytes: 768 * 1024 * 1024, pid1RssBytes: 50_000_000 };
+  const memory = { cgroupCurrentBytes: 100_000_000, cgroupLimitBytes: 768 * 1024 * 1024,
+    pid1RssBytes: 1_000_000, workerPid: 7, workerRssBytes: 50_000_000 };
   const browserClock = { stable: true, lower: -1, upper: 1, uncertaintyMs: 2 };
   return { requestedExports: 20, snapshot: { revision: 42 }, operations: Array.from({ length: 20 }, (_, index) => ({
     source: index % 2 ? "editor" : "owner", overlap: { fromEpochMs: 1, toEpochMs: 2 }, saved: true, undoRestored: true,
@@ -91,7 +92,7 @@ describe("PDF parallel lesson acceptance boundary", () => {
     expect(report.operations).toHaveLength(20);
   });
 
-  it.each(["pages", "revision", "saved", "undo", "p95", "roundtrip", "calibration", "queue", "browser-clock", "causal", "memory", "owner-only", "incomplete"])(
+  it.each(["pages", "revision", "saved", "undo", "p95", "roundtrip", "calibration", "queue", "browser-clock", "causal", "memory", "worker-pid", "worker-rss", "owner-only", "incomplete"])(
     "cannot accept a run missing %s", (missing) => {
       const report = completeReport();
       if (missing === "pages") report.operations[0].pdf.verified.pages = 19;
@@ -105,6 +106,8 @@ describe("PDF parallel lesson acceptance boundary", () => {
       if (missing === "browser-clock") report.operations[0].sourceClock.stable = false;
       if (missing === "causal") report.probe.samples[0].replyId = 99;
       if (missing === "memory") report.memoryImmediateAfter.cgroupCurrentBytes = 900 * 1024 * 1024;
+      if (missing === "worker-pid") report.memoryImmediateAfter.workerPid = 0;
+      if (missing === "worker-rss") report.memoryImmediateAfter.workerRssBytes = 0;
       if (missing === "owner-only") report.operations.forEach((entry) => { entry.source = "owner"; });
       if (missing === "incomplete") report.operations.pop();
       expect(acceptanceStatus(criteria(report), [])).toBe("not-accepted");

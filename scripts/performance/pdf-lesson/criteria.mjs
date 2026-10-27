@@ -56,7 +56,8 @@ export function criteria(report) {
     finalStateDurable: report.durable?.originalCoordinatesRestored === true && report.durable?.controlContentRestored === true && report.durable?.persisted === true,
     noPageErrors: report.pageErrors.length === 0,
     workerMemoryRecorded: [report.memoryBefore, report.memoryImmediateAfter, report.memoryAfterFiveSecondIdle].every((entry) =>
-      entry?.cgroupCurrentBytes > 0 && entry.cgroupLimitBytes > 0 && entry.cgroupCurrentBytes <= entry.cgroupLimitBytes && entry.pid1RssBytes > 0),
+      entry?.cgroupCurrentBytes > 0 && entry.cgroupLimitBytes > 0 && entry.cgroupCurrentBytes <= entry.cgroupLimitBytes &&
+      Number.isSafeInteger(entry.workerPid) && entry.workerPid > 0 && Number.isSafeInteger(entry.workerRssBytes) && entry.workerRssBytes > 0),
     noRuntimeFailure: report.error === undefined,
     noInterruption: report.interruption === undefined,
   };

@@ -4,7 +4,7 @@ import { PassThrough } from "node:stream";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { startProbe } from "../scripts/performance/pdf-lesson/probe.mjs";
+import { selectWorkerProcessId, startProbe } from "../scripts/performance/pdf-lesson/probe.mjs";
 
 const mocked = vi.hoisted(() => ({ spawn: vi.fn() }));
 vi.mock("node:child_process", async (original) => ({ ...await original<typeof import("node:child_process")>(), spawn: mocked.spawn }));
@@ -28,7 +28,8 @@ class ProbeProcess extends EventEmitter {
           this.stopped = true; this.stdout.end(); this.stderr.end(); this.emit("exit", 0); continue;
         }
         if (command.kind === "memory") {
-          this.reply({ kind: "memory", id: command.id, cgroupCurrentBytes: 1_000, cgroupLimitBytes: 10_000, pid1RssBytes: 500 }); continue;
+          this.reply({ kind: "memory", id: command.id, cgroupCurrentBytes: 1_000, cgroupLimitBytes: 10_000,
+            pid1RssBytes: 50, workerPid: 7, workerRssBytes: 500 }); continue;
         }
         this.healthInFlight += 1;
         this.maximumHealthInFlight = Math.max(this.maximumHealthInFlight, this.healthInFlight);
@@ -52,6 +53,32 @@ class ProbeProcess extends EventEmitter {
 const binding = { worker: { id: "a".repeat(64) } };
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); mocked.spawn.mockReset(); });
 
+describe("PDF worker process identity", () => {
+  const worker = (pid: number, script = "export-worker/index.ts") => ({ pid, argv: ["/usr/local/bin/node", "--import=tsx", script] });
+
+  it("supports Node as PID1 and distinguishes the worker child from an init process", () => {
+    expect(selectWorkerProcessId([worker(1)])).toBe(1);
+    expect(selectWorkerProcessId([{ pid: 1, argv: ["/sbin/docker-init", "--", "node"] }, worker(7),
+      { pid: 20, argv: ["node", "-e", "probe code"] }])).toBe(7);
+    expect(selectWorkerProcessId([worker(7, "/app/export-worker/index.ts")])).toBe(7);
+  });
+
+  it("never substitutes PID1 or picks one of multiple worker candidates", () => {
+    expect(() => selectWorkerProcessId([{ pid: 1, argv: ["/sbin/docker-init"] }])).toThrow(/identity/);
+    expect(() => selectWorkerProcessId([worker(7), worker(8)])).toThrow(/ambiguous/);
+  });
+
+  it.each([
+    { pid: 7, argv: ["node", "-e", "export-worker/index.ts"] },
+    { pid: 7, argv: ["node-other", "--import=tsx", "export-worker/index.ts"] },
+    { pid: 7, argv: ["node", "--import=tsx", "other/export-worker/index.ts"] },
+    { pid: 7, argv: ["node", "--import=tsx", "export-worker/index.ts", "--other-mode"] },
+    { pid: 0, argv: ["node", "--import=tsx", "export-worker/index.ts"] },
+  ])("rejects a process that is not the exact current worker command: %j", (candidate) => {
+    expect(() => selectWorkerProcessId([candidate])).toThrow(/identity/);
+  });
+});
+
 describe("PDF causal probe control pipe without a child process or service", () => {
   it("correlates actual stdin/stdout records, keeps one health in flight, and closes independently", async () => {
     vi.useFakeTimers();
@@ -68,7 +95,7 @@ describe("PDF causal probe control pipe without a child process or service", () 
       if (index) expect(sample.hostSentAt).toBeGreaterThanOrEqual(probe.samples[index - 1].hostReceivedAt);
     }
     const memory = probe.memoryNow(); await vi.advanceTimersByTimeAsync(1);
-    expect(await memory).toMatchObject({ cgroupCurrentBytes: 1_000 });
+    expect(await memory).toMatchObject({ cgroupCurrentBytes: 1_000, pid1RssBytes: 50, workerPid: 7, workerRssBytes: 500 });
     const closing = probe.close(); await vi.advanceTimersByTimeAsync(50); await closing;
     expect(child.commands.at(-1)?.kind).toBe("stop"); expect(child.kill).not.toHaveBeenCalled();
     const count = probe.samples.length; await vi.advanceTimersByTimeAsync(100);

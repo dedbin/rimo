@@ -75,6 +75,7 @@ services:
 
   export-worker:
     logging: *service-logging
+    init: true
     image: rimo-export:${RIMO_TAG:-local}
     build:
       context: .

@@ -75,7 +75,7 @@ async function main() {
       overlap: "correlated health{id} through persistent docker exec; one request in flight; pointerup after first running hostReceivedAt+2 and before last running hostSentAt-2; contiguous running/waiting0 observations and own browser POST; queue occupancy proxy, not CPU print/job identity",
       clocks: "host performance.timeOrigin+performance.now brackets every health request; remote clocks diagnostic only, no clock-rate assumption; browser performance epoch echoes constrained to +/-5ms and <=50ms bounds",
       network: "two existing calibrated helpers, 100ms added RTT/50Mbit per browser; both HTTP and WebSocket go through proxy; no CDP emulation",
-      memory: "cgroup current/peak/limit and PID1 RSS sampled read-only; probe process adds overhead; before/immediate-after/5s-idle snapshots, no forced worker GC" },
+      memory: "cgroup current/peak/limit and identified Node worker RSS plus PID1 diagnostic sampled read-only; probe process adds overhead; before/immediate-after/5s-idle snapshots, no forced worker GC" },
     manualReviewRequired: ["Inspect worker memory series before/after 20 declared jobs; samples and cgroup history do not prove absence of leaks or VPS capacity"] };
   const browsers = []; const helpers = []; const contexts = []; const pages = []; const pendingDownloads = new Set();
   let owner; let guest; let seed; let audit; let probe; let boardId; let scene; let snapshot;

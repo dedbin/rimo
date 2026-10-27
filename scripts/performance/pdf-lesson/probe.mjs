@@ -6,21 +6,37 @@ import { fail, waitFor } from "../common.mjs";
 import { healthRecord } from "./causal.mjs";
 import { hostNow } from "./clock.mjs";
 
+/** @param {{ pid: number, argv: string[] }[]} processes */
+export function selectWorkerProcessId(processes) {
+  const matches = processes.filter(({ pid, argv }) => Number.isSafeInteger(pid) && pid > 0 &&
+    argv.length === 3 && argv[0].split("/").at(-1) === "node" && argv[1] === "--import=tsx" &&
+    ["export-worker/index.ts", "/app/export-worker/index.ts"].includes(argv[2]));
+  if (matches.length !== 1) throw new Error("Worker process identity is unavailable or ambiguous");
+  return matches[0].pid;
+}
+
 /** Read-only program sent to the existing worker. No environment or credentials. */
 export const PROBE_SOURCE = `
   const { get, Agent } = await import('node:http');
-  const { readFile } = await import('node:fs/promises');
+  const { readFile, readdir } = await import('node:fs/promises');
   const { createInterface } = await import('node:readline');
+  const selectWorkerProcessId = ${selectWorkerProcessId.toString()};
   const agent = new Agent({ keepAlive:true,maxSockets:1 });
   const output = value => process.stdout.write(JSON.stringify(value)+'\\n');
   let stopping=false, activeHealth=false, sequence=0;
   const memory = async id => {
     try {
-      const [current, peak, limit, status] = await Promise.all([
+      const processes = (await Promise.all((await readdir('/proc')).filter(name=>/^\\d+$/.test(name)).map(async name=>{
+        try { return {pid:Number(name),argv:(await readFile('/proc/'+name+'/cmdline','utf8')).split('\\0').filter(Boolean)}; }
+        catch { return null; }
+      }))).filter(Boolean);
+      const workerPid = selectWorkerProcessId(processes);
+      const [current, peak, limit, pid1Status, workerStatus] = await Promise.all([
         readFile('/sys/fs/cgroup/memory.current','utf8'), readFile('/sys/fs/cgroup/memory.peak','utf8'),
-        readFile('/sys/fs/cgroup/memory.max','utf8'), readFile('/proc/1/status','utf8')]);
+        readFile('/sys/fs/cgroup/memory.max','utf8'), readFile('/proc/1/status','utf8'),readFile('/proc/'+workerPid+'/status','utf8')]);
       output({kind:'memory',id,atEpochMs:Date.now(),monotonicMs:performance.now(),cgroupCurrentBytes:Number(current),cgroupPeakBytes:Number(peak),
-        cgroupLimitBytes:limit.trim()==='max'?null:Number(limit),pid1RssBytes:Number(/VmRSS:\\s+(\\d+)/.exec(status)?.[1]??0)*1024});
+        cgroupLimitBytes:limit.trim()==='max'?null:Number(limit),pid1RssBytes:Number(/VmRSS:\\s+(\\d+)/.exec(pid1Status)?.[1]??0)*1024,
+        workerPid,workerRssBytes:Number(/VmRSS:\\s+(\\d+)/.exec(workerStatus)?.[1]??0)*1024});
     } catch { output({kind:'memory',id,ok:false}); }
   };
   const health = () => new Promise(resolve => {
