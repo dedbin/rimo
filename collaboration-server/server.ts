@@ -1,6 +1,7 @@
 import type { Socket } from "node:net";
 
 import { IncomingMessage, MessageType, Server } from "@hocuspocus/server";
+import type { Connection } from "@hocuspocus/server";
 import * as Y from "yjs";
 
 import type { AccessRoleMessage } from "../lib/collaboration/protocol";
@@ -24,6 +25,7 @@ export interface CollaborationServerOptions {
 
 // PostgreSQL uuid folds case; Hocuspocus room names do not.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const WEBSOCKET_OPEN = 1;
 
 export function createCollaborationServer(
   options: CollaborationServerOptions,
@@ -50,6 +52,13 @@ export function createCollaborationServer(
   const persistence = new DocumentPersistence(dependencies.repository, limits, (document) => {
     void server.hocuspocus.unloadDocument(document);
   });
+
+  function assertActiveConnection(connection: Connection<CollaborationContext>): void {
+    if (stopping || connection.document.isDestroyed || !connection.document.hasConnection(connection) ||
+        connection.webSocket.readyState !== WEBSOCKET_OPEN) {
+      throw new CollaborationRejection("Connection no longer active");
+    }
+  }
 
   const server = new Server<CollaborationContext>({
     name: "rimo-collaboration",
@@ -99,6 +108,12 @@ export function createCollaborationServer(
     },
 
     async connected({ connection, documentName }) {
+      // SDK close removes registration before onDisconnect waits for pending messages.
+      // Its receiver checks readOnly again immediately before applying an update.
+      connection.onClose(() => {
+        connection.readOnly = true;
+        access.release(connection.context.reservationId);
+      });
       try {
         access.activate(connection);
         receive.attach(connection);
@@ -129,6 +144,7 @@ export function createCollaborationServer(
 
     async beforeSync({ type, payload, document, connection }) {
       if (type !== 1 && type !== 2) return;
+      assertActiveConnection(connection);
       if (connection.readOnly) {
         if (!Y.snapshotContainsUpdate(Y.snapshot(document), payload)) {
           throw new CollaborationRejection("This board is read-only");
@@ -137,7 +153,12 @@ export function createCollaborationServer(
       }
       await updates.acquire(document.name, connection.context.reservationId);
       try {
-        if (connection.readOnly) throw new CollaborationRejection("This board is read-only");
+        assertActiveConnection(connection);
+        await access.checkAccess(connection.context);
+        assertActiveConnection(connection);
+        if (connection.readOnly || connection.context.role === "viewer") {
+          throw new CollaborationRejection("This board is read-only");
+        }
         validation.validate(document.name, document, payload);
       } catch (error) {
         updates.release(connection.context.reservationId);
