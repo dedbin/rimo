@@ -3,6 +3,7 @@ import * as Y from "yjs";
 import { BoardRole, BoardSession } from "@/types/service";
 import { BOARD_SCHEMA_VERSION } from "@/lib/board/model";
 import { BoardDocument } from "./document";
+import { configureOfflineSync } from "./offline-sync";
 import { BoardParticipant, BoardPresence, emptyPresence, parseParticipant } from "./presence";
 import { parseServerMessage } from "./protocol";
 import { decodePersistedSnapshot, matchesPersistedSnapshot } from "./save-state";
@@ -96,6 +97,7 @@ export class BoardRuntime {
       },
       onStateless: ({ payload }) => this.handleServerMessage(payload),
     });
+    configureOfflineSync(this.provider.configuration.websocketProvider);
     this.provider.awareness?.on("update", this.handleAwarenessUpdate);
     this.provider.awareness?.setLocalState({ user: this.self.info, presence: this.self.presence });
   }

@@ -8,9 +8,11 @@ import { LayerType } from "@/types/board-canvas";
 import type { BoardSession } from "@/types/service";
 
 const mocked = vi.hoisted(() => ({ options: null as HocuspocusProviderConfiguration | null }));
-vi.mock("@hocuspocus/provider", () => ({
+vi.mock("@hocuspocus/provider", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@hocuspocus/provider")>(),
   WebSocketStatus: { Connected: "connected", Disconnected: "disconnected", Connecting: "connecting" },
   HocuspocusProvider: class {
+    configuration = { websocketProvider: { webSocket: null, send: vi.fn() } };
     awareness = { getStates: () => new Map(), on: vi.fn(), off: vi.fn(),
       setLocalState: vi.fn(), setLocalStateField: vi.fn() };
     sendStateless = vi.fn();

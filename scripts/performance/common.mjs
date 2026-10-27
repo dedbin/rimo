@@ -11,6 +11,7 @@ import { createDecoder, readVarString, readVarUint } from "lib0/decoding";
 import WebSocket from "ws";
 
 import { parseServerMessage } from "../../lib/collaboration/protocol.ts";
+import { configureOfflineSync } from "../../lib/collaboration/offline-sync.ts";
 import { CookieScopeError, websocketCookieHeader } from "./cookies.mjs";
 
 const execute = promisify(execFile);
@@ -85,7 +86,7 @@ export async function environment(label) {
   const next = JSON.parse(await readFile("node_modules/next/package.json", "utf8")).version;
   const dependencies = Object.fromEntries(await Promise.all(["@hocuspocus/provider", "@hocuspocus/server", "yjs", "playwright", "katex", "sharp", "tough-cookie"]
     .map(async (name) => [name, JSON.parse(await readFile(`node_modules/${name}/package.json`, "utf8")).version])));
-  const sources = ["scripts/measure-editor.mjs", "scripts/load-collaboration.mjs", ...["common", "cookies", "fixture", "history-fixture", "browser-metrics", "load-runner", "runtime-sample", "self-test", "self-load"]
+  const sources = ["scripts/measure-editor.mjs", "scripts/load-collaboration.mjs", "lib/collaboration/offline-sync.ts", ...["common", "cookies", "fixture", "history-fixture", "browser-metrics", "load-runner", "runtime-sample", "self-test", "self-load"]
     .map((name) => `scripts/performance/${name}.mjs`)];
   const sourceHash = createHash("sha256");
   for (const filename of sources) { sourceHash.update(filename); sourceHash.update(await readFile(filename)); }
@@ -213,6 +214,7 @@ export async function openProvider(context, baseURL, boardId, signal, { agent } 
       send(data, ...args) { trackFrame(stats, "sent", data); return super.send(data, ...args); }
     },
   });
+  configureOfflineSync(websocket);
   const provider = new HocuspocusProvider({ name: boardId, document, token: session.connection.token, websocketProvider: websocket,
     onAuthenticationFailed: () => { if (!closed) failure ??= "Authentication failed"; },
     onClose: ({ event }) => {
