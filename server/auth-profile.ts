@@ -1,5 +1,7 @@
 import { APIError } from "better-auth/api";
 
+import { safeAvatarSrc } from "../lib/safe-avatar";
+
 export function validatedProfile(input: { name?: unknown; image?: unknown }): {
   name?: string;
   image?: string | null;
@@ -17,19 +19,11 @@ export function validatedProfile(input: { name?: unknown; image?: unknown }): {
       result.image = null;
       return result;
     }
-    if (typeof input.image !== "string" || input.image.length > 2048) {
+    const image = safeAvatarSrc(input.image);
+    if (!image) {
       throw new APIError("BAD_REQUEST", { message: "Некорректный адрес изображения профиля." });
     }
-    let image: URL;
-    try {
-      image = new URL(input.image);
-    } catch {
-      throw new APIError("BAD_REQUEST", { message: "Некорректный адрес изображения профиля." });
-    }
-    if (!["https:", "http:"].includes(image.protocol) || image.username || image.password) {
-      throw new APIError("BAD_REQUEST", { message: "Некорректный адрес изображения профиля." });
-    }
-    result.image = image.toString();
+    result.image = image;
   }
   return result;
 }

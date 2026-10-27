@@ -1,4 +1,5 @@
 import { Color, Point } from "@/types/board-canvas";
+import { safeAvatarSrc } from "@/lib/safe-avatar";
 
 export interface BoardPresence {
   cursor: Point | null;
@@ -55,10 +56,10 @@ export function parseParticipant(connectionId: number, state: Record<string, unk
     const ids = Array.isArray(raw.drag.ids) ? raw.drag.ids.filter((id): id is string => typeof id === "string").slice(0, 10_000) : [];
     if (delta) presence.drag = { ids, delta };
   }
+  const picture = "picture" in user ? safeAvatarSrc(user.picture) : undefined;
   return { connectionId, info: {
     id: "id" in user && typeof user.id === "string" ? user.id : String(connectionId),
     name: user.name.slice(0, 100),
-    ...("picture" in user && typeof user.picture === "string" && /^\/api\/assets\/[a-zA-Z0-9_-]+$/.test(user.picture)
-      ? { picture: user.picture } : {}),
+    ...(picture ? { picture } : {}),
   }, presence };
 }
