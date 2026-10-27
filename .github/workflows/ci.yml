@@ -12,6 +12,9 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
+      options: --user 1001 --init --shm-size=1g
     services:
       postgres:
         image: postgres:18-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
@@ -19,13 +22,12 @@ jobs:
           POSTGRES_DB: rimo_test
           POSTGRES_USER: rimo_test
           POSTGRES_HOST_AUTH_METHOD: trust
-        ports: ["5432:5432"]
         options: >-
           --health-cmd "pg_isready -U rimo_test -d rimo_test"
           --health-interval 5s --health-timeout 3s --health-retries 15
     env:
-      DATABASE_URL: postgresql://rimo_test@localhost:5432/rimo_test
-      RIMO_TEST_DATABASE_URL: postgresql://rimo_test@localhost:5432/rimo_test
+      DATABASE_URL: postgresql://rimo_test@postgres:5432/rimo_test
+      RIMO_TEST_DATABASE_URL: postgresql://rimo_test@postgres:5432/rimo_test
       BETTER_AUTH_URL: http://localhost:3000
       COLLABORATION_PUBLIC_URL: ws://localhost:1234
       ASSET_STORAGE_PATH: temp/ci-assets
@@ -38,6 +40,9 @@ jobs:
         with:
           node-version: "22"
           cache: npm
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
       - name: Generate ephemeral test configuration
         run: |
           node --input-type=module <<'NODE'
@@ -58,8 +63,6 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - name: Install Chromium for browser acceptance
-        run: npx playwright install --with-deps chromium
       - name: Verify PDF with real Chromium and PostgreSQL
         run: npm test -- __tests__/pdf-worker.integration.test.ts __tests__/pdf-service.integration.test.ts __tests__/archive-pdf.integration.test.ts
         env:
