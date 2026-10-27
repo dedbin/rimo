@@ -1,0 +1,32 @@
+{
+  "source": "662234d2afb888779e17b3e84b0518f7b46f60e3",
+  "status": "accepted",
+  "containers": [
+    {
+      "service": "app",
+      "image": "sha256:535ac030bbdcde0b861a9295755d4cca7a5c0d029bc37234a70ef8d052887b50",
+      "files": {
+        "LICENSE": "ad5c230154128f79ce2e0d9a6e7f61ee01c0a24993fda6dd0fe48703261d7098",
+        "FONT-NOTICES.txt": "2857915250369304cfbacf99399cac9452a0ce360d64cd1dbcd5dbd079a03b09"
+      },
+      "uid": 1000
+    },
+    {
+      "service": "export-worker",
+      "image": "sha256:c51b10d47452c1e9375df2d81526a97f6658ab8733d813ff1735495618e0a393",
+      "files": {
+        "LICENSE": "ad5c230154128f79ce2e0d9a6e7f61ee01c0a24993fda6dd0fe48703261d7098",
+        "FONT-NOTICES.txt": "2857915250369304cfbacf99399cac9452a0ce360d64cd1dbcd5dbd079a03b09"
+      },
+      "uid": 1001,
+      "init": true,
+      "sandbox": true
+    }
+  ],
+  "http": {
+    "status": 200,
+    "contentType": "text/plain; charset=UTF-8",
+    "bytes": 11949,
+    "sha256": "2857915250369304cfbacf99399cac9452a0ce360d64cd1dbcd5dbd079a03b09"
+  }
+}
