@@ -69,7 +69,7 @@ services:
       timeout: 4s
       retries: 10
       start_period: 20s
-    mem_limit: 1g
+    mem_limit: 768m
     stop_grace_period: 30s
     restart: unless-stopped
 
@@ -107,6 +107,7 @@ services:
       <<: *service-environment
       COLLABORATION_HOST: 0.0.0.0
       COLLABORATION_PORT: "1234"
+      NODE_OPTIONS: --max-old-space-size=512 --max-semi-space-size=64
     depends_on:
       migrate: { condition: service_completed_successfully }
     networks: [backend]
@@ -116,7 +117,7 @@ services:
       timeout: 4s
       retries: 10
       start_period: 10s
-    mem_limit: 768m
+    mem_limit: 1g
     stop_grace_period: 30s
     restart: unless-stopped
 
