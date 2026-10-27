@@ -4,6 +4,7 @@ import type { PerformanceEntry } from "node:perf_hooks";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({
+  uptimeSeconds: 10.25,
   callback: undefined as undefined | ((list: { getEntries(): PerformanceEntry[] }) => void),
   records: [] as PerformanceEntry[],
   loop: { enable: vi.fn(), disable: vi.fn(), count: 0, max: 0, percentile: vi.fn(() => 25_000_000) },
@@ -19,7 +20,7 @@ vi.mock("node:perf_hooks", () => ({
     takeRecords(): PerformanceEntry[] { return state.records.splice(0); }
   },
 }));
-vi.mock("node:process", () => ({ memoryUsage: () => ({ rss: 500, heapUsed: 200, heapTotal: 300,
+vi.mock("node:process", () => ({ uptime: () => state.uptimeSeconds, memoryUsage: () => ({ rss: 500, heapUsed: 200, heapTotal: 300,
   external: 40, arrayBuffers: 20, cookie: "must-not-leak" }) }));
 vi.mock("node:v8", () => ({ getHeapStatistics: () => ({ heap_size_limit: 800, payload: "must-not-leak" }) }));
 
@@ -31,17 +32,26 @@ function gc(duration: number, kind = 1): PerformanceEntry {
 
 afterEach(() => {
   state.records = []; state.loop.count = 0; state.loop.max = 0;
+  state.uptimeSeconds = 10.25;
   vi.clearAllMocks();
 });
 
 describe("private collaboration runtime observations", () => {
   it("whitelists process numbers and preserves missing event-loop observations", () => {
     const runtime = new RuntimeMetrics();
-    expect(runtime.read()).toEqual({ version: 1, rssBytes: 500, heapUsedBytes: 200, heapTotalBytes: 300,
+    expect(runtime.read()).toEqual({ version: 1, processUptimeMs: 10_250, rssBytes: 500, heapUsedBytes: 200, heapTotalBytes: 300,
       externalBytes: 40, arrayBuffersBytes: 20, heapLimitBytes: 800, eventLoopSamples: 0,
       eventLoopP95Ms: null, eventLoopMaxMs: null, gcCount: 0, gcTotalMs: 0, gcMaxMs: 0,
       majorGcCount: 0, majorGcTotalMs: 0, majorGcMaxMs: 0 });
     expect(JSON.stringify(runtime.read())).not.toContain("must-not-leak");
+  });
+
+  it("timestamps the server read independently of client HTTP delay", () => {
+    const runtime = new RuntimeMetrics();
+    const first = runtime.read();
+    state.uptimeSeconds = 12.5009;
+    expect(runtime.read().processUptimeMs).toBe(12_500);
+    expect(runtime.read().processUptimeMs! - first.processUptimeMs!).toBe(2_250);
   });
 
   it("keeps lifetime loop/GC counters across independent health reads", () => {

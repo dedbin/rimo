@@ -18,6 +18,11 @@ export function validatedRuntimeMetrics(value) {
         INTEGERS.includes(key) && !Number.isSafeInteger(source[key])) throw new Error("Invalid runtime counter");
     result[key] = source[key];
   }
+  // Older images have no server timestamp; do not infer one from the HTTP round trip.
+  if (source.processUptimeMs !== undefined) {
+    if (!Number.isSafeInteger(source.processUptimeMs) || source.processUptimeMs < 0) throw new Error("Invalid process uptime");
+    result.processUptimeMs = source.processUptimeMs;
+  }
   for (const key of DELAYS) {
     if (source.eventLoopSamples === 0) {
       if (source[key] !== null) throw new Error("Missing event-loop observation must remain null");

@@ -15,6 +15,14 @@ function runner(result: unknown, identity = { project: "fixture", service: "app"
 }
 
 describe("bounded collaboration runtime sampling", () => {
+  it("preserves an optional server timestamp without fabricating it for older images", () => {
+    expect(validatedRuntimeMetrics({ ...metrics(), processUptimeMs: 12_500 })).toMatchObject({ processUptimeMs: 12_500 });
+    expect(validatedRuntimeMetrics(metrics())).not.toHaveProperty("processUptimeMs");
+    for (const value of [-1, 1.5, Number.NaN]) {
+      expect(() => validatedRuntimeMetrics({ ...metrics(), processUptimeMs: value })).toThrow();
+    }
+  });
+
   it("reads a selected app container and retains metrics from an unhealthy backend", async () => {
     const run = runner({ httpStatus: 503, status: "unavailable", runtime: { ...metrics(), cookie: "private" } });
     expect(await sampleCollaborationRuntime("fixture", run)).toEqual({ available: true, httpStatus: 503, healthy: false, metrics: metrics() });

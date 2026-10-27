@@ -1,6 +1,6 @@
 import { constants, monitorEventLoopDelay, PerformanceObserver } from "node:perf_hooks";
 import type { PerformanceEntry } from "node:perf_hooks";
-import { memoryUsage } from "node:process";
+import { memoryUsage, uptime } from "node:process";
 import { getHeapStatistics } from "node:v8";
 
 /** Process-only counters: no documents, identities, requests, or environment. */
@@ -36,7 +36,8 @@ export class RuntimeMetrics {
     const samples = this.loop.count;
     // Lifetime counters: Docker health checks must not reset the load sampler's interval.
     return {
-      version: 1, rssBytes: memory.rss, heapUsedBytes: memory.heapUsed,
+      version: 1, processUptimeMs: Math.floor(uptime() * 1_000),
+      rssBytes: memory.rss, heapUsedBytes: memory.heapUsed,
       heapTotalBytes: memory.heapTotal, externalBytes: memory.external,
       arrayBuffersBytes: memory.arrayBuffers, heapLimitBytes: getHeapStatistics().heap_size_limit,
       eventLoopSamples: samples, eventLoopP95Ms: samples ? this.loop.percentile(95) / 1e6 : null,
