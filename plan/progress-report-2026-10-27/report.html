@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rimo - что уже готово. Отчёт владельцу, 27 октября 2026</title>
+  <style>
+    @font-face { font-family: Report; font-style: normal; font-weight: 400; src: url('assets/noto-sans-cyrillic-400.woff2') format('woff2'); unicode-range: U+0400-052F,U+2DE0-2DFF,U+A640-A69F; }
+    @font-face { font-family: Report; font-style: normal; font-weight: 400; src: url('assets/noto-sans-latin-400.woff2') format('woff2'); }
+    @font-face { font-family: Report; font-style: normal; font-weight: 600; src: url('assets/noto-sans-cyrillic-600.woff2') format('woff2'); unicode-range: U+0400-052F,U+2DE0-2DFF,U+A640-A69F; }
+    @font-face { font-family: Report; font-style: normal; font-weight: 600; src: url('assets/noto-sans-latin-600.woff2') format('woff2'); }
+    @font-face { font-family: Report; font-style: normal; font-weight: 700; src: url('assets/noto-sans-cyrillic-700.woff2') format('woff2'); unicode-range: U+0400-052F,U+2DE0-2DFF,U+A640-A69F; }
+    @font-face { font-family: Report; font-style: normal; font-weight: 700; src: url('assets/noto-sans-latin-700.woff2') format('woff2'); }
+    :root { --ink:#182c40; --muted:#526579; --line:#dce4e9; --teal:#116b5d; --soft:#edf6f3; --amber:#83541a; --amber-bg:#fbf4e8; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:#e9eef2; color:var(--ink); font:10.8pt/1.48 Report,Arial,sans-serif; }
+    .page { width:210mm; height:297mm; padding:14mm 15mm 19mm; margin:6mm auto; position:relative; background:white; break-after:page; }
+    .page:last-child { break-after:auto; }
+    .eyebrow { display:flex; align-items:center; justify-content:space-between; color:var(--muted); font-size:9.2pt; padding-bottom:5mm; border-bottom:1px solid var(--line); margin-bottom:6mm; }
+    .brand { font-weight:700; color:var(--ink); letter-spacing:.08em; }
+    h1,h2,h3,p,figure { margin:0; }
+    h1 { font-size:34pt; line-height:1.12; letter-spacing:-.035em; margin:5mm 0 4mm; }
+    h2 { font-size:25pt; line-height:1.17; letter-spacing:-.025em; margin:0 0 4mm; }
+    h3 { font-size:11.5pt; line-height:1.35; font-weight:700; margin-bottom:1.4mm; }
+    p { margin:0 0 3mm; }
+    .lead { font-size:12pt; line-height:1.48; color:#3f5467; margin-bottom:6mm; max-width:174mm; }
+    .tag { display:inline-block; font-size:9pt; font-weight:600; color:var(--teal); background:var(--soft); border:1px solid #c9e1d8; padding:1.5mm 3mm; border-radius:1.6mm; }
+    .shot { display:block; width:100%; height:auto; border:1px solid #d3dce2; border-radius:1.5mm; }
+    figcaption { color:var(--muted); font-size:9.5pt; line-height:1.45; margin-top:2.2mm; }
+    figure { margin-bottom:5mm; break-inside:avoid; }
+    .note { background:var(--soft); border-left:3px solid var(--teal); padding:3.2mm 4mm; color:#244e44; }
+    .note p:last-child { margin-bottom:0; }
+    .amber { background:var(--amber-bg); border-color:#bd863d; color:#65491e; }
+    .features { display:grid; grid-template-columns:1fr 1fr; gap:5mm 7mm; margin-top:5mm; }
+    .features p { margin:0; }
+    .feature { border-top:2px solid var(--line); padding-top:3mm; }
+    .summary-row { display:grid; grid-template-columns:43mm 1fr; gap:4mm; border-top:1px solid var(--line); padding:3mm 0; }
+    .summary-row strong { font-weight:700; }
+    .summary-row p { margin:0; }
+    .footer { position:absolute; bottom:9mm; left:15mm; right:15mm; display:flex; align-items:center; justify-content:space-between; border-top:1px solid var(--line); padding-top:2.5mm; color:var(--muted); font-size:9pt; }
+    .centered { margin-left:auto; margin-right:auto; }
+    .entry { display:grid; grid-template-columns:54mm 1fr; gap:8mm; align-items:center; margin-bottom:8mm; }
+    .entry figure { margin:0; }
+    .entry h3 { font-size:13pt; margin-bottom:3mm; }
+    .entry p { margin:0; }
+    .entry .shot { width:118mm; }
+    .role-shot { width:124mm; }
+    .tiny-gap { margin-bottom:3mm; }
+    .undo-label { font-size:10pt; font-weight:600; margin:2.5mm 0 1.5mm; }
+    .strip { width:100%; border-radius:1mm; }
+    .step-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6mm; margin:5mm 0; }
+    .step-row span { display:block; color:var(--teal); font-size:10pt; font-weight:700; margin-bottom:1mm; }
+    .step-row p { margin:0; font-size:10.5pt; }
+    .checks { display:flex; align-items:baseline; gap:3mm; margin:3mm 0 5mm; }
+    .checks .number { color:var(--teal); font-size:33pt; line-height:1; font-weight:700; letter-spacing:-.04em; }
+    .checks .desc { font-size:11.5pt; }
+    .checks .secondary { margin-left:auto; color:var(--muted); font-size:10pt; max-width:53mm; }
+    .check-row { display:grid; grid-template-columns:37mm 1fr; gap:4mm; padding:2.8mm 0; border-top:1px solid var(--line); }
+    .check-row strong { font-size:10.5pt; }
+    .check-row p { margin:0; }
+    .open-title { font-size:13pt; margin:5mm 0 1mm; color:var(--amber); }
+    .open-item { display:grid; grid-template-columns:46mm 1fr; gap:4mm; padding:3mm 0; border-top:1px solid #eadbc4; }
+    .open-item p { margin:0; }
+    .small { font-size:9.6pt; color:var(--muted); line-height:1.45; }
+    .launch { list-style:none; padding:0; margin:5mm 0; counter-reset:launch; }
+    .launch li { counter-increment:launch; display:grid; grid-template-columns:8mm 1fr; gap:3mm; margin-bottom:4mm; }
+    .launch li::before { content:counter(launch); display:block; color:var(--teal); font-size:14pt; line-height:1.2; font-weight:700; }
+    .launch li strong { display:block; margin-bottom:.7mm; font-size:11.2pt; }
+    .launch li p { margin:0; }
+    a { color:#155b82; text-decoration:underline; text-underline-offset:2px; }
+    .sources { margin-top:4mm; padding-top:3mm; border-top:1px solid var(--line); font-size:9.4pt; color:var(--muted); line-height:1.55; }
+    @page { size:A4; margin:0; }
+    @media print { body { background:white; } .page { margin:0; } * { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }
+  </style>
+</head>
+<body>
+  <section class="page" data-page="1">
+    <div class="eyebrow"><span class="brand">RIMO</span><span>Отчёт владельцу · 27 октября 2026</span></div>
+    <span class="tag">Снимок текущего состояния</span>
+    <h1>Что уже готово<br>в Rimo</h1>
+    <p class="lead">Учебная доска уже позволяет подготовить материал, поработать с учеником и сохранить результат занятия.</p>
+    <figure>
+      <img class="shot" src="screenshots/01-board-saved.png" alt="Настоящая доска Rimo с русским текстом, формулами, графиком и статусом Сохранено">
+      <figcaption>Реальное локальное приложение. Для отчёта создан вымышленный урок «Квадратные уравнения».</figcaption>
+    </figure>
+    <div class="summary-row"><strong>Подготовить урок</strong><p>Текст, формулы, изображения, рисунки и страницы находятся на одной доске.</p></div>
+    <div class="summary-row"><strong>Провести занятие</strong><p>Ученик входит по приглашению. Владелец управляет доступом и сохраняет материалы.</p></div>
+    <div class="note" style="margin-top:3mm"><p>Сервис работает на локальном стенде. Разработка, строгая нагрузочная приёмка и подготовка внешнего запуска продолжаются.</p></div>
+    <div class="footer"><span>Rimo · готовые пользовательские сценарии</span><span>1 / 8</span></div>
+  </section>
+
+  <section class="page" data-page="2">
+    <div class="eyebrow"><span class="brand">RIMO</span><span>Материал занятия</span></div>
+    <h2>Учебный материал<br>на одной доске</h2>
+    <p class="lead">Можно объяснить правило, записать решение и сразу сопоставить его с изображением или рисунком.</p>
+    <figure>
+      <img class="shot" src="screenshots/02-text-formulas-image.png" alt="Фрагмент учебной доски с оформленным русским текстом, математическими формулами и загруженным графиком">
+      <figcaption>Текст и формулы редактируются на доске. График загружен как обычное изображение.</figcaption>
+    </figure>
+    <div class="features">
+      <div class="feature"><h3>Русский текст и оформление</h3><p>Заголовки, выделение и списки помогают построить объяснение и сохранить конспект.</p></div>
+      <div class="feature"><h3>Математические формулы</h3><p>Формулы выглядят как в учебнике и остаются частью редактируемого материала.</p></div>
+      <div class="feature"><h3>Изображения и рисунки</h3><p>Можно добавить картинку, рисовать от руки, использовать фигуры и стикеры.</p></div>
+      <div class="feature"><h3>Собственное сохранение</h3><p>Доски и файлы сохраняются на стороне сервиса. В демонстрации текст, формулы и график сохранились после перезагрузки.</p></div>
+    </div>
+    <div class="note" style="margin-top:7mm"><p>Польза для владельца: материал можно готовить заранее и продолжать на следующем занятии.</p></div>
+    <div class="footer"><span>Снимок настоящего интерфейса, без подмены макетом</span><span>2 / 8</span></div>
+  </section>
+
+  <section class="page" data-page="3">
+    <div class="eyebrow"><span class="brand">RIMO</span><span>Вход и приглашения</span></div>
+    <h2>Вход без лишних шагов</h2>
+    <p class="lead">Владелец использует свой аккаунт. Ученику достаточно приглашения и выбранного имени.</p>
+    <div class="entry" style="margin-top:8mm">
+      <div><h3>Владелец</h3><p>Входит по почте и паролю, создаёт доски и управляет материалами.</p></div>
+      <figure><img class="shot" src="screenshots/10-owner-login-empty.png" alt="Форма входа владельца в Rimo с пустыми полями почты и пароля"><figcaption>Пустая форма входа. Данные настоящего аккаунта не показаны.</figcaption></figure>
+    </div>
+    <div class="entry">
+      <div><h3>Ученик</h3><p>Открывает приглашение и указывает имя. Отдельная регистрация не нужна.</p></div>
+      <figure><img class="shot" src="screenshots/03-guest-entry.png" alt="Настоящая форма гостевого входа с вымышленным именем Ученик демо"><figcaption>Демонстрационное имя. Секретная ссылка не включена в снимок.</figcaption></figure>
+    </div>
+    <div class="note"><p>Польза для занятия: преподаватель готовит доску, а ученик подключается к нужному уроку по приглашению.</p></div>
+    <div class="footer"><span>Гостевой вход проверен в отдельном браузерном контексте</span><span>3 / 8</span></div>
+  </section>
+
+  <section class="page" data-page="4">
+    <div class="eyebrow"><span class="brand">RIMO</span><span>Совместная работа</span></div>
+    <h2>Работа вместе<br>и управление доступом</h2>
+    <p>Редактор может менять доску, зритель - наблюдать. Владелец меняет роль и отзывает доступ. В демонстрации смена роли сработала без перезагрузки.</p>
+    <figure class="centered role-shot" style="margin-top:4mm">
+      <img class="shot" src="screenshots/08-access-viewer.png" alt="Окно доступа Rimo: вымышленный участник Ученик демо переведён в режим просмотра">
+      <figcaption>Участнику назначен «Просмотр». Поле с секретной ссылкой закрыто до съёмки.</figcaption>
+    </figure>
+    <h3>Отмена своего действия сохраняет работу ученика</h3>
+    <p>Владелец добавил прямоугольник и отменил его. Независимый ответ ученика остался на доске.</p>
+    <p class="undo-label">До отмены</p>
+    <img class="shot strip" src="screenshots/04-local-undo-before.png" alt="До отмены: прямоугольник владельца слева и отдельный ответ ученика справа">
+    <p class="undo-label">После отмены</p>
+    <img class="shot strip" src="screenshots/06-local-undo-after.png" alt="После отмены: прямоугольник удалён, ответ ученика сохранён">
+    <p class="small" style="margin-top:3mm">Оба участника работали с одной настоящей доской. Отзыв доступа также проверен: гость получил сообщение о прекращении доступа.</p>
+    <div class="footer"><span>Два независимых участника · реальные изменения</span><span>4 / 8</span></div>
+  </section>
+
+  <section class="page" data-page="5">
+    <div class="eyebrow"><span class="brand">RIMO</span><span>Страницы и PDF</span></div>
+    <h2>Урок можно раздать<br>в PDF</h2>
+    <p class="lead">Именованные области доски становятся страницами. Можно выбрать порядок, формат и проверить результат перед скачиванием.</p>
+    <figure>
+      <img class="shot" src="screenshots/11-pdf-pages-preview.png" alt="Экспорт Rimo: две выбранные именованные страницы и предпросмотр первой страницы">
+      <figcaption>Две страницы: «Объяснение и график», затем «Проверка ученика». Предпросмотр показывает сохранённую версию.</figcaption>
+    </figure>
+    <div class="step-row">
+      <div><span>1. Выбрать страницы</span><p>Собрать нужные области доски и задать их порядок.</p></div>
+      <div><span>2. Проверить вид</span><p>Убедиться, что материал помещается на бумаге.</p></div>
+      <div><span>3. Скачать PDF</span><p>Отправить конспект или распечатать раздатку.</p></div>
+    </div>
+    <div class="note"><p>В этой демонстрации скачан PDF из двух страниц без предупреждений об обрезке. Русский текст и ответ ученика проверены извлечением текста.</p></div>
+    <p class="small" style="margin-top:5mm">В ранее принятом отдельном испытании PDF также создавались во время совместной работы: 20 экспортов по 20 страниц. Это результат протокола проверок, а не новый нагрузочный прогон для отчёта.</p>
+    <div class="footer"><span>Страницы, порядок и скачивание проверены через интерфейс</span><span>5 / 8</span></div>
+  </section>
+
+  <section class="page" data-page="6">
+    <div class="eyebrow"><span class="brand">RIMO</span><span>Перенос и сохранность</span></div>
+    <h2>Материалы можно<br>забрать и восстановить</h2>
+    <p class="lead">Переносимый архив <strong>.rimo</strong> возвращает материал в редактируемую доску, включая изображения, формулы и порядок страниц.</p>
+    <figure>
+      <img class="shot" src="screenshots/13-archive-restored.png" alt="Новая доска Квадратные уравнения восстановлено: сохранены русский текст, формулы, график и ответ ученика">
+      <figcaption>Новая доска после открытия архива. В демонстрации отдельно проверены текст, четыре формулы, изображение и два названия страниц.</figcaption>
+    </figure>
+    <div class="summary-row"><strong>Архив доски</strong><p>Владелец скачивает .rimo и открывает его как новую доску. Архив содержит служебную историю изменений; стек кнопки «Отменить» старой сессии не восстанавливается.</p></div>
+    <div class="summary-row"><strong>Копия всего сервиса</strong><p>По протоколу проверено восстановление базы, файлов и прежнего входа в чистое локальное окружение.</p></div>
+    <div class="note amber" style="margin-top:4mm"><p><strong>Ещё требуется:</strong> внешнее зашифрованное хранилище, расписание копий и проверка восстановления из него. Внешняя резервная копия пока не настроена.</p></div>
+    <div class="footer"><span>Архив доски и резервная копия сервиса решают разные задачи</span><span>6 / 8</span></div>
+  </section>
+
+  <section class="page" data-page="7">
+    <div class="eyebrow"><span class="brand">RIMO</span><span>Границы подтверждённого</span></div>
+    <h2>Что подтверждено,<br>а что ещё проверяется</h2>
+    <div class="checks"><span class="number">696</span><span class="desc">проверок прошли</span><span class="secondary">16 специальных проверок пропущены по условиям запуска</span></div>
+    <div class="check-row"><strong>Сохранённая версия</strong><p>Сборка и полный GitHub Actions прошли. Числа относятся к зафиксированным проверкам; новый код защитных ограничений сюда не включён.</p></div>
+    <div class="check-row"><strong>Сценарии владельца</strong><p>Вход, доски, гости, совместная работа, роли, PDF и архивы проверены в настоящем браузере.</p></div>
+    <div class="check-row"><strong>Сохранность</strong><p>Перезагрузка, переносимый архив и полное локальное восстановление проверены. Внешнее хранение копий остаётся открытым.</p></div>
+    <h3 class="open-title">Строгая нагрузочная приёмка ещё не завершена</h3>
+    <div class="open-item"><strong>50 подключений,<br>10 редакторов</strong><p>Часовой профиль не принят. Последняя попытка остановилась через <strong>38 мин 49 с</strong> (2329,11 с) с receive-limit. Полный час не пройден.</p></div>
+    <div class="open-item"><strong>Реакция редактора</strong><p>Максимумы <strong>53,1 и 52,6 мс</strong> превысили предел 50 мс. Показатель p95 прошёл, но этого недостаточно для строгой приёмки.</p></div>
+    <div class="open-item"><strong>10 активных<br>клиентов</strong><p>Для вспомогательных Node-клиентов p95 доставки <strong>359 мс</strong> выше предела 300 мс. Браузерный критерий и сохранность прошли; весь профиль не принят.</p></div>
+    <p class="small" style="margin-top:3mm">p95 - граница, в которую укладываются 95% измерений. Текущая экспериментальная настройка памяти не принята как окончательная.</p>
+    <div class="note amber" style="margin-top:4mm"><p>Пилотный предел одной доски сейчас 5 МиБ, включая историю. Повышение предела также требует проверки.</p></div>
+    <div class="footer"><span>Результаты взяты из протокола и последнего часового отчёта</span><span>7 / 8</span></div>
+  </section>
+
+  <section class="page" data-page="8">
+    <div class="eyebrow"><span class="brand">RIMO</span><span>Подготовка внешнего запуска</span></div>
+    <h2>Что осталось<br>до внешнего запуска</h2>
+    <p>Настоящий VPS, публичный домен и внешнее хранилище резервных копий пока не подключены.</p>
+    <ol class="launch">
+      <li><div><strong>Завершить нагрузочную приёмку</strong><p>Пройти полный час 50/10 и подтвердить строгие пределы задержки на принятой конфигурации.</p></div></li>
+      <li><div><strong>Проверить настоящий сервер и домен</strong><p>Развернуть сервис, включить HTTPS и проверить совместную работу в публичном окружении.</p></div></li>
+      <li><div><strong>Подключить внешние резервные копии</strong><p>Настроить хранилище и расписание, затем проверить восстановление из внешней копии.</p></div></li>
+      <li><div><strong>Провести пять настоящих занятий</strong><p>Собрать замечания владельца и учеников, устранить проблемы реального использования.</p></div></li>
+      <li><div><strong>Закончить правовую и продуктовую подготовку</strong><p>Утвердить оператора, аудиторию, размещение и сроки хранения; завершить документы, запись их принятия и процедуры работы с данными.</p></div></li>
+    </ol>
+    <div class="note amber">
+      <h3>Правовые тексты пока являются проектами</h3>
+      <p>Это внутренние материалы с незаполненными реквизитами. Они не являются действующими документами и не подтверждают соответствие сервиса требованиям.</p>
+      <p><a href="../legal-questions-2026-10-27.md">Открыть 16 вопросов владельцу</a><br><span class="small">plan/legal-questions-2026-10-27.md</span></p>
+    </div>
+    <p style="margin-top:4mm;font-size:10pt">Разработка сохранена в ветке <a href="https://github.com/dedbin/rimo/tree/codex/service-rework">codex/service-rework</a> и продолжается.</p>
+    <div class="sources">
+      Основа отчёта: <a href="../../README.md">README</a>, <a href="../task_plan.md">рабочий план</a>, <a href="../verification-report-2026-10-27.md">протокол проверок</a>, <a href="../../docs/legal/README.md">правовые материалы</a>.<br>
+      Последний часовой результат: temp/performance/load-hour-b17-semi64.json.<br>
+      Все снимки сделаны в локальном Rimo. Использованы только вымышленные материалы; демонстрационные доски после съёмки удалены.
+    </div>
+    <div class="footer"><span>Отчёт о готовом результате · разработка продолжается</span><span>8 / 8</span></div>
+  </section>
+</body>
+</html>

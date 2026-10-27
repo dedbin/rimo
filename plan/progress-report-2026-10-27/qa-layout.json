@@ -1,0 +1,34 @@
+[
+  {
+    "page": "1",
+    "bottomGapPx": 33
+  },
+  {
+    "page": "2",
+    "bottomGapPx": 70
+  },
+  {
+    "page": "3",
+    "bottomGapPx": 81
+  },
+  {
+    "page": "4",
+    "bottomGapPx": 97
+  },
+  {
+    "page": "5",
+    "bottomGapPx": 100
+  },
+  {
+    "page": "6",
+    "bottomGapPx": 54
+  },
+  {
+    "page": "7",
+    "bottomGapPx": 138
+  },
+  {
+    "page": "8",
+    "bottomGapPx": 111
+  }
+]
