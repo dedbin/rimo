@@ -206,6 +206,8 @@ export async function openProvider(context, baseURL, boardId, signal, { agent } 
     WebSocketPolyfill: class extends WebSocket {
       constructor(url) {
         super(url, { headers: { origin, cookie }, ...(agent ? { agent } : {}) });
+        // The SDK removes its error listener before aborting a CONNECTING socket.
+        this.on("error", () => { if (!closed) failure ??= "WebSocket connection failed"; });
         this.on("message", (data) => trackFrame(stats, "received", data));
       }
       send(data, ...args) { trackFrame(stats, "sent", data); return super.send(data, ...args); }
