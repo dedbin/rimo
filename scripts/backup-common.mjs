@@ -202,6 +202,8 @@ export async function readBackupManifest(directory) {
   const manifest = JSON.parse(bytes.toString("utf8"));
   if (manifest?.format !== "rimo-service-backup" || manifest.version !== 1 ||
       !Number.isFinite(Date.parse(manifest.createdAt)) || !Number.isInteger(manifest.postgresMajor) ||
+      (manifest.capturedAt !== undefined && !Number.isFinite(Date.parse(manifest.capturedAt))) ||
+      Date.parse(manifest.capturedAt ?? manifest.createdAt) > Date.parse(manifest.createdAt) + 60_000 ||
       manifest.postgresMajor < 18) throw new Error("Unsupported service backup format");
   for (const filename of ["database.dump", "assets.tar"]) {
     const expected = manifest.files?.[filename];

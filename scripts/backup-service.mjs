@@ -34,6 +34,7 @@ async function main() {
       await context.run(["stop", "--timeout", "30", ...writers]);
     }
     signal.throwIfAborted();
+    const capturedAt = new Date().toISOString();
     const version = (await context.run(["exec", "-T", "db", "pg_dump", "--version"], signal)).match(/PostgreSQL\) (\d+)/);
     if (!version) throw new Error("Could not determine PostgreSQL version");
     log("backup_database");
@@ -48,7 +49,7 @@ async function main() {
     for (const filename of ["database.dump", "assets.tar"]) files[filename] = await fileIntegrity(path.join(stage, filename));
     signal.throwIfAborted();
     await writeFile(path.join(stage, "manifest.json"), `${JSON.stringify({
-      format: "rimo-service-backup", version: 1, createdAt: new Date().toISOString(),
+      format: "rimo-service-backup", version: 1, createdAt: new Date().toISOString(), capturedAt,
       postgresMajor: Number(version[1]), image: context.config.services.app.image,
       sourceProject: values.project, offsiteVerified: false, files,
     }, null, 2)}\n`, { flag: "wx", mode: 0o600 });
