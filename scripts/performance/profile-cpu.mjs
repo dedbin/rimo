@@ -27,6 +27,14 @@ async function main() {
     "--filter", "label=com.docker.compose.service=collaboration", "--format", "{{.ID}}"], { windowsHide: true, timeout: 10_000 });
   const ids = stdout.trim().split(/\r?\n/);
   if (ids.length !== 1 || !/^[a-f0-9]{12,64}$/.test(ids[0])) throw new Error("Expected exactly one collaboration container");
+  let sourceMap;
+  try {
+    // Read the exact selected runtime's map before profiling, never a potentially stale host build.
+    const mapped = await execute("docker", ["exec", ids[0], "node", "--input-type=module", "-e",
+      'import{readFileSync,statSync}from"node:fs";const p="/app/dist/collaboration/index.mjs.map";const s=statSync(p);if(!s.isFile()||s.size<1||s.size>1048576)process.exit(2);process.stdout.write(readFileSync(p));'],
+    { windowsHide: true, timeout: 5_000, killSignal: "SIGKILL", maxBuffer: 1_048_576 });
+    sourceMap = mapped.stdout;
+  } catch { /* Raw profiling remains useful; the summary must expose unavailable source attribution. */ }
   const script = await readFile(new URL("./cpu-profile-target.mjs", import.meta.url), "utf8");
   const child = spawn("docker", ["exec", "-i", ids[0], "node", "--input-type=module", "-e", script, String(seconds)],
     { windowsHide: true, stdio: ["pipe", "pipe", "pipe"] });
@@ -64,7 +72,7 @@ async function main() {
     await releasing;
     if (signal) await rm(signal, { force: true });
   }
-  const summary = result?.profile ? summarizeCpuProfile(result.profile) : null;
+  const summary = result?.profile ? summarizeCpuProfile(result.profile, { sourceMap }) : null;
   let portClosed = false;
   try {
     await execute("docker", ["exec", ids[0], "node", "-e",
@@ -76,6 +84,7 @@ async function main() {
   if (result?.profile) await writeFile(output, JSON.stringify(result.profile), { mode: 0o600 });
   const report = { kind: "collaboration-cpu-diagnostic", composeProject: values["compose-project"],
     requestedSeconds: seconds, startedAt: result?.startedAt, interrupted: interrupted || result?.interrupted,
+    sourceMapRead: sourceMap === undefined ? "unavailable" : "selected-container", sourceMapContainer: ids[0],
     inspectorClosed: result?.inspectorClosed === true && portClosed, independentPortCheck: portClosed, errorPhase: result?.phase, summary };
   await writeFile(output + ".summary.json", JSON.stringify(report, null, 2), { mode: 0o600 });
   process.stdout.write(`${JSON.stringify({ event: "cpu_profile_finished", output,
