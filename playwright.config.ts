@@ -8,6 +8,7 @@ import { defineConfig, devices } from "@playwright/test";
 if (!process.env.RIMO_E2E_BASE_URL && existsSync(".env.local")) loadEnvFile(".env.local");
 process.env.RIMO_E2E_RUN_ID ??= randomUUID();
 if (!/^[a-f0-9-]{36}$/.test(process.env.RIMO_E2E_RUN_ID)) throw new Error("Invalid internal E2E run ID");
+const runId = process.env.RIMO_E2E_RUN_ID;
 const external = process.env.RIMO_E2E_BASE_URL;
 const baseURL = external ?? "http://localhost:3000";
 const authState = process.env.RIMO_E2E_STORAGE_STATE
@@ -25,11 +26,11 @@ export default defineConfig({
   retries: 0,
   timeout: 90_000,
   expect: { timeout: 15_000 },
-  outputDir: "test-results/e2e",
-  reporter: process.env.CI ? [["line"], ["html", { open: "never" }]] : "list",
+  outputDir: path.resolve("test-results/e2e", runId),
+  reporter: process.env.CI ? [["line"], ["html", { open: "never", outputFolder: path.resolve("playwright-report", runId) }]] : "list",
   globalSetup: "./e2e/auth.setup.ts",
   globalTeardown: "./e2e/auth.teardown.ts",
-  metadata: { authState, external: !!external },
+  metadata: { authState, external: !!external, runId },
   use: {
     ...devices["Desktop Chrome"],
     baseURL, storageState: authState, locale: "ru-RU", viewport: { width: 1440, height: 1000 },

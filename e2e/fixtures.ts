@@ -61,15 +61,24 @@ export const test = base.extend<{ scenario: Scenario }>({
     };
     try { await runTest(scenario); }
     finally {
-      if (info.status !== info.expectedStatus) await info.attach("created-boards", { body: JSON.stringify([...createdBoards]), contentType: "application/json" });
-      for (const guest of guests) await guest.close();
-      await Promise.allSettled(captures);
-      for (const id of [...createdBoards].reverse()) {
+      const cleanupErrors: string[] = [];
+      const attempt = async (label: string, operation: () => Promise<unknown>): Promise<void> => {
+        try { await operation(); }
+        catch { cleanupErrors.push(label); }
+      };
+      await Promise.all(guests.map((guest, index) => attempt(`Close guest context ${index + 1}`, () => guest.close())));
+      await Promise.all(captures.map((capture, index) => attempt(`Complete board capture ${index + 1}`, () => capture)));
+      await Promise.all([...createdBoards].reverse().map((id) => attempt(`Delete test board ${id}`, async () => {
         const response = await context.request.delete(`/api/boards/${id}`, { headers: { origin } });
-        expect.soft([204, 404], `Cleanup of a board created by this test: ${id}`).toContain(response.status());
+        if (![204, 404].includes(response.status())) cleanupErrors.push(`Delete test board ${id}: HTTP ${response.status()}`);
+      })));
+      if (info.status !== info.expectedStatus || cleanupErrors.length) {
+        await attempt("Attach created board IDs", () => info.attach("created-boards", { body: JSON.stringify([...createdBoards]), contentType: "application/json" }));
       }
-      if (errors.length) await info.attach("page-errors", { body: JSON.stringify(errors, null, 2), contentType: "application/json" });
-      expect(errors, "No uncaught browser errors").toEqual([]);
+      if (errors.length) await attempt("Attach browser error evidence", () => info.attach("page-errors", { body: JSON.stringify(errors, null, 2), contentType: "application/json" }));
+      if (cleanupErrors.length) await attempt("Attach cleanup summary", () => info.attach("cleanup-errors", { body: JSON.stringify(cleanupErrors), contentType: "application/json" }));
+      expect.soft(cleanupErrors, "All E2E cleanup operations completed").toEqual([]);
+      expect.soft(errors, "No uncaught browser errors").toEqual([]);
     }
   },
 });
