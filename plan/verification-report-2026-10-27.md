@@ -16,8 +16,10 @@
   `sha256:221b1d0d4ea7f6539b173147714e65d87536a57e4b91241824a70aa213e16f0b`.
 - Диагностический образ с runtime GC/heap/event-loop счётчиками (source `0e9a474`):
   `sha256:b71bc2cf585c022ab0e0dbcb38f6ec26c68b0a44494652db63ba26ef1479eb7b`.
-- Текущий кандидат с yield очереди и проверкой закрытых соединений (source `b17c6c0`):
+- Предыдущий кандидат с yield очереди и проверкой закрытых соединений (source `b17c6c0`):
   `sha256:2f10ad2a9ba420c16c21e304634b5e968f7c7d29133face0b864678cab6f48c4`.
+- Текущий кандидат с pre-auth ingress и offline handshake (source `a933227`):
+  `sha256:f0c30b895fc449fbe362ac6daaa91daa0cd74a7e04ac1a45892e1370b0a87faa`.
   Worker: `sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23`.
 - Промежуточный образ живых ролей и прежних сетевых/TLS проверок:
   `sha256:48116dd68d90d8b09293440075e97dea48f6f0f120d4dc5fc6239e0a586d9ce2`.
@@ -31,8 +33,9 @@
 
 | Сценарий | Наблюдаемый результат |
 | --- | --- |
-| Полный набор с PostgreSQL | На `7b39e41`: 696 passed, 16 opt-in skipped, 99 исходных test files; 55,06 с; lint и TypeScript прошли |
-| GitHub Actions на опубликованном `b17c6c0` | [verify успешно](https://github.com/dedbin/rimo/actions/runs/40489453627): чистый npm ci, PostgreSQL/migrate, lint/type/test, реальный PDF и два extractor, production build, UI E2E, standalone и audit production dependencies |
+| Полный набор с PostgreSQL | На исходниках `a933227`: 762 passed, 16 opt-in skipped; 104 test files (99 passed / 5 skipped), 63,02 с; lint и TypeScript прошли. Лог: `temp/ingress-pg-suite-2026-10-27.log` |
+| GitHub Actions на опубликованном `a933227` | [verify успешно](https://github.com/dedbin/rimo/actions/runs/40563341591): чистый npm ci, PostgreSQL/migrate, lint/type/test, реальный PDF и два extractor, production build, UI E2E, standalone и audit production dependencies |
+| UI через Caddy на текущем f0c | 5/5 E2E за 58,8 с: clipboard, два редактора/своя отмена/отзыв, фреймы/PDF/архив, текст/формулы/Markdown/reload, живые роли. Лог: `temp/acceptance-ingress-a933-docker.log` |
 | Production UI на Windows | Свежий production build на `0e9a474`, 5/5 E2E за 1,0 мин, включая живую смену ролей и штатную остановку трёх дочерних серверов; порты освобождены |
 | UI через Caddy на образе 221b | 5/5 E2E за 1,1 мин: collaboration, rich text, clipboard, PDF/archive и live roles; функциональный прогон шёл параллельно отдельному TLS-стенду и unit suite |
 | Переносимый архив | Новая БД восстанавливает rich text, LaTeX, точные WebP и порядок именованных фреймов |
@@ -348,11 +351,24 @@ loop max 396,6 мс. Очистка и closeErrors пустые. Raw:
 а прежний порт 55432 уже обслуживал другой проект. Его данные, настройки и
 контейнер не менялись. Свой `temp/postgres` проверен через pg_ctl и запущен
 на свободном loopback 55439; SQL подтвердил точный data_directory и rimo_dev.
-Игнорируемый локальный env получил явный isolated test DSN. Повторный полный
-набор с подготовленным receive guard: 703 passed, 16 skipped, 100 test files,
-62,42 с; scoped 7/7, lint/type прошли. Эти тесты не доказывают полноту общего
-лимита: независимый reviewer нашёл обход через очередь SDK до `connected`;
-его исправление и реальные WS-регрессии ещё выполняются.
+Игнорируемый локальный env получил явный isolated test DSN. Launcher теперь
+требует `RIMO_TEST_DATABASE_URL`, без fallback к рабочему `DATABASE_URL`.
+Промежуточные 703 теста выявленный reviewer обход не покрывали. В `a933227`
+учёт подключён через публичный `handleConnection` до очереди SDK, включая
+задержанные auth/load, повторные подключения, общий предел 32 МиБ и release.
+Настоящие WS-регрессии, независимое ревью и полный набор 762/16 прошли.
+Квота входящих байтов не является доказанной границей decoded heap.
+
+Клиентский offline helper передаёт накопленный Y.Doc штатным state-vector
+handshake, не повторяя ранее поставленные в очередь SyncUpdate. Проверен
+реальный reconnect документа почти 5 МиБ; OPEN-трафик не отбрасывается.
+Для следующей нагрузки app/collaboration временно перераспределены в 768/1024
+МиБ; сумма пяти контейнеров прежняя, 3,375 ГиБ. Node old512/semi64 дал heap
+limit704 МиБ. Короткий pre-aged профиль b17: 180,00 с, 3540/31860 операций/
+доставок, pending/missing/buffer0, p95482,9 мс, max1140,9 мс, cleanup пуст.
+Raw: `temp/performance/load-preaged1447-b17-budget1024-old512-semi64.json`.
+Час `a933227` с этими ресурсами пока выполняется; принятие не объявляется.
+Raw: `temp/performance/load-hour-a933-budget1024-old512-semi64.json`.
 
 Подробная методика: [performance.md](../docs/performance.md).
 
