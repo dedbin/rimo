@@ -34,6 +34,13 @@ public/uploads
 # misc
 .DS_Store
 *.pem
+*.key
+credentials.json
+settings.json
+*_secret*
+*_token*
+*.sqlite
+*.db
 
 # debug
 npm-debug.log*
