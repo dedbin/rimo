@@ -82,7 +82,7 @@ export function createDockerRunner({ environment, signal, program = "docker", ti
   });
 }
 
-export const INSPECT_FORMAT = '{"id":{{json .Id}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}},"state":{{json .State.Status}},"health":{{if .State.Health}}{{json .State.Health.Status}}{{else}}null{{end}},"restarts":{{.RestartCount}},"oomKilled":{{.State.OOMKilled}}}';
+export const INSPECT_FORMAT = '{"id":{{json .Id}},"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}},"state":{{json .State.Status}},"health":{{with index .State "Health"}}{{json .Status}}{{else}}null{{end}},"restarts":{{.RestartCount}},"oomKilled":{{.State.OOMKilled}}}';
 export const APP_STATUS_SCRIPT = 'const deadline=setTimeout(()=>process.exit(124),8000);deadline.unref();await import("./scripts/service-status.ts");';
 export const PG_FILESYSTEM_SCRIPT = String.raw`set -eu
 test -n "$PGDATA"
