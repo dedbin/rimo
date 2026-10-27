@@ -4,7 +4,8 @@ import sharp from "sharp";
 
 import type { AssetSummary } from "../types/service";
 import { isUuid, requireBoardAccess } from "./access";
-import { readStoredAsset, storeAsset } from "./asset-storage";
+import { createAssetDownloadResponse, type AssetDownloadOptions } from "./asset-download";
+import { storeAsset } from "./asset-storage";
 import { getServerConfig } from "./config";
 import { getPool, inTransaction } from "./db";
 import { HttpError } from "./http-error";
@@ -106,20 +107,15 @@ export async function uploadAsset(boardId: string, userId: string, bytes: Buffer
   }
 }
 
-export async function downloadAsset(assetId: string, userId: string): Promise<Response> {
+export async function downloadAsset(
+  assetId: string, userId: string, options: AssetDownloadOptions = {},
+): Promise<Response> {
   if (!isUuid(assetId)) throw new HttpError(404, "ASSET_NOT_FOUND", "Изображение недоступно.");
   const result = await getPool().query<AssetRow>("SELECT * FROM assets WHERE id = $1", [assetId]);
   const asset = result.rows[0];
   if (!asset) throw new HttpError(404, "ASSET_NOT_FOUND", "Изображение недоступно.");
   await requireBoardAccess(asset.board_id, userId);
-  const data = await readStoredAsset(asset.storage_key);
-  return new Response(new Uint8Array(data), {
-    headers: {
-      "Content-Type": asset.mime_type,
-      "Content-Length": String(data.length),
-      "Content-Disposition": `inline; filename="${asset.id}.webp"`,
-      "Cache-Control": "private, no-store",
-      "X-Content-Type-Options": "nosniff",
-    },
-  });
+  return createAssetDownloadResponse({
+    id: asset.id, storageKey: asset.storage_key, mimeType: asset.mime_type, byteSize: Number(asset.byte_size),
+  }, options);
 }

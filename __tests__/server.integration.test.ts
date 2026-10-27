@@ -12,6 +12,7 @@ import { PATCH as renameBoardRoute } from "../app/api/boards/[boardId]/route";
 import { GET as sessionRoute } from "../app/api/boards/[boardId]/session/route";
 import { POST as acceptInviteRoute } from "../app/api/invites/accept/route";
 import { POST as authRoute } from "../app/api/auth/[...all]/route";
+import { HEAD as assetHeadRoute } from "../app/api/assets/[assetId]/route";
 import { getBoardAccess } from "../server/access";
 import { downloadAsset, uploadAsset } from "../server/assets";
 import { getAuth } from "../server/auth";
@@ -194,7 +195,15 @@ describe.skipIf(!databaseUrl)("PostgreSQL auth and board integration", () => {
     const downloaded = await downloadAsset(first.id, ownerId);
     expect(downloaded.headers.get("content-type")).toBe("image/webp");
     expect((await downloaded.arrayBuffer()).byteLength).toBe(first.size);
+    const headContext = { params: Promise.resolve({ assetId: first.id }) };
+    const head = await assetHeadRoute(request(first.url, undefined, ownerCookie, "HEAD"), headContext);
+    expect(head.status).toBe(200);
+    expect(head.body).toBeNull();
+    expect(head.headers.get("content-length")).toBe(String(first.size));
+    expect(head.headers.get("content-type")).toBe("image/webp");
+    expect((await assetHeadRoute(request(first.url, undefined, undefined, "HEAD"), headContext)).status).toBe(401);
     await expect(downloadAsset(first.id, outsiderId)).rejects.toMatchObject({ status: 404 });
+    await expect(downloadAsset(first.id, outsiderId, { head: true })).rejects.toMatchObject({ status: 404 });
     await expect(uploadAsset(target.id, ownerId, Buffer.from('<svg onload="alert(1)"></svg>')))
       .rejects.toMatchObject({ status: 400 });
   });
