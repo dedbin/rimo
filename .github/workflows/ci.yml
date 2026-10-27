@@ -61,7 +61,7 @@ jobs:
       - name: Install Chromium for browser acceptance
         run: npx playwright install --with-deps chromium
       - name: Verify PDF with real Chromium and PostgreSQL
-        run: npm test -- __tests__/pdf-worker.integration.test.ts __tests__/pdf-service.integration.test.ts
+        run: npm test -- __tests__/pdf-worker.integration.test.ts __tests__/pdf-service.integration.test.ts __tests__/archive-pdf.integration.test.ts
         env:
           RIMO_PDF_BROWSER_TEST: "1"
           PDF_WORKER_BROWSER_CHANNEL: chromium
@@ -71,6 +71,7 @@ jobs:
           python3 -m venv temp/pdf-python
           temp/pdf-python/bin/pip install pypdf==6.10.0 pdfplumber==0.11.9
           temp/pdf-python/bin/python __tests__/pdf-readability.py temp/pdf-acceptance/rimo-control-20-pages.pdf
+          temp/pdf-python/bin/python __tests__/archive-pdf-readability.py temp/pdf-acceptance/archive-restored-order.pdf
       - run: npm run build
       - name: Provision an ephemeral browser-test owner
         run: npm run owner:create
