@@ -110,3 +110,12 @@ HTTP/1.1 и HTTP/2 запросы и Linux browser возвращали 200. П�
 
 Это локальная проверка production-пути с собственной CA. Публичный TLS/ACME,
 DNS реального сервера и доверие браузера к публичному сертификату не проверяются.
+
+Повтор текущего runtime `221b` с compiled ESM и Docker init у worker прошёл
+за 51,168 с. Отчёт: `temp/tls-acceptance/result-1793090330861-8d7e92ef85c20642.json`,
+source SHA-256 `9c5073ec470c525992da4e905ffaf9d76682099188a92c81a529d8bfc6423a11`.
+Worker image остался `672111ed…`. Node CA/SNI HTTP1/H2, Secure/HttpOnly/Lax
+cookies, HTTP308 без session cookie, 78 WSS frames, Saved/reload, private image
+и HTTPS PDF preview прошли; errors=0, собственные контейнеры/сети/тома удалены.
+Это функциональный прогон параллельно отдельным UI E2E и unit suite;
+его длительность не сравнивается с прежним запуском как показатель ускорения.

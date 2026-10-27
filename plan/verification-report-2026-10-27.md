@@ -10,8 +10,10 @@
 - Docker Desktop Linux VM около 24 ГБ RAM, Compose 2.34.0.
 - Исторический app/collaboration image для приведённых ниже R08/network измерений:
   `sha256:c49c1ecf7c36bd6cc8625a830d6cef56725e20926cc423ecd8000ac3eeaf0e23`.
-- Текущий образ после native ESM и восстановления при квоте (source `d383dde`):
+- Исторический образ после native ESM и восстановления при квоте (source `d383dde`):
   `sha256:31726ed066c5096175b8313daa78d3fb18d4b8f693ff130a6614d237a0a295c1`.
+- Текущий runtime после ACL и SVG/rich-text/avatar исправлений (source `8ef7b3b`):
+  `sha256:221b1d0d4ea7f6539b173147714e65d87536a57e4b91241824a70aa213e16f0b`.
   Worker: `sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23`.
 - Промежуточный образ живых ролей и прежних сетевых/TLS проверок:
   `sha256:48116dd68d90d8b09293440075e97dea48f6f0f120d4dc5fc6239e0a586d9ce2`.
@@ -25,18 +27,23 @@
 
 | Сценарий | Наблюдаемый результат |
 | --- | --- |
-| Полный набор с PostgreSQL | 452 passed, 16 opt-in skipped, 75 исходных test files; lint и TypeScript прошли |
+| Полный набор с PostgreSQL | 655 passed, 16 opt-in skipped, 90 исходных test files; 57,09 с; lint и TypeScript прошли |
+| GitHub Actions на опубликованном `9cd0514` | [verify успешно](https://github.com/dedbin/rimo/actions/runs/40469840848): чистый npm ci, PostgreSQL/migrate, lint/type/test, реальный PDF и два extractor, production build, UI E2E, standalone и audit production dependencies |
 | Production UI на Windows | 5/5 E2E за 1,1 мин на предыдущей версии, включая живую смену ролей и штатную остановку трёх дочерних серверов; свежий локальный build ещё предстоит |
-| UI через Caddy и текущие Linux images | 5/5 E2E за 57,0 с: collaboration, rich text, clipboard, PDF/archive, live roles |
+| UI через Caddy на текущем образе 221b | 5/5 E2E за 1,1 мин: collaboration, rich text, clipboard, PDF/archive и live roles; функциональный прогон шёл параллельно отдельному TLS-стенду и unit suite |
 | Переносимый архив | Новая БД восстанавливает rich text, LaTeX, точные WebP и порядок именованных фреймов |
-| Полная копия сервиса | Чистое Compose-окружение восстановлено за 56,65 с с прежним входом и изображениями |
+| Полная зашифрованная копия сервиса | Restic 0.19.1, check-data, restore-verify, manifest/hash, PostgreSQL, files, прежний вход и HTTP на чистом Compose: 94,5 с вместе с monitor faults; внешний offsite ещё не настроен |
+| Монитор эксплуатации | Девять наблюдений на изолированных Compose: healthy, реальные остановки/восстановления PDF и БД, квота владельцев, synthetic denied/timeout; cleanup без оставшихся контейнеров/томов/сетей/locks |
+| Проверка ACL под нагрузкой | Сессия и роль читаются одним SQL без кеширования прав; отдельные PG parity и expiry-boundary проверки прошли, опрос распределён по возрасту на монотонных часах, deadline не увеличен |
+| Аватары | Linux Chromium на 221b: self и три настоящих peer-сценария, SVG/UUIDasset decode, API400/unchanged, foreign/page/route errors=0, все14 критериев и cleanup29/29; peer использует реальные ACL/WS без подстановок |
+| Повторные PDF и процессы | 100 публичных экспортов без restart: p95 HTTP414,5 мс, max441,2 мс; PID47→47, peak126 при прежнем256, zombie0/events0; первые/последние20страниц независимо проверены, cleanup4/4 |
 | Assets ENOSPC | 12,88 с; настоящий полный tmpfs, HTTP 507, rows/orphans=0; после освобождения места HTTP 201, decode/hash/выдача совпали |
 | PostgreSQL ENOSPC | 17,16 с; настоящий SQLSTATE 53100 при расширении relation; новый ACK отсутствует, прежние bytes/revision сохранены; retry и новый WS восстановили все 1001 объект |
 | PDF | Linux sandbox=true, лимит 768 МиБ, 20 страниц: print 384 мс, inspect+print 829 мс; оба независимых extractor проверили русский текст, гарнитуры, code и порядок; PNG просмотрен |
 | Standalone | Один BUILD_ID, три runtime WebSocket URL без пересборки, CSS/woff2 совпадают через HTTP; dotenv в артефакте отсутствует |
 | Границы комнат | Реальные WS/PG регрессии для uppercase UUID, параллельного auth при лимите комнат, ошибок load, TTL и stop |
 | Живые права | editor→viewer отменяет активный текст и начатый drag; viewer→editor снова разрешает изменение без reload; readonly и auth-failure остаются серверными ограничениями |
-| HTTPS/WSS на образе 48116 | Постоянный isolated helper: 45,625 с, Node CA/SNI HTTP1/H2, два Linux Chromium contexts, Secure/HttpOnly/Lax cookies, HTTP308 без secure cookie, WSS/Saved/reload, private image и PDF preview; cleanup verified |
+| HTTPS/WSS на текущем 221b | 51,168 с, compiled ESM entry, Node CA/SNI HTTP1/H2, два Linux Chromium contexts, Secure/HttpOnly/Lax cookies, HTTP308 без secure cookie, WSS/Saved/reload, private image и PDF preview; 78WSSframes, errors0, свой проект/тома удалены |
 | Native ESM collaboration | Docker PID 1 запускает compiled ESM на Node 22.23.4; реальные WS/PG проверили ACK, строгий XML, отзыв доступа и SIGTERM drain/restart; source map указывает исходную TypeScript строку |
 | Отказ по квоте документа | Настоящий Chromium на образе 31726: baseline 5 242 860 байт, обычная вставка отвергнута; черновик/pending/error остались, за 6,508 с новых отправок и reconnect нет; новая вкладка Saved, UI-архив содержит точный исходный revision 2 и Yjs hash, unauth 401; cleanup 5/5 |
 
@@ -74,6 +81,15 @@ DOM 2851–2852; устойчивого роста не видно. Все кр�
 `3ac3086d28ec7b223500285b97156fa38ac798650db8cd55d62e69e238a2e07a`.
 Методика: [network-testing.md](../docs/network-testing.md).
 
+Верхний профиль на текущем 221b также прошёл: 3000/500/50 при документе
+5 177 321 байт (5 МиБ минус 65 559 байт запаса), после движений 5 177 994.
+Первый экран 3221,4/2810,2 мс, доставка DOM p95 254,6 / max 273,8 мс,
+десять reload 2685–2751 мс. Координаты/Saved/строгая валидация и cleanup 9/9
+прошли. Post-GC heap после первой более низкой точки оставался 47,99–48,14 МБ,
+DOM 2851–2852; этот короткий ряд не заменяет долгий контроль памяти.
+Отчёт `temp/performance/network-upper-candidate221b.json`, новый network SHA-256
+`03bffc05ebb6889d1a418f4f355e615d2e94e71ddafb9926ed304ac289b8a454`.
+
 ### Десять активных соединений на native ESM
 
 Смешанный профиль: два Chromium и восемь Node writers на одной доске,
@@ -89,6 +105,13 @@ p95 максимум 24,9 мс, buffered=0. Отчёт:
 `temp/performance/active-room/native317-initial/report.json`, source SHA-256
 `25e1a279f473eb6abbee3b85d3577188a568dbefb864023e3074a6b0f31f3f4d`.
 Методика: [active-room-testing.md](../docs/active-room-testing.md).
+
+Повтор на 221b: все 10 подключений выдержали 120 с, 1920 Node + 240 browser
+операций и 13440 доставок, missing/pending=0. Браузерные p95 207,0/205,7 мс;
+Node общий p95 359,0 мс, максимальная пара 371,3 мс. Поэтому общий статус
+снова `not-accepted`: Node-критерий 300 мс остаётся открытым. Все Saved,
+свежий durable audit и cleanup 35/35 прошли. Отчёт:
+`temp/performance/active-room/candidate221b/report.json`.
 
 ### PDF во время урока: первая попытка
 
@@ -110,6 +133,37 @@ Worker cgroup: 178,2 МБ до / 211,3 МБ после / 211,1 МБ после 5
 Отчёт: `temp/performance/pdf-lesson/native317-initial/report.json`.
 Методика: [pdf-lesson-testing.md](../docs/pdf-lesson-testing.md).
 
+Новая причинная методика v3 на 221b не использует часы worker для overlap.
+Все 20 экспортов по 20 проверенных страниц, Saved/Undo и durable audit прошли;
+полный p95 доставки 163,7 мс, 19 подтверждённых overlap дали p95 170,9 мс.
+Статус `not-accepted`: операция №10 отпущена через 0,114 мс после первого
+busy-ответа и не поместилась в консервативную границу +2 мс. Это не основание
+засчитать двадцатое пересечение. Протокол ввода исправлен на два последних
+последовательных busy-ответа, критерии 20/300 и worker не менялись; повтор нужен.
+Worker cgroup до/после/5 с idle: 210,7/226,2/226,1 МБ, peak 360,3 МБ;
+очередь не росла, cleanup 11/11. Отчёт:
+`temp/performance/pdf-lesson/candidate221b-causal-v3/report.json`.
+
+При следующем повторе после четырёх скачиваний пятый PDF завершился ошибкой;
+`temp/performance/pdf-lesson/candidate221b-release2/report.json` сохранён как failed.
+Read-only диагностика обнаружила157 zombie Chromium, все PPID1; PID1 был Node,
+а cgroup зарегистрировал108 достижений лимита256 (peak262). Включён штатный
+Docker init без увеличения лимитов или отключения sandbox. RSS Node теперь
+определяется по точной команде отдельно от диагностики PID1.
+
+После исправления 100 последовательных публичных экспортов прошли без restart:
+PID47→47, наблюдаемый после ответа максимум55, cgroup peak126, zombie0 и
+limit events0. Cgroup memory173,2→214,3 МБ; Node RSS198,0→220,4 МБ.
+Это проверка конечной серии, а не доказательство отсутствия любой долгой утечки.
+Отчёт `temp/pdf-process-lifecycle/candidate221b-init100/report.json`;
+первые/последние PDF независимо проверены, cleanup4/4.
+
+Затем принят полный урок: **20/20 подтверждённых causal overlap**, 20PDF по
+20страниц проверены двумя extractor, фиксированный revision, оба редактора,
+Saved/Undo/durable audit. Полный и overlap p95 доставки157,6 мс, max161,3 мс;
+все критерии и cleanup11/11 прошли. Отчёт:
+`temp/performance/pdf-lesson/candidate221b-init-release2/report.json`.
+
 ## Массовое перемещение и нагрузка
 
 Три переноса 500 объектов на 120×40: без coordinate writes до pointerup,
@@ -123,6 +177,23 @@ Worker cgroup: 178,2 МБ до / 211,3 МБ после / 211,1 МБ после 5
 Дополнительный CPU/timeline прогон дал 35,5 / 38,8 / 34,4 мс, подтвердил remount
 50 формул, но KaTeX занимал лишь 1,5–2,2 мс; источник исходного выброса
 без trace того события остаётся неустановленным.
+
+После сохранения ключей rich text и общего SVG transform серия 20 переносов
+на 221b сохранила все 50 формул и 50 изображений до, во время и после жеста.
+В каждом случае 0 записей координат до pointerup, 1 транзакция/1000 полей,
+1 Undo для всех 500 объектов; Saved и полный аудит прошли. Frame p95
+24,3–30,4 мс во всех 20, но max реакции 66,3 мс при пределе 50 мс остаётся
+провалом. Raw `temp/performance/editor-221b-shared-20trials.json` относится
+к протоколу измерения 4: отдельные rAF stamps предшествуют DOM mutation,
+поэтому они могут занижать задержку. Протокол 5 использует actual callback
+time и имеет две red/green регрессии.
+
+Его собственная серия `temp/performance/editor-221b-protocol5-20trials.json`
+также завершена: frame p95 30,3–30,4 мс во всех20, reaction p95 21,5–27,5 мс,
+startup 8,6–13,1 мс. Все100 content nodes сохраняются, writes/Undo/Saved/audit
+прошли. Два max выброса 53,1 и52,6 мс не проходят предел50; в первом случае
+47,3 мс уже прошли до capture handler. Конкретная причина этой задержки
+не установлена, критерий не ослабляется. Page/close/cleanup errors отсутствуют.
 
 Короткий профиль 50 connections / 10 writers / 5 досок: 30,008 с,
 590 операций, 5310 доставок, 98,3% заданной частоты, pending/missed/buffered=0.
@@ -148,6 +219,13 @@ ESM: в host microbenchmark медиана полного проверяемог
 pending/missing/buffered=0, все 50 соединений живы, p95 300,2 мс, RAM 242–270 МиБ.
 Часовой повтор ещё требуется; этот Node p95 не заменяет браузерный критерий.
 
+Часовая попытка native317 фактически остановилась через 1648,0 с (27 мин 28 с):
+32310 операций, 290655 доставок, `access-unavailable`, pending15/missing0.
+Collaboration около376 МиБ; ошибки ACL достигали прежнего deadline 3 с.
+Отчёт `temp/performance/load-hour-native-31726.json` сохранён. Исправления
+SQL/монотонного распределённого опроса вошли в 221b; полный час после них
+ещё не выполнен. Правила доступа, квоты и deadline не ослаблялись.
+
 V8-профиль показал 70,24% активного CPU в кодировании Yjs; полная сверка
 canonical — 32,80%, encoding проверенной shadow — 33,76%, persistence encoding —
 3,65%. Inspector после диагностики закрыт, порт 9229 проверен отдельно.
@@ -159,11 +237,19 @@ JSON старого prefix не меняет delta, но меняет полно
 
 ## Открытые условия
 
-- Локальный HTTPS/WSS путь повторно прошёл постоянным harness на текущих образах.
-  Публичный TLS/ACME, DNS и настоящий сервер остаются внешними условиями;
+- Локальный HTTPS/WSS с compiled ESM повторно прошёл на221b. Публичный
+  TLS/ACME, DNS и настоящий сервер остаются внешними условиями;
   методика и результат: [tls-testing.md](../docs/tls-testing.md).
 - Часовой профиль 50/10 и рост состояния/памяти в течение него.
-- Остаточный максимум first-preview 69,8 мс при бюджете 50 мс.
+- Максимум реакции50 мс: protocol5 зарегистрировал53,1 и52,6 мс. Бюджет
+  frame p95 33 мс прошёл20/20, данные/Undo сохраняются.
+- Десять активных клиентов: Node p95 359,0 мс выше300 мс, хотя два настоящих
+  браузера и сохранность прошли. PDF overlap после исправления принят20/20.
+- Предел записи пилота 5 МиБ уже предложенных в плане 20 МиБ;
+  его почти предельный сетевой профиль прошёл, повышение требует новой приёмки.
 - Внешнее зашифрованное хранилище и расписание копий: назначения пока нет.
 - Реальный VPS, публичный домен и пять занятий владельца ещё не участвовали
   в проверках. Эти условия не заменяются автоматическими сценариями.
+- Правовые проекты РФ и вопросы владельцу: [docs/legal](../docs/legal/README.md).
+  Реквизиты, размещение, сроки хранения, принятие документов и исполнение
+  обращений пока не утверждены; соответствие внешнего пилота не объявляется.
