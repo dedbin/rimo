@@ -7,7 +7,8 @@ import { promisify } from "node:util";
 import { describe, expect, it } from "vitest";
 
 import { acceptanceStatus, clockBounds, criteria, overlapEvidence } from "../scripts/performance/pdf-lesson/criteria.mjs";
-import { reservePdfDirectory, validateProjectBindings } from "../scripts/performance/pdf-lesson/artifacts.mjs";
+import { reservePdfDirectory } from "../scripts/performance/pdf-lesson/artifacts.mjs";
+import { validateProjectBindings } from "../scripts/performance/service-target.mjs";
 
 const execute = promisify(execFile);
 interface ProjectContainer {

@@ -13,11 +13,12 @@ import { idAt, imageAsset, VIEWPORT } from "../fixture.mjs";
 import { collaborationRoundTrip, imagesReady, instrument, measureMove, waitUntilUsable } from "../network/browser-probe.mjs";
 import { cleanupStep, NETWORK_CALIBRATION_FILE, NETWORK_GUEST_STATE_FILE, networkSourceHash, startHelper } from "../network/helper.mjs";
 import { createRunLifecycle } from "../network/lifecycle.mjs";
+import { inspectProject } from "../service-target.mjs";
 import { reservePdfDirectory } from "./artifacts.mjs";
 import { acceptanceStatus, clockBounds, criteria, overlapEvidence } from "./criteria.mjs";
 import { auditLesson, controlImage, prepareSnapshot, seedLesson } from "./fixture.mjs";
 import { downloadPdf, pdfTools, verifyPdf } from "./pdf.mjs";
-import { inspectProject, startProbe } from "./probe.mjs";
+import { startProbe } from "./probe.mjs";
 
 const { values } = parseArgs({ options: {
   help: { type: "boolean" }, "allow-service-test": { type: "boolean", default: false }, exports: { type: "string", default: "20" },
@@ -36,7 +37,7 @@ async function sourceHash() {
   for (const filename of (await readdir(directory)).filter((name) => name.endsWith(".mjs")).toSorted()) {
     hash.update(filename); hash.update(await readFile(path.join(directory, filename)));
   }
-  for (const filename of ["__tests__/pdf-fixtures.ts", "__tests__/pdf-readability.py"]) { hash.update(filename); hash.update(await readFile(filename)); }
+  for (const filename of ["scripts/performance/service-target.mjs", "__tests__/pdf-fixtures.ts", "__tests__/pdf-readability.py"]) { hash.update(filename); hash.update(await readFile(filename)); }
   return hash.digest("hex");
 }
 

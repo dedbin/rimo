@@ -191,7 +191,7 @@ function trackFrame(stats, direction, data) {
   types[type] = (types[type] ?? 0) + 1;
 }
 
-export async function openProvider(context, baseURL, boardId, signal) {
+export async function openProvider(context, baseURL, boardId, signal, { agent } = {}) {
   const session = await api(context, "GET", `/api/boards/${boardId}/session`);
   const origin = new URL(baseURL).origin;
   const cookie = await websocketCookieHeader(context, baseURL, session.connection.url);
@@ -205,7 +205,7 @@ export async function openProvider(context, baseURL, boardId, signal) {
     maxAttempts: 1, jitter: false, initialDelay: 0,
     WebSocketPolyfill: class extends WebSocket {
       constructor(url) {
-        super(url, { headers: { origin, cookie } });
+        super(url, { headers: { origin, cookie }, ...(agent ? { agent } : {}) });
         this.on("message", (data) => trackFrame(stats, "received", data));
       }
       send(data, ...args) { trackFrame(stats, "sent", data); return super.send(data, ...args); }

@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
-import { execFile, spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import { promisify } from "node:util";
 
 import { fail, waitFor } from "../common.mjs";
-import { validateProjectBindings } from "./artifacts.mjs";
 import { clockBounds } from "./criteria.mjs";
 
 /** Read-only program sent to the existing worker. No environment or credentials. */
@@ -60,20 +58,6 @@ export const PROBE_SOURCE = `
   }
   clearTimeout(deadline);input.close();agent.destroy();
 `;
-
-export async function inspectProject(project) {
-  assert.match(project, /^[a-z0-9][a-z0-9_-]{0,62}$/);
-  const { stdout } = await promisify(execFile)("docker", ["ps", "--quiet", "--no-trunc", "--filter", `label=com.docker.compose.project=${project}`],
-    { windowsHide: true, timeout: 10_000, maxBuffer: 16_384 });
-  const ids = stdout.trim().split(/\r?\n/).filter(Boolean);
-  if (!ids.length || ids.length > 64 || ids.some((id) => !/^[a-f0-9]{64}$/.test(id))) throw fail("Unexpected selected-project container inventory");
-  const format = '{"project":{{json (index .Config.Labels "com.docker.compose.project")}},"service":{{json (index .Config.Labels "com.docker.compose.service")}},"imageId":{{json .Image}},"ports":{{json .NetworkSettings.Ports}}}';
-  const inspected = await promisify(execFile)("docker", ["inspect", "--format", format, ...ids], { windowsHide: true, timeout: 10_000, maxBuffer: 131_072 });
-  const lines = inspected.stdout.trim().split(/\r?\n/).filter(Boolean);
-  if (lines.length !== ids.length) throw fail("Selected-project metadata inventory changed during preflight");
-  try { return validateProjectBindings(lines.map((line, index) => ({ ...JSON.parse(line), id: ids[index] })), project); }
-  catch { throw fail("Selected project must own localhost TCP 3080 through one Caddy and have one worker"); }
-}
 
 export async function startProbe(binding, signal) {
   const identifier = binding.worker.id;
