@@ -1,8 +1,8 @@
 # Проверки переработки Rimo
 
 Промежуточный протокол 27 октября. Ветка `codex/service-rework`.
-Проверки повторяются после изменений поведения. Часовая нагрузка пока
-ожидает завершения; результаты различных образов указаны отдельно.
+Проверки повторяются после изменений поведения. Часовой профиль пока не прошёл:
+предыдущие попытки остановились с ошибками; результаты образов указаны отдельно.
 
 ## Зафиксированный стенд
 
@@ -10,9 +10,11 @@
 - Docker Desktop Linux VM около 24 ГБ RAM, Compose 2.34.0.
 - Исторический app/collaboration image для приведённых ниже R08/network измерений:
   `sha256:c49c1ecf7c36bd6cc8625a830d6cef56725e20926cc423ecd8000ac3eeaf0e23`.
-- Текущий образ после живого переключения ролей (`914c083`):
-  `sha256:48116dd68d90d8b09293440075e97dea48f6f0f120d4dc5fc6239e0a586d9ce2`.
+- Текущий образ после native ESM и восстановления при квоте (source `d383dde`):
+  `sha256:31726ed066c5096175b8313daa78d3fb18d4b8f693ff130a6614d237a0a295c1`.
   Worker: `sha256:672111ed0fedc85f785f15799818f76c5bb83e890a3313a710bc1da67dd21a23`.
+- Промежуточный образ живых ролей и прежних сетевых/TLS проверок:
+  `sha256:48116dd68d90d8b09293440075e97dea48f6f0f120d4dc5fc6239e0a586d9ce2`.
 - Node: host 22.15.0, app/collaboration 22.23.4, PDF worker 24.22.1.
   PostgreSQL 18.6, Chromium 156.0.8078.4, Next 15.5.28,
   Hocuspocus 4.7.1, Yjs 13.6.33.
@@ -23,9 +25,9 @@
 
 | Сценарий | Наблюдаемый результат |
 | --- | --- |
-| Полный набор с PostgreSQL | 343 passed, 16 opt-in skipped; затем отдельные browser/Docker прогоны |
-| Production UI на Windows | 5/5 E2E за 1,1 мин, включая живую смену ролей и штатную остановку трёх дочерних серверов |
-| UI через Caddy и текущие Linux images | 5/5 E2E за 55,8 с: collaboration, rich text, clipboard, PDF/archive, live roles |
+| Полный набор с PostgreSQL | 452 passed, 16 opt-in skipped, 75 исходных test files; lint и TypeScript прошли |
+| Production UI на Windows | 5/5 E2E за 1,1 мин на предыдущей версии, включая живую смену ролей и штатную остановку трёх дочерних серверов; свежий локальный build ещё предстоит |
+| UI через Caddy и текущие Linux images | 5/5 E2E за 57,0 с: collaboration, rich text, clipboard, PDF/archive, live roles |
 | Переносимый архив | Новая БД восстанавливает rich text, LaTeX, точные WebP и порядок именованных фреймов |
 | Полная копия сервиса | Чистое Compose-окружение восстановлено за 56,65 с с прежним входом и изображениями |
 | Assets ENOSPC | 12,88 с; настоящий полный tmpfs, HTTP 507, rows/orphans=0; после освобождения места HTTP 201, decode/hash/выдача совпали |
@@ -34,7 +36,9 @@
 | Standalone | Один BUILD_ID, три runtime WebSocket URL без пересборки, CSS/woff2 совпадают через HTTP; dotenv в артефакте отсутствует |
 | Границы комнат | Реальные WS/PG регрессии для uppercase UUID, параллельного auth при лимите комнат, ошибок load, TTL и stop |
 | Живые права | editor→viewer отменяет активный текст и начатый drag; viewer→editor снова разрешает изменение без reload; readonly и auth-failure остаются серверными ограничениями |
-| HTTPS/WSS на текущих образах | Постоянный isolated helper: 45,625с, Node CA/SNI HTTP1/H2, два Linux Chromium contexts, Secure/HttpOnly/Lax cookies, HTTP308 без secure cookie, WSS/Saved/reload, private image и PDF preview; cleanup verified |
+| HTTPS/WSS на образе 48116 | Постоянный isolated helper: 45,625 с, Node CA/SNI HTTP1/H2, два Linux Chromium contexts, Secure/HttpOnly/Lax cookies, HTTP308 без secure cookie, WSS/Saved/reload, private image и PDF preview; cleanup verified |
+| Native ESM collaboration | Docker PID 1 запускает compiled ESM на Node 22.23.4; реальные WS/PG проверили ACK, строгий XML, отзыв доступа и SIGTERM drain/restart; source map указывает исходную TypeScript строку |
+| Отказ по квоте документа | Настоящий Chromium на образе 31726: baseline 5 242 860 байт, обычная вставка отвергнута; черновик/pending/error остались, за 6,508 с новых отправок и reconnect нет; новая вкладка Saved, UI-архив содержит точный исходный revision 2 и Yjs hash, unauth 401; cleanup 5/5 |
 
 Команды и границы отказов: [failure-testing.md](../docs/failure-testing.md).
 Браузерные сценарии: [e2e/README.md](../e2e/README.md).
@@ -70,6 +74,42 @@ DOM 2851–2852; устойчивого роста не видно. Все кр�
 `3ac3086d28ec7b223500285b97156fa38ac798650db8cd55d62e69e238a2e07a`.
 Методика: [network-testing.md](../docs/network-testing.md).
 
+### Десять активных соединений на native ESM
+
+Смешанный профиль: два Chromium и восемь Node writers на одной доске,
+десять независимых калиброванных путей, измеренный RTT p95 111–119 мс.
+За 120 с все writers выдержали заданную частоту: 1920 Node и 240 браузерных
+изменений, 13440 причинно подтверждённых Node-доставок без потерь.
+Браузерный DOM p95 250,4/238,2 мс прошёл условие 300 мс, но отдельные
+Node пары дали p95 364,6–407,8 мс, общий 394,9 мс. Поэтому status
+`not-accepted`: дополнительный Node latency критерий не пройден.
+Saved получен после остановки всех writers; все координаты проверены свежим
+подключением, runtime errors=0, cleanup 35/35. Generator event-loop max 49,7 мс,
+p95 максимум 24,9 мс, buffered=0. Отчёт:
+`temp/performance/active-room/native317-initial/report.json`, source SHA-256
+`25e1a279f473eb6abbee3b85d3577188a568dbefb864023e3074a6b0f31f3f4d`.
+Методика: [active-room-testing.md](../docs/active-room-testing.md).
+
+### PDF во время урока: первая попытка
+
+На том же native ESM образе выполнены 20 последовательных публичных экспортов
+по 20 страниц из одного фиксированного revision. Все PDF независимо проверены
+двумя extractor: русский текст, копирование, формулы и порядок страниц.
+Полный HTTP download занял 593,9–701,7 мс; 20 конечных движений владельца и
+редактора доставлены в DOM с p95 156,3 мс, каждый Saved/Undo и свежий durable
+аудит прошли. Ошибок страниц нет, cleanup завершён.
+
+Статус `not-accepted`: интервалы занятости worker не удалось достоверно связать
+с pointerup. Часы Docker VM `Date.now()` относительно монотонного таймера
+изменились примерно на 5,25 с; общий clock interval несовместим. Поэтому ни одно
+движение не зачтено как overlap, даже при успешном экспорте и низкой задержке.
+Измеритель переводится на монотонные таймеры, пороги не увеличиваются.
+Worker cgroup: 178,2 МБ до / 211,3 МБ после / 211,1 МБ после 5 с покоя;
+исторический cgroup peak 356,2 МБ при лимите 805,3 МБ. Один такой прогон ещё
+не доказывает отсутствие долговременного роста памяти.
+Отчёт: `temp/performance/pdf-lesson/native317-initial/report.json`.
+Методика: [pdf-lesson-testing.md](../docs/pdf-lesson-testing.md).
+
 ## Массовое перемещение и нагрузка
 
 Три переноса 500 объектов на 120×40: без coordinate writes до pointerup,
@@ -93,7 +133,20 @@ Collaboration: около одного ядра CPU, 274–325 МиБ RAM. Эт�
 7870 операций, 70816 доставок, cadence97,6%, pending2, missing0,
 RAM collaboration около318МиБ. Финальное сохранение у всех не подтверждено.
 Отчёт сохранён: `temp/performance/load-hour-48116.json`; причина закрытия
-исследуется отдельным диагностическим повтором, лимиты не менялись.
+исследована отдельными диагностическими повторами, лимиты не менялись.
+
+Следующий прогон на 48116 завершился через 366,15 с с `access-unavailable`;
+на диагностическом 1ac910 первая ошибка через 106,20 с была `receive-limit`.
+Добавлены безопасные причины закрытия и замеры ошибок ACL без идентификаторов
+и секретов. Наблюдались ACL deadline 3 с; проверка прав не ослаблена.
+
+Кодирование Yjs существенно ускорилось после перехода collaboration на native
+ESM: в host microbenchmark медиана полного проверяемого пути 36,67→16,33 мс
+при одинаковых бинарных состояниях и строгих отказах. Это диагностическое
+сравнение, не замена серверной приёмки. На текущем образе 31726 короткий
+профиль 50/10 прошёл 60 с: 1180 операций / 10620 доставок, cadence 98,3%,
+pending/missing/buffered=0, все 50 соединений живы, p95 300,2 мс, RAM 242–270 МиБ.
+Часовой повтор ещё требуется; этот Node p95 не заменяет браузерный критерий.
 
 V8-профиль показал 70,24% активного CPU в кодировании Yjs; полная сверка
 canonical — 32,80%, encoding проверенной shadow — 33,76%, persistence encoding —
