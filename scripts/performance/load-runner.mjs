@@ -2,6 +2,7 @@ import { createHistogram, monitorEventLoopDelay } from "node:perf_hooks";
 
 import { distribution, dockerSample, fail, roundTrip, safeError, waitFor, Y } from "./common.mjs";
 import { idAt } from "./fixture.mjs";
+import { sampleCollaborationRuntime } from "./runtime-sample.mjs";
 
 export async function runLoad(rooms, options, signal, progress) {
   const peers = rooms.flatMap((room) => room.clients);
@@ -57,12 +58,14 @@ export async function runLoad(rooms, options, signal, progress) {
       eventLoopMaxMs: eventLoop.max / 1e6 },
       pendingChanges: pending.size, changes: sentChanges, connections: peers.filter((peer) => !peer.failure && peer.provider.isSynced).length,
       acknowledgementAgeMs: distribution(ackLag), docker: null };
-    const [roundTrips, docker] = await Promise.all([
+    const [roundTrips, docker, runtime] = await Promise.all([
       Promise.all(rooms.map((room) => roundTrip(room.clients[0]))), dockerSample(options.composeProject),
+      sampleCollaborationRuntime(options.composeProject),
     ]);
     sample.observedRoundTripMs = distribution(roundTrips.filter((value) => value !== null));
     sample.roundTripTimeouts = roundTrips.filter((value) => value === null).length;
     sample.docker = docker;
+    sample.collaborationRuntime = runtime;
     samples.push(sample); eventLoop.reset();
     await progress({ elapsedSeconds: Math.round(sample.elapsedSeconds), connections: sample.connections, changes: sample.changes, pending: sample.pendingChanges,
       sample, partial: { sentChanges, presenceMessages, pendingChanges: pending.size, missingDeliveries } });
@@ -124,9 +127,12 @@ export async function runLoad(rooms, options, signal, progress) {
     await takeSample();
   } catch (error) { failure = safeError(error); }
   finally { await sampling; handlers.forEach((dispose) => dispose()); eventLoop.disable(); }
+  // A failure can occur after the last periodic sample; retain its final lifetime GC/loop counters.
+  const measuredSteadySeconds = steadyDurationSeconds || (performance.now() - started) / 1_000;
+  const runtimeAfterLoad = await sampleCollaborationRuntime(options.composeProject);
   return { error: failure, interrupted: signal.aborted, durationSeconds: (performance.now() - started) / 1_000,
-      steadyDurationSeconds: steadyDurationSeconds || (performance.now() - started) / 1_000,
-      actualEditsPerWriterHz: sentChanges / ((steadyDurationSeconds || (performance.now() - started) / 1_000) * rooms.reduce((total, room) => total + room.writers.length, 0)),
+      steadyDurationSeconds: measuredSteadySeconds, runtimeAfterLoad,
+      actualEditsPerWriterHz: sentChanges / (measuredSteadySeconds * rooms.reduce((total, room) => total + room.writers.length, 0)),
       sentChanges, presenceMessages, skippedEditTicks, propagationMs: { count: latencies.count,
         p50: latencies.count ? latencies.percentile(50) / 1e6 : null,
         p95: latencies.count ? latencies.percentile(95) / 1e6 : null,

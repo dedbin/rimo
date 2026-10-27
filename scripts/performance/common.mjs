@@ -85,7 +85,7 @@ export async function environment(label) {
   const next = JSON.parse(await readFile("node_modules/next/package.json", "utf8")).version;
   const dependencies = Object.fromEntries(await Promise.all(["@hocuspocus/provider", "@hocuspocus/server", "yjs", "playwright", "katex", "sharp", "tough-cookie"]
     .map(async (name) => [name, JSON.parse(await readFile(`node_modules/${name}/package.json`, "utf8")).version])));
-  const sources = ["scripts/measure-editor.mjs", "scripts/load-collaboration.mjs", ...["common", "cookies", "fixture", "browser-metrics", "load-runner", "self-test", "self-load"]
+  const sources = ["scripts/measure-editor.mjs", "scripts/load-collaboration.mjs", ...["common", "cookies", "fixture", "history-fixture", "browser-metrics", "load-runner", "runtime-sample", "self-test", "self-load"]
     .map((name) => `scripts/performance/${name}.mjs`)];
   const sourceHash = createHash("sha256");
   for (const filename of sources) { sourceHash.update(filename); sourceHash.update(await readFile(filename)); }

@@ -9,6 +9,7 @@ import { AwarenessGuard } from "./awareness";
 import { withDeadline } from "./deadline";
 import { DocumentPersistence } from "./persistence";
 import { ReceiveGuard } from "./receive-guard";
+import { RuntimeMetrics } from "./runtime-metrics";
 import { CollaborationRejection, DEFAULT_LIMITS } from "./types";
 import type { CollaborationContext, CollaborationDependencies, CollaborationLimits } from "./types";
 import { UpdateGate } from "./update-gate";
@@ -45,6 +46,7 @@ export function createCollaborationServer(
   const updates = new UpdateGate();
   const validation = new ValidationCache(limits);
   const receive = new ReceiveGuard(limits, (id) => access.release(id));
+  const runtime = new RuntimeMetrics();
   const persistence = new DocumentPersistence(dependencies.repository, limits, (document) => {
     void server.hocuspocus.unloadDocument(document);
   });
@@ -206,16 +208,18 @@ export function createCollaborationServer(
       }
       const healthy = persistence.healthy && await dependencies.repository.health();
       response.writeHead(healthy ? 200 : 503, { "Content-Type": "application/json", "Cache-Control": "no-store" });
-      response.end(JSON.stringify({ status: healthy ? "ok" : "unavailable" }));
+      response.end(JSON.stringify({ status: healthy ? "ok" : "unavailable", runtime: runtime.read() }));
       throw null;
     },
 
     async onListen() {
+      runtime.start();
       access.start();
     },
 
     async onDestroy() {
       stopping = true;
+      runtime.stop();
       access.stop();
       receive.stop();
       persistence.stop();
