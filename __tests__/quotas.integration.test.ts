@@ -15,6 +15,7 @@ import { createBoard } from "../server/boards";
 import { getQuotaLimits } from "../server/config";
 import { getPool } from "../server/db";
 import { runMigrations } from "../server/migrations";
+import { activateVerifiedOwner } from "../server/quotas";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL;
 const schema = `rimo_quota_test_${randomUUID().replaceAll("-", "")}`;
@@ -106,7 +107,8 @@ describe.skipIf(!databaseUrl)("atomic PostgreSQL service quotas", () => {
     const create = () => createOwnerAccount({
       name: "Владелец", email: `${randomUUID()}@example.test`, password: randomBytes(20).toString("base64url"),
     });
-    await create();
+    const owner = await create();
+    await activateVerifiedOwner(owner.user.id);
     await expect(create()).rejects.toMatchObject({ status: 409, code: "OWNER_LIMIT_REACHED" });
     const count = await getPool().query<{ owners: string; guests: string }>(
       'SELECT count(*) FILTER (WHERE "isAnonymous" = false) AS owners, count(*) FILTER (WHERE "isAnonymous" = true) AS guests FROM "user"',
@@ -116,11 +118,12 @@ describe.skipIf(!databaseUrl)("atomic PostgreSQL service quotas", () => {
 
   it("serializes two owner creations competing for the last slot", async () => {
     for (let index = 0; index < 5; index += 1) await seedUser();
-    const results = await Promise.allSettled([0, 1].map(() => createOwnerAccount({
+    const pending = await Promise.all([0, 1].map(() => createOwnerAccount({
       name: "Владелец", email: `${randomUUID()}@example.test`, password: randomBytes(20).toString("base64url"),
     })));
+    const results = await Promise.allSettled(pending.map(owner => activateVerifiedOwner(owner.user.id)));
     expect(results.filter((result) => result.status === "fulfilled").length).toBe(1);
-    const count = await getPool().query<{ total: string }>('SELECT count(*) AS total FROM "user" WHERE "isAnonymous" = false');
+    const count = await getPool().query<{ total: string }>('SELECT count(*) AS total FROM "user" WHERE "isAnonymous" = false AND "registrationPending" = false');
     expect(count.rows[0].total).toBe("6");
   });
 

@@ -26,6 +26,7 @@ import { createBoard } from "../server/boards";
 import { getPool } from "../server/db";
 import { acceptInvite, createInvite } from "../server/invites";
 import { runMigrations } from "../server/migrations";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const suffix = randomUUID().replaceAll("-", "");
@@ -79,6 +80,7 @@ describe.skipIf(!databaseUrl || process.env.RIMO_PDF_BROWSER_TEST !== "1")("comm
     process.env.PDF_WORKER_URL = `http://127.0.0.1:${(worker.address() as AddressInfo).port}`;
     const password = randomBytes(24).toString("base64url");
     const owner = await getAuth({ allowSignUp: true }).api.signUpEmail({ body: { name: "Владелец PDF", email: `pdf-${suffix}@example.test`, password } });
+    await verifyFixtureOwner(getPool(), owner.user.id);
     ownerCookie = cookies(await getAuth().handler(request("/api/auth/sign-in/email", { email: owner.user.email, password }, "")));
     const guest = async (): Promise<{ id: string; cookie: string }> => {
       const response = await getAuth().handler(request("/api/auth/sign-in/anonymous", {}, ""));

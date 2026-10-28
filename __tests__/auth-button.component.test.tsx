@@ -5,9 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AuthButton } from "@/components/auth/auth-button";
 
-const calls = vi.hoisted(() => ({ signIn: vi.fn(), signUp: vi.fn() }));
+const calls = vi.hoisted(() => ({ signIn: vi.fn(), signUp: vi.fn(), send: vi.fn(), verify: vi.fn() }));
 vi.mock("@/lib/auth-client", () => ({
-  authClient: { signIn: { email: calls.signIn }, signUp: { email: calls.signUp } },
+  authClient: {
+    signIn: { email: calls.signIn }, signUp: { email: calls.signUp },
+    emailOtp: { sendVerificationOtp: calls.send, verifyEmail: calls.verify },
+  },
 }));
 
 type AuthResult = { error: { code?: string; status?: number } | null };
@@ -29,6 +32,8 @@ function fillSignUp(confirmPassword = password): HTMLFormElement {
 beforeEach(() => {
   calls.signIn.mockReset().mockResolvedValue({ error: null });
   calls.signUp.mockReset().mockResolvedValue({ error: null });
+  calls.send.mockReset().mockResolvedValue({ error: null });
+  calls.verify.mockReset().mockResolvedValue({ error: null });
 });
 afterEach(cleanup);
 
@@ -56,14 +61,22 @@ describe("AuthButton", () => {
     expect(calls.signIn).not.toHaveBeenCalled();
   });
 
-  it("registers with trimmed profile fields, preserves the password and closes on success", async () => {
+  it("registers, confirms the email and signs in with the in-memory password", async () => {
     open();
     fireEvent.submit(fillSignUp());
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Подтвердите почту" })).toBeVisible());
     expect(calls.signUp).toHaveBeenCalledExactlyOnceWith({
       name: "Учитель", email: "teacher@example.test", password,
     });
     expect(calls.signIn).not.toHaveBeenCalled();
+    await waitFor(() => expect(calls.send).toHaveBeenCalledTimes(1));
+    expect(calls.send).toHaveBeenCalledWith({ email: "teacher@example.test", type: "email-verification" }, expect.any(Object));
+    await waitFor(() => expect(screen.getByLabelText("Код из письма")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Код из письма"), { target: { value: "001234" } });
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить почту" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(calls.verify).toHaveBeenCalledWith({ email: "teacher@example.test", otp: "001234" }, expect.any(Object));
+    expect(calls.signIn).toHaveBeenCalledExactlyOnceWith({ email: "teacher@example.test", password });
   });
 
   it("preserves existing email sign-in and closes after authentication", async () => {
@@ -101,6 +114,47 @@ describe("AuthButton", () => {
     fireEvent.submit(form);
     expect(calls.signUp).toHaveBeenCalledTimes(1);
     await act(async () => { finish({ error: null }); });
+    await waitFor(() => expect(screen.getByRole("heading", { name: "Подтвердите почту" })).toBeVisible());
+  });
+
+  it("resumes confirmation when sign-in reports an unverified email", async () => {
+    calls.signIn.mockResolvedValueOnce({ error: { code: "EMAIL_NOT_VERIFIED", status: 403 } });
+    open("sign-in");
+    fireEvent.change(screen.getByLabelText("Почта", { exact: true }), { target: { value: "teacher@example.test" } });
+    fireEvent.change(screen.getByLabelText("Пароль", { exact: true }), { target: { value: password } });
+    fireEvent.click(screen.getByRole("button", { name: /^Войти$/ }));
+    await screen.findByRole("heading", { name: "Подтвердите почту" });
+    await waitFor(() => expect(screen.getByLabelText("Код из письма")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Код из письма"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить почту" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(calls.signIn).toHaveBeenCalledTimes(2);
+    expect(calls.signUp).not.toHaveBeenCalled();
+  });
+
+  it("returns to sign-in after confirmation if the password needs to be entered again", async () => {
+    calls.signIn.mockResolvedValueOnce({ error: { code: "INVALID_EMAIL_OR_PASSWORD", status: 401 } });
+    open();
+    fireEvent.submit(fillSignUp());
+    await screen.findByRole("heading", { name: "Подтвердите почту" });
+    await waitFor(() => expect(screen.getByLabelText("Код из письма")).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Код из письма"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить почту" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Почта подтверждена. Войдите с паролем своего аккаунта.");
+    expect(screen.getByRole("heading", { name: "Вход в Rimo" })).toBeVisible();
+    expect(screen.getByLabelText("Почта", { exact: true })).toHaveValue("teacher@example.test");
+    expect(screen.getByLabelText("Пароль", { exact: true })).toHaveValue("");
+  });
+
+  it("drops the password when leaving and reopening the confirmation flow", async () => {
+    open();
+    fireEvent.submit(fillSignUp());
+    await screen.findByRole("heading", { name: "Подтвердите почту" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Вернуться к форме" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Вернуться к форме" }));
+    expect(screen.getByLabelText("Пароль", { exact: true })).toHaveValue("");
+    expect(calls.signIn).not.toHaveBeenCalled();
+    expect(localStorage.length).toBe(0);
+    expect(sessionStorage.length).toBe(0);
   });
 });

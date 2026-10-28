@@ -26,6 +26,7 @@ import { runMigrations } from "../server/migrations";
 import type { BoardSummary } from "../types/service";
 
 import { nativeArchive } from "./archive-fixtures";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const suffix = randomUUID().replaceAll("-", "");
@@ -87,11 +88,13 @@ describe.skipIf(!databaseUrl)("native Rimo archive", () => {
     const provisioner = getAuth({ allowSignUp: true });
     const owner = await provisioner.api.signUpEmail({ body: { name: "Владелец", email: `owner-${suffix}@example.test`, password } });
     ownerId = owner.user.id;
+    await verifyFixtureOwner(getPool(), ownerId);
     const login = async (email: string): Promise<string> => cookies(await getAuth().handler(new Request("http://localhost:3000/api/auth/sign-in/email", {
       method: "POST", headers: { origin: "http://localhost:3000", "content-type": "application/json" }, body: JSON.stringify({ email, password }),
     })));
     ownerCookie = await login(`owner-${suffix}@example.test`);
-    await provisioner.api.signUpEmail({ body: { name: "Другой владелец", email: `other-${suffix}@example.test`, password } });
+    const otherOwner = await provisioner.api.signUpEmail({ body: { name: "Другой владелец", email: `other-${suffix}@example.test`, password } });
+    await verifyFixtureOwner(getPool(), otherOwner.user.id);
     otherCookie = await login(`other-${suffix}@example.test`);
     const guest = await getAuth().handler(new Request("http://localhost:3000/api/auth/sign-in/anonymous", {
       method: "POST", headers: { origin: "http://localhost:3000", "content-type": "application/json" }, body: "{}",

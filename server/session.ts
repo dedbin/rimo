@@ -1,4 +1,5 @@
 import type { AuthSession } from "./auth";
+import { canUseAccount } from "../lib/verified-user";
 import { getAuth } from "./auth";
 import { getPool } from "./db";
 import { HttpError } from "./http-error";
@@ -9,6 +10,9 @@ export async function requireSession(request: Request): Promise<AuthSession> {
     query: { disableCookieCache: true },
   });
   if (!session) throw new HttpError(401, "UNAUTHORIZED", "Войдите в аккаунт.");
+  if (!canUseAccount(session.user)) {
+    throw new HttpError(403, "EMAIL_NOT_VERIFIED", "Подтвердите почту, чтобы продолжить работу.");
+  }
   return session;
 }
 

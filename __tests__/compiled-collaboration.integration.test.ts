@@ -17,6 +17,7 @@ import { acceptInvite, createInvite, revokeInvite } from "../server/invites";
 import { runMigrations } from "../server/migrations";
 
 import { compiledClient, freeCompiledPort, startCompiledRuntime } from "./compiled-collaboration-fixtures";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL;
 const hash = (state: Uint8Array): string => createHash("sha256").update(state).digest("hex");
@@ -59,6 +60,7 @@ describe.skipIf(!databaseUrl)("actual compiled collaboration process with Postgr
       const email = `${schema}@example.test`;
       const password = randomBytes(24).toString("base64url");
       const ownerAccount = await getAuth({ allowSignUp: true }).api.signUpEmail({ body: { email, password, name: "Compiled runtime test" } });
+      await verifyFixtureOwner(pool, ownerAccount.user.id);
       const ownerCookie = (await authenticate("/sign-in/email", { email, password })).cookie;
       const guestAccount = await authenticate("/sign-in/anonymous", {});
       const boardId = (await createBoard(ownerAccount.user.id, "Compiled runtime boundary")).id;

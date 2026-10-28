@@ -19,6 +19,7 @@ import { createBoard, deleteBoard } from "../server/boards";
 import { getPool } from "../server/db";
 import { acceptInvite, createInvite, revokeInvite } from "../server/invites";
 import { runMigrations } from "../server/migrations";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL;
 const origin = "http://localhost:3000";
@@ -109,6 +110,7 @@ describe.skipIf(!databaseUrl)("Better Auth cookies with PostgreSQL and WebSocket
     });
     ownerId = created.user.id;
     userIds.push(ownerId);
+    await verifyFixtureOwner(getPool(), ownerId);
     ownerCookie = (await authenticate("/sign-in/email", { email, password })).cookie;
     const anonymous = await authenticate("/sign-in/anonymous", {});
     guestCookie = anonymous.cookie;

@@ -14,6 +14,7 @@ async function main(): Promise<void> {
   try {
     const result = await createOwnerAccount({ email, password, name });
     process.stdout.write(`Owner account created: ${result.user.id}\n`);
+    process.stdout.write("Confirm the email address through the Rimo sign-in form before using the account.\n");
   } finally {
     await getPool().end();
   }

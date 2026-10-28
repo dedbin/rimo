@@ -95,6 +95,21 @@ describe.skipIf(!databaseUrl)("operator status and conservative physical orphan 
     expect(["healthy", "warning", "critical"].map((value) => serviceStatusExitCode(value as "healthy" | "warning" | "critical"))).toEqual([0, 1, 2]);
   });
 
+  it("does not count unfinished registrations as occupied owner slots", async () => {
+    const pending = randomUUID();
+    try {
+      await database.query(
+        'INSERT INTO "user"(id,name,email,"registrationPending") VALUES($1,$2,$3,true)',
+        [pending, "PRIVATE_PENDING_OWNER", `${pending}@example.test`],
+      );
+      const report = await collectServiceStatus({ database, uploadDir: storage, quotas: getQuotaLimits() });
+      expect(report.usage?.owners).toBe(2);
+      expect(report.reasonCodes).not.toContain("OWNERS_LIMIT_REACHED");
+    } finally {
+      await database.query('DELETE FROM "user" WHERE id = $1', [pending]);
+    }
+  });
+
   it("reports a full six-owner pilot as a warning while existing boards remain available", async () => {
     const extra = Array.from({ length: 4 }, () => randomUUID());
     try {

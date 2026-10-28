@@ -10,12 +10,14 @@ import { downloadAsset } from "../server/assets";
 import { getAuth } from "../server/auth";
 import { getPool } from "../server/db";
 import { runMigrations } from "../server/migrations";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 async function restore(): Promise<void> {
   await runMigrations();
   const owner = await getAuth({ allowSignUp: true }).api.signUpEmail({ body: {
     name: "Новый владелец архива", email: "archive-restore@example.test", password: randomBytes(24).toString("base64url"),
   } });
+  await verifyFixtureOwner(getPool(), owner.user.id);
   const bytes = await readFile(process.argv[2]);
   const board = await importBoardArchive(new Request("http://localhost:3000/api/boards/import", {
     method: "POST", headers: { "content-type": "application/zip" }, body: new Uint8Array(bytes),

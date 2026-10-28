@@ -25,6 +25,12 @@ writeFileSync(target, [
   `HTTP_PORT=${origin.protocol === "http:" ? origin.port || 80 : 80}`,
   `HTTPS_PORT=${origin.protocol === "https:" ? origin.port || 443 : 443}`,
   "MAX_BOARD_ASSET_BYTES=104857600",
+  "# Configure these SMTP settings before enabling owner registration.",
+  "SMTP_HOST=",
+  "SMTP_PORT=587",
+  "SMTP_USER=",
+  "SMTP_PASSWORD=",
+  "MAIL_FROM=",
   "",
 ].join("\n"), { mode: 0o600, flag: "wx" });
 process.stdout.write("Created .env with independent random secrets. Do not commit this file.\n");

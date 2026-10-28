@@ -125,8 +125,8 @@ describe.skipIf(!databaseUrl)("PostgreSQL single-query collaboration ACL parity"
       sessions: { owner: randomUUID(), member: randomUUID(), outsider: randomUUID() },
     };
     await database.query(
-      `INSERT INTO "user"(id,name,email)
-       SELECT id,'ACL parity',id||'@example.test' FROM unnest($1::text[]) AS users(id)`, [Object.values(fixture.users)],
+      `INSERT INTO "user"(id,name,email,"emailVerified","registrationPending")
+       SELECT id,'ACL parity',id||'@example.test',true,false FROM unnest($1::text[]) AS users(id)`, [Object.values(fixture.users)],
     );
     await database.query(
       `INSERT INTO session(id,token,"userId","expiresAt")

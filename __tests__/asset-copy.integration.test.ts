@@ -15,6 +15,7 @@ import { getAuth } from "../server/auth";
 import { createBoard, deleteBoard } from "../server/boards";
 import { getPool } from "../server/db";
 import { runMigrations } from "../server/migrations";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL;
 const schema = `rimo_copy_test_${randomUUID().replaceAll("-", "")}`;
@@ -57,6 +58,7 @@ describe.skipIf(!databaseUrl)("copying images between board access boundaries", 
     ownerId = (await getAuth({ allowSignUp: true }).api.signUpEmail({ body: {
       name: "Владелец проверки", email, password,
     } })).user.id;
+    await verifyFixtureOwner(getPool(), ownerId);
     const login = await getAuth().handler(new Request("http://localhost:3000/api/auth/sign-in/email", {
       method: "POST", headers: { "content-type": "application/json", origin: "http://localhost:3000" },
       body: JSON.stringify({ email, password }),

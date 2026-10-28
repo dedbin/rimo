@@ -21,7 +21,7 @@ export interface ServiceStatus {
 
 async function databaseUsage(database: Pool): Promise<ServiceUsage> {
   const result = await database.query<Record<keyof ServiceUsage, string>>(`SELECT
-    (SELECT count(*) FROM "user" WHERE "isAnonymous" = false) AS owners,
+    (SELECT count(*) FROM "user" WHERE "isAnonymous" = false AND "registrationPending" = false) AS owners,
     (SELECT count(*) FROM boards) AS boards,
     (SELECT count(*) FROM board_documents) AS documents,
     (SELECT COALESCE(sum(octet_length(state)),0) FROM board_documents) AS "documentBytes",
