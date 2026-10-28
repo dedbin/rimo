@@ -1,0 +1,13 @@
+{
+  "revision": "371d2078aec869f6cb09f80dfdaf8eaf9c12d36f",
+  "release": "/srv/rimo/releases/371d2078aec8",
+  "tag": "server-371d2078aec8",
+  "builtAt": "2026-10-28T07:37:34.491026+00:00",
+  "appImage": "sha256:96fb6fac867ae996c918e33b57addae93494fa627ff3b18f54587e1b85bcffd6",
+  "pdfImage": "sha256:4b87f90c2681c7187c9cf2758020304e2dfe71375c14367da3ac7896d41b47ee",
+  "activatedAt": "2026-10-28T07:39:59.339778+00:00",
+  "previousRelease": "/srv/rimo/releases/e671653",
+  "namedVolumesPreserved": true,
+  "backupBeforeUpdate": "rimo-backup.service success",
+  "allServicesReady": true
+}
