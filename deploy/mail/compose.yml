@@ -1,0 +1,64 @@
+services:
+  app:
+    networks: !override [backend, exports, mail-submission]
+    depends_on:
+      mail:
+        condition: service_healthy
+
+  caddy:
+    environment:
+      MAIL_TLS_NAME: ${MAIL_TLS_NAME:?Set MAIL_TLS_NAME}
+    volumes:
+      - ./deploy/mail/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./deploy/ops/Caddyfile:/etc/caddy/RimoOps:ro
+
+  mail:
+    image: rimo-mail:${RIMO_MAIL_TAG:-local}
+    build:
+      context: .
+      dockerfile: deploy/mail/Dockerfile
+    init: true
+    environment:
+      MAIL_HOSTNAME: ${MAIL_HOSTNAME:?Set MAIL_HOSTNAME}
+      MAIL_DOMAIN: ${MAIL_DOMAIN:?Set MAIL_DOMAIN}
+      MAIL_TLS_NAME: ${MAIL_TLS_NAME:?Set MAIL_TLS_NAME}
+      MAIL_DKIM_SELECTOR: ${MAIL_DKIM_SELECTOR:?Set MAIL_DKIM_SELECTOR}
+      SMTP_USER: ${SMTP_USER:?Set SMTP_USER}
+      SMTP_PASSWORD_FILE: /run/secrets/smtp-password
+      MAIL_FROM: ${MAIL_FROM:?Set MAIL_FROM}
+    volumes:
+      - ${RIMO_MAIL_PRIVATE_DIR:-/srv/rimo/private/mail}/smtp-password:/run/secrets/smtp-password:ro
+      - ${RIMO_MAIL_PRIVATE_DIR:-/srv/rimo/private/mail}/dkim:/var/lib/rimo-dkim
+      - caddy-data:/caddy:ro
+      - mail-queue:/var/spool/postfix
+    networks:
+      mail-submission:
+        aliases: ["${SMTP_HOST:?Set SMTP_HOST}"]
+      mail-egress:
+        gw_priority: 1
+    expose: ["587"]
+    mem_limit: 256m
+    pids_limit: 128
+    cap_drop: [NET_RAW]
+    security_opt: [no-new-privileges:true]
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "/usr/local/lib/rimo-mail/healthcheck.sh"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 150s
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+networks:
+  mail-submission:
+    internal: true
+  mail-egress:
+
+volumes:
+  mail-queue:

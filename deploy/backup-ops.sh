@@ -33,8 +33,12 @@ trap 'exit 130' INT
 trap 'exit 143' TERM
 
 # Logs remain private siblings of core's exact three-file backup directory.
+configuration_paths=(/srv/rimo/private "$release_dir/config" "$release_dir/deploy/ops")
+if [[ -d "$release_dir/deploy/mail" ]]; then
+    configuration_paths+=("$release_dir/deploy/mail")
+fi
 restic backup --json --tag rimo-ops:configuration -- \
-    /srv/rimo/private "$release_dir/config" "$release_dir/deploy/ops" \
+    "${configuration_paths[@]}" \
     >"$run_dir/configuration-restic.log" 2>&1
 printf '{"event":"ops_configuration_snapshot_created"}\n'
 
