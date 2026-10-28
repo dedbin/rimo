@@ -1,0 +1,17 @@
+import /etc/caddy/RimoBase
+
+{$DASHBOARD_DOMAIN} {
+    redir https://{$APP_DOMAIN}{uri} permanent
+}
+
+https://{$DASHBOARD_DOMAIN}:8443 {
+    encode zstd gzip
+    header Referrer-Policy same-origin
+    header X-Content-Type-Options nosniff
+    request_body {
+        max_size 16KiB
+    }
+    reverse_proxy ntfy:8080 {
+        header_up -Cookie
+    }
+}

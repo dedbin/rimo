@@ -62,6 +62,8 @@ jobs:
       - run: npm run db:migrate
       - run: npm run lint
       - run: npm run typecheck
+      - name: Verify dashboard operator client
+        run: node scripts/check-server-dashboard.mjs
       - run: npm test
       - name: Verify PDF with real Chromium and PostgreSQL
         run: npm test -- __tests__/pdf-worker.integration.test.ts __tests__/pdf-service.integration.test.ts __tests__/archive-pdf.integration.test.ts
