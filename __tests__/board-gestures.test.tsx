@@ -50,6 +50,21 @@ beforeEach(() => {
 afterEach(() => { cleanup(); board.destroy(); vi.unstubAllGlobals(); });
 
 describe("canvas gesture lifecycle", () => {
+  it("selects a partially touched hitbox at pointer-up even before the queued frame runs", () => {
+    const [id] = board.insert([createLayer(LayerType.Rectangle, { x: 100, y: 100 }, { r: 0, g: 0, b: 0 })]);
+    const { result } = setup();
+    const updates = vi.fn();
+    board.doc.on("update", updates);
+    act(() => result.current.onPointerDown(pointer(0, 0)));
+    act(() => result.current.onPointerMove(pointer(90, 90)));
+    expect(presence.selection).toEqual([]);
+    act(() => result.current.onPointerUp(pointer(110, 110)));
+    expect(presence.selection).toEqual([id]);
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.None);
+    expect(board.getLayer(id)).toMatchObject({ x: 100, y: 100, width: 100, height: 100 });
+    expect(updates).not.toHaveBeenCalled();
+  });
+
   it("preserves text double-click targeting by waiting for movement before pointer capture", () => {
     const [id] = board.insert([createLayer(LayerType.Text, { x: 0, y: 0 }, { r: 0, g: 0, b: 0 })]);
     const { result } = setup();

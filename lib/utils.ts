@@ -108,12 +108,12 @@ export function pickLayersInBox(
     const layerTop = layer.y;
     const layerBottom = layer.y + layer.height;
 
-    
+    // Include partial overlap and contact with a hitbox edge or corner.
     return (
-      box.left <= layerLeft &&
-      box.right >= layerRight &&
-      box.top <= layerTop &&
-      box.bottom >= layerBottom
+      box.left <= layerRight &&
+      box.right >= layerLeft &&
+      box.top <= layerBottom &&
+      box.bottom >= layerTop
     );
   });
 }
