@@ -31,3 +31,12 @@
 - Девять реальных проверок ntfy прошли: anon/wrong-password/чужие темы/неверная
   роль отклонены, оба направления сообщений и две русские подписки подтверждены.
 - WHOIS: зарегистрирован28октября04:05UTC, DELEGATED; внешняя RU-зона пока NXDOMAIN.
+- В05:24UTC появилась публичная делегация; запущен Caddy с валидными TLS для обоих hosts.
+- Новая суточная копия05:58UTC: core+ops snapshots, full read-data check, unit success.
+- Server-side monitor через current alias реально вернул healthy после entry guard fix.
+- Restore e9177bde принят в отдельном Compose project; loopback порты, те же
+  images, полная уборка target и неизменность source подтверждены.
+- В06:30UTC завершена контрольная перезагрузка: kernel6.8.0-147, failed units0,
+  containers и timers поднялись сами, прежняя HTTPS session cookie сохранилась.
+- Панель получила реальное сообщение владельца, ответ опубликован; ни текст,
+  ни приватные учётные данные не включаются в tracked evidence.

@@ -1,0 +1,62 @@
+{
+  "checkedAt": "2026-10-28T06:09:32.565Z",
+  "strictTls": true,
+  "peers": [
+    {
+      "host": "rimo-whiteboard.ru",
+      "port": 443,
+      "authorized": true,
+      "protocol": "TLSv1.3",
+      "alpn": "h2",
+      "issuer": "YE1",
+      "subject": "rimo-whiteboard.ru",
+      "fingerprint256": "B6:57:83:B4:19:BE:4F:76:0A:3A:B4:BB:30:DA:66:FC:90:DA:C7:B0:A3:27:F9:EA:7E:4E:99:19:95:1C:92:41",
+      "validTo": "Jan 26 04:26:29 2027 GMT"
+    },
+    {
+      "host": "www.rimo-whiteboard.ru",
+      "port": 443,
+      "authorized": true,
+      "protocol": "TLSv1.3",
+      "alpn": "h2",
+      "issuer": "YE1",
+      "subject": "www.rimo-whiteboard.ru",
+      "fingerprint256": "E7:C4:48:98:4D:4B:5D:B6:8C:FB:29:77:2A:BC:F3:2F:F1:E3:F3:2F:4F:D1:4E:F8:76:51:D7:BF:66:08:7A:2E",
+      "validTo": "Jan 26 04:26:30 2027 GMT"
+    },
+    {
+      "host": "www.rimo-whiteboard.ru",
+      "port": 8443,
+      "authorized": true,
+      "protocol": "TLSv1.3",
+      "alpn": "h2",
+      "issuer": "YE1",
+      "subject": "www.rimo-whiteboard.ru",
+      "fingerprint256": "E7:C4:48:98:4D:4B:5D:B6:8C:FB:29:77:2A:BC:F3:2F:F1:E3:F3:2F:4F:D1:4E:F8:76:51:D7:BF:66:08:7A:2E",
+      "validTo": "Jan 26 04:26:30 2027 GMT"
+    }
+  ],
+  "wwwCertificateReused": true,
+  "redirects": [
+    {
+      "url": "http://rimo-whiteboard.ru/",
+      "status": 308,
+      "location": "https://rimo-whiteboard.ru/",
+      "setsCookie": false
+    },
+    {
+      "url": "https://www.rimo-whiteboard.ru/",
+      "status": 301,
+      "location": "https://rimo-whiteboard.ru/",
+      "setsCookie": false
+    }
+  ],
+  "cookies": [
+    {
+      "secure": true,
+      "httpOnly": true,
+      "sameSiteLax": true,
+      "hostOnly": true
+    }
+  ]
+}

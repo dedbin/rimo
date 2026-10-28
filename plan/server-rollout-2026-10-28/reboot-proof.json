@@ -1,0 +1,100 @@
+{
+  "checkedAt": "2026-10-28T06:30:20.829118+00:00",
+  "bootChanged": true,
+  "bootId": "0c5a75c0-8a32-490e-8ad0-c5274f472937",
+  "kernel": "6.8.0-147-generic",
+  "rebootRequired": false,
+  "timers": {
+    "rimo-backup.timer": {
+      "NextElapseUSecRealtime": "Thu 2026-10-29 01:00:00 UTC",
+      "ActiveState": "active",
+      "UnitFileState": "enabled"
+    },
+    "rimo-monitor.timer": {
+      "NextElapseUSecRealtime": "",
+      "ActiveState": "active",
+      "UnitFileState": "enabled"
+    },
+    "rimo-restic-age.timer": {
+      "NextElapseUSecRealtime": "Wed 2026-10-28 07:00:00 UTC",
+      "ActiveState": "active",
+      "UnitFileState": "enabled"
+    }
+  },
+  "jobs": {
+    "rimo-backup.service": {
+      "Result": "success",
+      "ExecMainStatus": "0",
+      "ActiveState": "inactive"
+    },
+    "rimo-monitor.service": {
+      "Result": "success",
+      "ExecMainStatus": "0",
+      "ActiveState": "inactive"
+    },
+    "rimo-restic-age.service": {
+      "Result": "success",
+      "ExecMainStatus": "0",
+      "ActiveState": "inactive"
+    }
+  },
+  "containers": [
+    {
+      "name": "rimo-caddy-1",
+      "running": true,
+      "status": "running",
+      "health": null,
+      "restartPolicy": "unless-stopped",
+      "restartCount": 0
+    },
+    {
+      "name": "rimo-ntfy-1",
+      "running": true,
+      "status": "running",
+      "health": "healthy",
+      "restartPolicy": "unless-stopped",
+      "restartCount": 0
+    },
+    {
+      "name": "rimo-collaboration-1",
+      "running": true,
+      "status": "running",
+      "health": "healthy",
+      "restartPolicy": "unless-stopped",
+      "restartCount": 0
+    },
+    {
+      "name": "rimo-app-1",
+      "running": true,
+      "status": "running",
+      "health": "healthy",
+      "restartPolicy": "unless-stopped",
+      "restartCount": 0
+    },
+    {
+      "name": "rimo-migrate-1",
+      "running": false,
+      "status": "exited",
+      "health": null,
+      "restartPolicy": "no",
+      "restartCount": 0
+    },
+    {
+      "name": "rimo-export-worker-1",
+      "running": true,
+      "status": "running",
+      "health": "healthy",
+      "restartPolicy": "unless-stopped",
+      "restartCount": 0
+    },
+    {
+      "name": "rimo-db-1",
+      "running": true,
+      "status": "running",
+      "health": "healthy",
+      "restartPolicy": "unless-stopped",
+      "restartCount": 0
+    }
+  ],
+  "failedUnits": []
+}

@@ -1,0 +1,20 @@
+{
+  "checkedAt": "2026-10-28T06:32:26.405Z",
+  "checks": {
+    "rootHttps200": true,
+    "healthHttps200": true,
+    "existingOwnerSessionPreserved": true,
+    "panelHttps200": true,
+    "anonymousWorkDenied": true,
+    "anonymousInboxDenied": true,
+    "ownerAccount200": true,
+    "workHistoryPreserved": true
+  },
+  "anonymousStatuses": {
+    "work": 403,
+    "inbox": 403
+  },
+  "workMessageCount": 6,
+  "tlsValidation": "standard Node certificate validation; no bypass",
+  "sessionSecretStoredOnlyInIgnoredPrivateFile": true
+}
