@@ -74,7 +74,7 @@ export function createLayer(type: LayerType, position: Point, fill: Color): Laye
   switch (type) {
     case LayerType.Rectangle:
     case LayerType.Ellipse:
-      return { ...bounds, type, fill: { ...fill } };
+      return { ...bounds, type, fill: { ...fill, a: 0 }, stroke: { ...fill, a: 1 }, strokeWidth: 2 };
     case LayerType.Text:
     case LayerType.Sticker:
       return { ...bounds, type, fill: { ...fill }, value: "", fontSize: 16, fontFamily: "Noto Sans" };

@@ -2,9 +2,14 @@
 
 import { useState, useEffect, memo } from "react";
 import { useActiveSelectionArea } from "@/hooks/use-selection-bounds";
-import { Camera, Color } from "@/types/board-canvas";
-import { useBoardRuntime, useSelection } from "@/lib/collaboration/react";
+import { Camera, Color, LayerType } from "@/types/board-canvas";
+import { useBoardRuntime, useBoardSnapshot, useSelection } from "@/lib/collaboration/react";
+import { isShape } from "@/lib/board/shape-style";
 import { ColorPicker } from "./color-picker";
+import { ShapeColorControls } from "./shape-color-controls";
+import { PaintPicker } from "./paint-picker";
+import { samePaint } from "@/lib/board/shape-style";
+import { useSelectionToolbarPosition } from "../_hooks/use-selection-toolbar-position";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
@@ -19,16 +24,24 @@ interface SelectionToolsProps {
 export const SelectionTools = memo(
   ({ camera, setLastUsedColor }: SelectionToolsProps) => {
     const runtime = useBoardRuntime();
+    const snapshot = useBoardSnapshot();
     const selection = useSelection();
     const { t } = useTranslation();
     const bounds = useActiveSelectionArea();
+    const { ref, position } = useSelectionToolbarPosition(bounds, camera);
     const deleteLayers = useDeleteLayers();
+    const hasShapes = selection.some((id) => isShape(snapshot.layers.get(id)));
+    const colorIds = selection.filter((id) => {
+      const layer = snapshot.layers.get(id);
+      return layer?.type === LayerType.Text || layer?.type === LayerType.Sticker || layer?.type === LayerType.Path;
+    });
+    const colors = colorIds.map((id) => snapshot.layers.get(id)!.fill!);
 
     const moveToBack = () => runtime.board.reorder(selection, "back");
     const moveToFront = () => runtime.board.reorder(selection, "front");
     const setFill = (fill: Color) => {
       setLastUsedColor(fill);
-      runtime.board.update(selection, { fill });
+      runtime.board.update(colorIds, { fill });
     };
 
     const [hoveringDelete, setHoveringDelete] = useState(false);
@@ -41,31 +54,27 @@ export const SelectionTools = memo(
       return null;
     }
 
-    const x = bounds.x * camera.scale
-               + (bounds.width * camera.scale) / 2
-               + camera.x;
-     const y = bounds.y * camera.scale
-               + camera.y;
-
     return (
       <div
-        className="absolute p-3 rounded-xl bg-white shadow-sm border flex items-center select-none"
-        style={{
-         transform: `translate(
-           calc(${x}px - 50%),
-           calc(${(y - 10 * camera.scale)}px - 100%)
-         )`,
-        }}
+        ref={ref}
+        role="toolbar"
+        aria-label={t("selectionTools.objectStyle")}
+        className="absolute z-10 w-max max-w-[calc(100vw-16px)] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-md flex flex-wrap items-center select-none"
+        style={position}
       >
-        <ColorPicker onChange={setFill} />
-        <div className="flex flex-col gap-y-0.5 justify-center ml-3">
+        {hasShapes && <ShapeColorControls setLastUsedColor={setLastUsedColor} />}
+        {colors.length > 0 && (hasShapes
+          ? <PaintPicker label={t("selectionTools.color")} value={colors[0]} mixed={colors.some((color) => !samePaint(color, colors[0]))}
+              onChange={(color) => { if (color) setFill(color); }} />
+          : <ColorPicker onChange={setFill} />)}
+        <div className="ml-1 flex items-center border-l border-neutral-200 pl-1">
           <Hint label={t("selectionTools.bringToFront")}>
-            <Button variant="ghost" size="icon" onClick={moveToFront}>
+            <Button variant="ghost" size="icon" aria-label={t("selectionTools.bringToFront")} onClick={moveToFront}>
               <BringToFront />
             </Button>
           </Hint>
           <Hint label={t("selectionTools.sendToBack")} side="bottom">
-            <Button variant="ghost" size="icon" onClick={moveToBack}>
+            <Button variant="ghost" size="icon" aria-label={t("selectionTools.sendToBack")} onClick={moveToBack}>
               <SendToBack />
             </Button>
           </Hint>
@@ -75,6 +84,7 @@ export const SelectionTools = memo(
             <Button
               variant={hoveringDelete ? "destructive" : "ghost"}
               size="icon"
+              aria-label={t("selectionTools.delete")}
               onClick={deleteLayers}
               onMouseEnter={() => setHoveringDelete(true)}
               onMouseLeave={() => setHoveringDelete(false)}

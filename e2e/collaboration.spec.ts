@@ -15,9 +15,9 @@ test("owner creates a board, guests collaborate, local undo preserves the peer a
   const editor = await scenario.guest(await invitation(page, "editor"), "E2E ученик");
   await page.getByRole("button", { name: /^Прямоугольник/ }).click();
   await page.mouse.click(430, 320);
-  const rectangle = canvas(page).locator("rect.drop-shadow-md");
+  const rectangle = canvas(page).locator("[data-layer-id] > rect");
   await expect(rectangle).toHaveCount(1);
-  await expect(canvas(editor).locator("rect.drop-shadow-md")).toHaveCount(1);
+  await expect(canvas(editor).locator("[data-layer-id] > rect")).toHaveCount(1);
   await saved(page);
   const initial = await rectangle.boundingBox();
   if (!initial) throw new Error("Rectangle is not visible");

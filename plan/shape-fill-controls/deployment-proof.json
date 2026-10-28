@@ -1,0 +1,40 @@
+{
+  "revision": "acaf679808ba6dd23380e8d1631e33172fbb0372",
+  "tag": "server-acaf679808ba",
+  "release": "/srv/rimo/releases/acaf679808ba",
+  "previous": "/srv/rimo/releases/a3f5997650d9",
+  "builtAt": "2026-10-28T13:36:48.495204+00:00",
+  "appImage": "sha256:cfd10f6aa09f428b3623846692a54018aea6efe0288c58943244feafd02b6d95",
+  "pdfImage": "sha256:cccc84fcfbadc156456beb4a440f59812c73ab6f6983e2ba25742072987cf131",
+  "activatedAt": "2026-10-28T13:44:19.086422+00:00",
+  "backupBeforeUpdate": "success",
+  "namedVolumesPreserved": true,
+  "databaseFingerprintsMatch": true,
+  "publicHealth": 200,
+  "mailConnectionVerified": true,
+  "acceptanceCompletedAt": "2026-10-28T13:49:48.139699+00:00",
+  "temporaryDataCleanup": {
+    "temporaryAccountDeleted": true,
+    "temporaryBoardsDeleted": true
+  },
+  "originalDataAfterAcceptanceMatch": true,
+  "originalCounts": {
+    "user": 10,
+    "account": 2,
+    "boards": 1,
+    "board_documents": 1,
+    "assets": 0,
+    "board_invites": 0,
+    "board_members": 0,
+    "board_favorites": 0,
+    "schema_migrations": 2
+  },
+  "backup": {
+    "snapshotID": "9c4c5b47d7aedb577cec309962d940abc7e4dd65d6cf7b50fbb9e8b84f42b795",
+    "createdAt": "2026-10-28T13:39:06.932Z",
+    "sourceCreatedAt": "2026-10-28T13:39:01.307Z",
+    "encrypted": true,
+    "dataVerified": true,
+    "offsiteVerified": false
+  }
+}

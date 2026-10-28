@@ -11,18 +11,19 @@ interface RectangleProps {
 }
 
 export const Rectangle = ({ id, layer, onPointerDown, selectionColor }: RectangleProps) => {
-    const { x, y, width, height, fill } = layer
+    const { x, y, width, height, fill, stroke, strokeWidth } = layer
     return (
         <rect
-            className="drop-shadow-md"
+            className={fill.a === 0 ? undefined : "drop-shadow-md"}
             style={{transform: `translate(${x}px, ${y}px)`,}}
             x={0}
             y={0}
             width={width}
             height={height}
             fill={fill ? rgbToCss(fill) : '#000'}
-            stroke={selectionColor || 'transparent'}
-            strokeWidth={4}
+            stroke={selectionColor || (stroke ? rgbToCss(stroke) : 'transparent')}
+            strokeWidth={selectionColor ? 4 : strokeWidth ?? 0}
+            pointerEvents="all"
             onPointerDown={(e) => onPointerDown(e, id)}
         />
     );
