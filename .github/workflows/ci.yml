@@ -1,0 +1,125 @@
+name: Verify service
+
+on:
+  push:
+    branches: [master, "codex/**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.64.1-noble@sha256:47b510dd9230bf0b9bfc9b20102241e577ea7a99334ab4c3ca19f19770e9b8ea
+      options: --user 1001 --init --shm-size=1g
+    services:
+      postgres:
+        image: postgres:18-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+        env:
+          POSTGRES_DB: rimo_test
+          POSTGRES_USER: rimo_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd "pg_isready -U rimo_test -d rimo_test"
+          --health-interval 5s --health-timeout 3s --health-retries 15
+    env:
+      DATABASE_URL: postgresql://rimo_test@postgres:5432/rimo_test
+      RIMO_TEST_DATABASE_URL: postgresql://rimo_test@postgres:5432/rimo_test
+      BETTER_AUTH_URL: http://localhost:3000
+      COLLABORATION_PUBLIC_URL: ws://localhost:1234
+      ASSET_STORAGE_PATH: temp/ci-assets
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Generate ephemeral test configuration
+        run: |
+          node --input-type=module <<'NODE'
+          import { randomBytes, randomUUID } from 'node:crypto';
+          import { appendFileSync } from 'node:fs';
+          const settings = {
+            BETTER_AUTH_SECRET: randomBytes(48).toString('base64url'),
+            PDF_WORKER_TOKEN: randomBytes(48).toString('base64url'),
+            RIMO_E2E_PASSWORD: randomBytes(24).toString('base64url'),
+          };
+          for (const value of Object.values(settings)) process.stdout.write(`::add-mask::${value}\n`);
+          settings.RIMO_E2E_EMAIL = `ci-${randomUUID()}@example.test`;
+          settings.PDF_WORKER_URL = 'http://localhost:3100';
+          appendFileSync(process.env.GITHUB_ENV, Object.entries(settings).map(([key, value]) => `${key}=${value}`).join('\n') + '\n');
+          NODE
+      - run: npm ci
+      - run: npm run db:migrate
+      - run: npm run lint
+      - run: npm run typecheck
+      - name: Verify deployment shell scripts and line endings
+        run: node scripts/check-deploy-shell.mjs
+      - name: Verify dashboard operator client
+        run: |
+          node scripts/check-server-dashboard.mjs
+          node scripts/check-server-dashboard-bridge.mjs
+      - run: npm test
+      - name: Verify PDF with real Chromium and PostgreSQL
+        run: npm test -- __tests__/pdf-worker.integration.test.ts __tests__/pdf-service.integration.test.ts __tests__/archive-pdf.integration.test.ts
+        env:
+          RIMO_PDF_BROWSER_TEST: "1"
+          PDF_WORKER_BROWSER_CHANNEL: chromium
+          PDF_CHROMIUM_SANDBOX: "false"
+      - name: Verify copied Russian text and PDF page order
+        run: |
+          python3 -m venv temp/pdf-python
+          temp/pdf-python/bin/pip install pypdf==6.10.0 pdfplumber==0.11.9
+          temp/pdf-python/bin/python __tests__/pdf-readability.py temp/pdf-acceptance/rimo-control-20-pages.pdf
+          temp/pdf-python/bin/python __tests__/archive-pdf-readability.py temp/pdf-acceptance/archive-restored-order.pdf
+      - run: npm run build
+      - name: Provision an ephemeral owner pending email confirmation
+        run: npm run owner:create
+        env:
+          OWNER_EMAIL: ${{ env.RIMO_E2E_EMAIL }}
+          OWNER_PASSWORD: ${{ env.RIMO_E2E_PASSWORD }}
+          OWNER_NAME: Проверка CI
+      - name: Verify browser workflows with local SMTP and email confirmation
+        run: npm run test:e2e
+        env:
+          RIMO_E2E_BROWSER_CHANNEL: chromium
+          PDF_WORKER_BROWSER_CHANNEL: chromium
+          PDF_CHROMIUM_SANDBOX: "false"
+      - name: Verify standalone resources and runtime configuration
+        run: npm run verify:standalone
+      - run: npm audit --omit=dev --audit-level=high
+      - name: Retain failed browser evidence
+        if: failure()
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: browser-failure-evidence
+          path: |
+            test-results/e2e/
+            playwright-report/
+            temp/pdf-acceptance/
+          retention-days: 3
+          if-no-files-found: ignore
+
+  mail-relay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: "3.12"
+      - name: Build the authenticated SMTP relay
+        run: docker build --tag rimo-mail:ci --file deploy/mail/Dockerfile .
+      - name: Verify TLS, authentication, sender restrictions and persistent DKIM
+        run: python scripts/check-mail-relay.py --image rimo-mail:ci

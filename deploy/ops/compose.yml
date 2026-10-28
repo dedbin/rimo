@@ -1,0 +1,52 @@
+services:
+  caddy:
+    environment:
+      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN}
+    ports:
+      - "8443:8443"
+    volumes:
+      - ./deploy/ops/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./config/Caddyfile:/etc/caddy/RimoBase:ro
+    networks: [backend, ingress, ops]
+
+  ntfy:
+    image: binwiederhier/ntfy:v2.34.0@sha256:901e14503d3f605f445be0e68f2ac71f0aa73391897ce6ceb599f8c48d8b3792
+    command: [serve]
+    user: "1000:1000"
+    init: true
+    environment:
+      NTFY_BASE_URL: https://${DASHBOARD_DOMAIN:?Set DASHBOARD_DOMAIN}:8443
+    volumes:
+      - ./deploy/ops/ntfy.yml:/etc/ntfy/server.yml:ro
+      - ntfy-data:/var/lib/ntfy
+    networks: [ops]
+    read_only: true
+    tmpfs:
+      - /tmp:size=16777216,mode=1777
+    mem_limit: 128m
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          wget -q --tries=1 -O - http://127.0.0.1:8080/v1/health
+          | grep -Eq '"healthy"[[:space:]]*:[[:space:]]*true'
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped
+
+networks:
+  ops:
+    internal: true
+
+volumes:
+  ntfy-data:

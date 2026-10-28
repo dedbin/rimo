@@ -1,0 +1,112 @@
+{
+  "checkedAt": "2026-10-28T06:38:23.591986+00:00",
+  "operatorSourceRevision": "f2d92f9e331602a049c7fd782b1cc6ae1344b0c4",
+  "checks": [
+    {
+      "file": "/srv/rimo/current/scripts/cli-entry.mjs",
+      "sha256": "cc734ee97364a63a251a6f50a731ea32d1dbac69f94bbd146154f1cea7c0bd4d",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/scripts/monitor-service.mjs",
+      "sha256": "580c21daa3a147724991caadb6786932e657c1f3f621f7c451b7da376a381d09",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/scripts/restic-backup.mjs",
+      "sha256": "4302e90b9a23c1aeb9665bf280d3e13b42e7302d424a048a40e944bdb96f4ec8",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/scripts/server-dashboard.mjs",
+      "sha256": "bf11f20f3c18d1105cd634889e9cbdaa92d5857c54c75d99d006657b623b6e1e",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/backup-daily.sh",
+      "sha256": "66b51c5de3c420537fd327adf52b54fe2e293d00052cfba9bd82a54a4c3c5a7e",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/backup-ops.sh",
+      "sha256": "4f4d8836cb94ade0b29498788667015d6de7498a4eabd461cb36b3cf52bb5035",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/ops/compose.yml",
+      "sha256": "016e0c324e948193c945fca353016d2dddcae1042a717b2ea2f0a09b8806953b",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/ops/Caddyfile",
+      "sha256": "f25dadafcb069a6152bbb41e1122aa4e4977c838f69fae63fd22a85dd02a22c4",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/ops/ntfy.yml",
+      "sha256": "aae82472ace87724b6fe948e5154c5cf8fa5f2383b5f184e5034a6f4eda23782",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/systemd/rimo-backup.service",
+      "sha256": "83489e2ce99d16566972af2a765661f357f8784fb547bb68da1377cd72eba11a",
+      "matches": true
+    },
+    {
+      "file": "/etc/systemd/system/rimo-backup.service",
+      "sha256": "83489e2ce99d16566972af2a765661f357f8784fb547bb68da1377cd72eba11a",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/systemd/rimo-backup.timer",
+      "sha256": "613481b5abc51dc7ae591dfd4e37f426cfe3bf937842e1dbf59f0a1354b2cdd4",
+      "matches": true
+    },
+    {
+      "file": "/etc/systemd/system/rimo-backup.timer",
+      "sha256": "613481b5abc51dc7ae591dfd4e37f426cfe3bf937842e1dbf59f0a1354b2cdd4",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/systemd/rimo-monitor.service",
+      "sha256": "c11b626066db5ff3b564e07ad2de603fc9061090b48ea08a2f4c5e3197ea8c27",
+      "matches": true
+    },
+    {
+      "file": "/etc/systemd/system/rimo-monitor.service",
+      "sha256": "c11b626066db5ff3b564e07ad2de603fc9061090b48ea08a2f4c5e3197ea8c27",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/systemd/rimo-monitor.timer",
+      "sha256": "07c68ab8c8d26815b823ffb9e17dc35d389dbe1243a23668bd8a9cfa68da235c",
+      "matches": true
+    },
+    {
+      "file": "/etc/systemd/system/rimo-monitor.timer",
+      "sha256": "07c68ab8c8d26815b823ffb9e17dc35d389dbe1243a23668bd8a9cfa68da235c",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/systemd/rimo-restic-age.service",
+      "sha256": "36aa41d25cd84a4b8a5e8ed88738d0816893f515e1e4d61f8d03efe10a6ab70a",
+      "matches": true
+    },
+    {
+      "file": "/etc/systemd/system/rimo-restic-age.service",
+      "sha256": "36aa41d25cd84a4b8a5e8ed88738d0816893f515e1e4d61f8d03efe10a6ab70a",
+      "matches": true
+    },
+    {
+      "file": "/srv/rimo/current/deploy/systemd/rimo-restic-age.timer",
+      "sha256": "fb6ac13c7f829c60f69fc81c42e46af7a1e3253c9bcd5908866846f1aa38f979",
+      "matches": true
+    },
+    {
+      "file": "/etc/systemd/system/rimo-restic-age.timer",
+      "sha256": "fb6ac13c7f829c60f69fc81c42e46af7a1e3253c9bcd5908866846f1aa38f979",
+      "matches": true
+    }
+  ],
+  "allMatched": true
+}

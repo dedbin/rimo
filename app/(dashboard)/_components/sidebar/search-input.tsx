@@ -3,7 +3,7 @@
  import qs from "query-string"
  import { Search } from "lucide-react";
 import { useDebounce } from "@uidotdev/usehooks";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
     useEffect,
     useState,
@@ -16,7 +16,10 @@ import { useTranslation } from "@/hooks/use-translation";
  export const SearchInput = () => {
     const { t } = useTranslation();
     const router = useRouter();
-    const [value, setValue] = useState("");
+    const searchParams = useSearchParams();
+    const initialSearch = searchParams.get("search") ?? "";
+    const [value, setValue] = useState(initialSearch);
+    const favorites = searchParams.get("favorites");
     const debouncedValue = useDebounce(value, 500);
     const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
         setValue(e.target.value);
@@ -26,10 +29,11 @@ import { useTranslation } from "@/hooks/use-translation";
             url: '/',
             query: {
                 search: debouncedValue,
+                favorites,
             },
         }, { skipEmptyString: true, skipNull: true });
-        router.push(url);
-    })
+        router.replace(url);
+    }, [debouncedValue, favorites, router]);
     return (
         <div className="w-full relative">
             <Search

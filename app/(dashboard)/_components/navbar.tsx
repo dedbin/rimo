@@ -1,11 +1,12 @@
 "use client";
 
-import { OrganizationSwitcher, UserButton, useOrganization} from "@clerk/nextjs";
+import { UserButton } from "@/components/auth/user-button";
 import { SearchInput } from "./sidebar/search-input";
-import { InviteButton } from "./invite-button";
+import { BoardArchiveActions } from "@/components/board-archive-actions";
+import { authClient } from "@/lib/auth-client";
 
 export const Navbar = () => {
-    const { organization } = useOrganization();
+    const { data: session } = authClient.useSession();
 
     return (
         <div className="flex items-center gap-x-4 p-5">
@@ -13,30 +14,9 @@ export const Navbar = () => {
                <SearchInput/>
             </div>
             <div className="block lg:hidden flex-1">
-                <OrganizationSwitcher
-                    hidePersonal
-                    appearance={{
-                        elements:{
-                            rootBox:{
-                                display: "flex",
-                                justifyContent: "center",
-                                alignItems: "center",
-                                width: "100%",
-                                maxWidth: "510px",
-                            },
-                            organizationSwitcherTrigger:{
-                                padding: "6px",
-                                width: "100%",
-                                borderRadius: "8px",
-                                border: "1px solid #E4E7EC",
-                                justifyContent: "space-between",
-                                backgroundColor: "white",
-                            }
-                        }
-                    }}
-                />
+                <span className="font-semibold">Rimo</span>
             </div>
-            {organization && (<InviteButton/>)}
+            {session && !session.user.isAnonymous && <BoardArchiveActions />}
             <UserButton/>
         </div>
     );

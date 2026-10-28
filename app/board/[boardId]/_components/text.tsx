@@ -1,9 +1,10 @@
 "use client";
 
-import { rgbToCss, cn } from "@/lib/utils";
+import { useState } from "react";
+import { rgbToCss } from "@/lib/utils";
 import { TextLayer } from "@/types/board-canvas";
-import ContentEditable, { ContentEditableEvent } from "react-contenteditable";
-import { useMutation } from "@liveblocks/react";
+import { RichTextContent } from "@/components/board-text/content";
+import { resolveBoardFont } from "@/lib/board/fonts";
 
 
 interface TextProps {
@@ -13,40 +14,29 @@ interface TextProps {
     selectionColor?: string
 }
 export const Text = ({ id, layer, onPointerDown, selectionColor }: TextProps) => {
-    const { x, y, width, height, fill, value, fontSize } = layer
-
-    const updateValue = useMutation(({ storage }, newValue: string) => {
-        const liveLayers = storage.get("layers");
-
-        liveLayers.get(id)?.set("value", newValue);
-    }, [])
-
-    const handleContentEditableChange = (e: ContentEditableEvent) => {
-        updateValue(e.target.value);
-    }
+    const { x, y, width, height, fill, fontSize } = layer;
+    const [measuredHeight, setMeasuredHeight] = useState(height);
 
     return (
         <foreignObject
             x={x}
             y={y}
             width={width}
-            height={height}
+            height={Math.max(height, measuredHeight)}
             onPointerDown={(e) => onPointerDown(e, id)}
             style ={{
                 outline: selectionColor ? `2px solid ${selectionColor}` : 'none'
             }}
         >
-            <ContentEditable
-                html={value || "text"}
-                spellCheck={!!selectionColor} 
-                autoCorrect="off"
-                autoComplete="off"
-                onChange={handleContentEditableChange}
-                className={cn("h-full w-full flex items-center justify-center text-center drop-shadow-md outline-none", layer.fontFamily)}
+            <RichTextContent
+                id={id}
+                minHeight={Math.ceil(fontSize * 1.4) + 8}
+                onHeight={setMeasuredHeight}
+                className="text-center drop-shadow-md outline-none"
                 style={{
                     fontSize: fontSize,
                     color: fill ? rgbToCss(fill) : '#000',
-                    fontFamily: layer.fontFamily || "sans-serif",
+                    fontFamily: resolveBoardFont(layer.fontFamily),
                  }}
             />
         </foreignObject>

@@ -4,22 +4,16 @@ import Link from "next/link";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import React, { useState } from "react";
-import { SignInButton, UserButton, useAuth } from "@clerk/clerk-react";
+import React from "react";
+import { AuthButton } from "@/components/auth/auth-button";
+import { UserButton } from "@/components/auth/user-button";
+import { authClient } from "@/lib/auth-client";
+import { usePointerGlow } from "@/hooks/use-pointer-glow";
 
 export const RimoNavbar = () => {
-  const { isSignedIn } = useAuth();
-
-  const [coords, setCoords] = useState({ x: "50%", y: "50%" });
-  const [isHover, setIsHover] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setCoords({ x: `${x}%`, y: `${y}%` });
-  };
-
+  const { data: session } = authClient.useSession();
+  const isSignedIn = !!session;
+  usePointerGlow();
   return (
     <nav className="p-4 bg-transparent flex items-center justify-between">
       <Link href="/" className="flex items-center">
@@ -34,31 +28,30 @@ export const RimoNavbar = () => {
         </div>
         <h1 className={cn("text-2xl font-bold text-white")}>Rimo</h1>
       </Link>
-      <div className="flex items-center gap-x-4">
+      <div className="flex items-center gap-x-2 sm:gap-x-4">
         {isSignedIn ? (
           <>
-            <Link href="/boards">
+            <Link href="/">
               <Button className="rounded-full">Мои доски</Button>
             </Link>
             <UserButton />
           </>
         ) : (
-          <SignInButton>
-            <Button
-              className="relative overflow-hidden rounded-full px-8 py-3 text-lg"
-              onMouseEnter={() => setIsHover(true)}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={() => setIsHover(false)}
-              style={{
-                background: isHover
-                  ? `radial-gradient(circle at ${coords.x} ${coords.y}, rgba(255,255,255,0.1), transparent 30%)`
-                  : 'transparent',
-                transition: "background 0.2s ease-out"
-              }}
-            >
-              <span className="relative z-10">Войти</span>
+          <>
+          <AuthButton initialMode="sign-up">
+            <Button variant="ghost" className="rounded-full px-3 text-white hover:bg-white/10 hover:text-white">
+              Регистрация
             </Button>
-          </SignInButton>
+          </AuthButton>
+          <AuthButton>
+            <Button
+              data-glow
+              className="rounded-full px-4 py-3 text-sm sm:px-8 sm:text-lg"
+            >
+              <span>Войти</span>
+            </Button>
+          </AuthButton>
+          </>
         )}
       </div>
     </nav>

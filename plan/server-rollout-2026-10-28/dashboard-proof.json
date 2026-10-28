@@ -1,0 +1,91 @@
+{
+  "stage": "seed",
+  "checks": [
+    {
+      "name": "anonymous-read",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "name": "anonymous-write",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "name": "wrong-password",
+      "status": 401,
+      "passed": true
+    },
+    {
+      "name": "owner-cannot-publish-work",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "name": "agent-cannot-publish-inbox",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "name": "owner-cannot-read-other-topic",
+      "status": 403,
+      "passed": true
+    },
+    {
+      "name": "agent-work-delivered-to-owner",
+      "passed": true
+    },
+    {
+      "name": "owner-inbox-delivered-to-agent",
+      "passed": true
+    },
+    {
+      "name": "owner-russian-subscriptions-provisioned",
+      "passed": true
+    }
+  ],
+  "workMessageId": "0jWf5agJfSX6",
+  "inboxMessageId": "m68tdRecJ7uw",
+  "recordedAt": "2026-10-28T04:59:20.205Z",
+  "restartOrRecreationChecks": [
+    {
+      "at": "2026-10-28T05:03:09.426Z",
+      "checks": [
+        {
+          "name": "work-history-and-owner-auth-persisted",
+          "passed": true
+        },
+        {
+          "name": "inbox-history-and-agent-auth-persisted",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-28T05:03:15.688Z",
+      "checks": [
+        {
+          "name": "work-history-and-owner-auth-persisted",
+          "passed": true
+        },
+        {
+          "name": "inbox-history-and-agent-auth-persisted",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "at": "2026-10-28T05:03:21.979Z",
+      "checks": [
+        {
+          "name": "work-history-and-owner-auth-persisted",
+          "passed": true
+        },
+        {
+          "name": "inbox-history-and-agent-auth-persisted",
+          "passed": true
+        }
+      ]
+    }
+  ]
+}

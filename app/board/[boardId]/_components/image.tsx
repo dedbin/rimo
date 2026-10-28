@@ -3,6 +3,7 @@
 import { ImageLayer } from "@/types/board-canvas";
 import { useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import NextImage from "next/image";
 
 interface ImageProps {
     id: string;
@@ -35,16 +36,21 @@ export const Image = ({ id, layer, onPointerDown, selectionColor, alt }: ImagePr
             )}
             {error && (
                 <div className="flex-1 relative flex items-center justify-center text-sm">
-                    <img
+                    <NextImage
                         src="/link-preview-error.jpg"
                         alt="error"
+                        fill
                         className="absolute inset-0 w-full h-full object-fill scale-y opacity-50 pointer-events-none"
                     />
                     <span className="relative z-10 text-red-600 drop-shadow-md font-bold text-lg">Не удалось загрузить превью</span>
                 </div>
             )}
-            <img
+            <NextImage
                 src={src}
+                unoptimized
+                loading="eager"
+                width={Math.max(1, width)}
+                height={Math.max(1, height)}
                 alt={alt || "image"}
                 onLoad={() => setLoading(false)}
                 onError={() => { setError(true); setLoading(false); }}

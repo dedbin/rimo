@@ -1,0 +1,62 @@
+export const SEED = String.raw`
+import { createHash } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import * as Y from 'yjs';
+import authModule from './server/auth.ts';
+import dbModule from './server/db.ts';
+const parts=[];
+for await (const part of process.stdin) parts.push(part);
+const fixture=JSON.parse(Buffer.concat(parts).toString('utf8'));
+if (!/^[a-f0-9-]{36}$/.test(fixture.assetId)) throw new Error('Invalid fixture asset ID');
+const owner=await authModule.getAuth({allowSignUp:true}).api.signUpEmail({body:{name:'Backup owner',email:fixture.email,password:fixture.password}});
+const pool=dbModule.getPool();
+await pool.query('UPDATE "user" SET "emailVerified"=true,"registrationPending"=false WHERE id=$1',[owner.user.id]);
+const bytes=Buffer.from(fixture.image,'base64');
+const hash=createHash('sha256').update(bytes).digest('hex');
+const document=new Y.Doc();
+document.getMap('meta').set('schemaVersion',1);
+document.getMap('layers').set('image',new Y.Map([['type',5],['x',12],['y',34],['width',300],['height',200],['src','/api/assets/'+fixture.assetId]]));
+document.getArray('layerIds').push(['image']);
+const state=Buffer.from(Y.encodeStateAsUpdate(document));
+await mkdir(process.env.ASSET_STORAGE_PATH,{recursive:true});
+await writeFile(path.join(process.env.ASSET_STORAGE_PATH,fixture.assetId+'.webp'),bytes,{flag:'wx',mode:0o600});
+const client=await pool.connect();
+try {
+ await client.query('BEGIN');
+ await client.query('INSERT INTO boards(id,owner_id,title) VALUES($1,$2,$3)',[fixture.boardId,owner.user.id,'Restored lesson']);
+ await client.query('INSERT INTO assets(id,board_id,uploaded_by,storage_key,sha256,mime_type,byte_size,width,height) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[fixture.assetId,fixture.boardId,owner.user.id,fixture.assetId+'.webp',hash,'image/webp',bytes.length,3,2]);
+ await client.query('INSERT INTO board_documents(board_id,state,revision) VALUES($1,$2,7)',[fixture.boardId,state]);
+ await client.query('COMMIT');
+} finally {client.release();}
+process.stdout.write(JSON.stringify({ownerId:owner.user.id,assetSha:hash,stateSha:createHash('sha256').update(state).digest('hex')})+String.fromCharCode(10));
+document.destroy();
+await pool.end();
+`;
+
+export const VERIFY = String.raw`
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import authModule from './server/auth.ts';
+import dbModule from './server/db.ts';
+const parts=[];
+for await (const part of process.stdin) parts.push(part);
+const fixture=JSON.parse(Buffer.concat(parts).toString('utf8'));
+const pool=dbModule.getPool();
+const result=await pool.query('SELECT b.owner_id,b.title,d.state,d.revision FROM boards b JOIN board_documents d ON d.board_id=b.id WHERE b.id=$1',[fixture.boardId]);
+const row=result.rows[0];
+if (!row || row.owner_id!==fixture.ownerId || row.title!=='Restored lesson' || Number(row.revision)!==7) throw new Error('Restored board metadata mismatch');
+const stateSha=createHash('sha256').update(row.state).digest('hex');
+const file=await readFile(path.join(process.env.ASSET_STORAGE_PATH,fixture.assetId+'.webp'));
+const assetSha=createHash('sha256').update(file).digest('hex');
+if (stateSha!==fixture.stateSha || assetSha!==fixture.assetSha) throw new Error('Restored content checksum mismatch');
+const origin=process.env.BETTER_AUTH_URL;
+const login=await authModule.getAuth().handler(new Request(origin+'/api/auth/sign-in/email',{method:'POST',headers:{origin,'content-type':'application/json'},body:JSON.stringify({email:fixture.email,password:fixture.password})}));
+if (login.status!==200) throw new Error('Restored owner cannot log in');
+const cookie=login.headers.getSetCookie().map(value=>value.split(';')[0]).join('; ');
+const response=await fetch('http://localhost:3000/api/assets/'+fixture.assetId,{headers:{cookie}});
+if (response.status!==200 || createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex')!==fixture.assetSha) throw new Error('Restored asset HTTP access failed');
+process.stdout.write(JSON.stringify({board:true,state:true,asset:true,login:true,http:true})+String.fromCharCode(10));
+await pool.end();
+`;

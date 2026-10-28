@@ -1,0 +1,17 @@
+[Unit]
+Description=Check freshness of the Rimo service backup
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+WorkingDirectory=/srv/rimo/current
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/srv/rimo/private/backup.env
+ExecStart=/usr/local/bin/node /srv/rimo/current/scripts/restic-backup.mjs --project rimo --check-age
+TimeoutStartSec=90s
+TimeoutStopSec=15s
+StandardOutput=journal
+StandardError=journal

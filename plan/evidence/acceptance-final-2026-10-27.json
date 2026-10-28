@@ -1,0 +1,163 @@
+{
+  "version": 1,
+  "runtimeBuildSourceCommit": "662234d2afb888779e17b3e84b0518f7b46f60e3",
+  "runtimeBuildSourceEvidence": "license-packaging-2026-10-27.json",
+  "serviceImagesObservedByMixedHarness": [
+    "sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489",
+    "sha256:535ac030bbdcde0b861a9295755d4cca7a5c0d029bc37234a70ef8d052887b50",
+    "sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc",
+    "sha256:c51b10d47452c1e9375df2d81526a97f6658ab8733d813ff1735495618e0a393"
+  ],
+  "serviceCpuSet": {
+    "observation": "empty after separately verified manual recovery before both runs",
+    "twoCpuCeilingAppliedToTheseRuns": false,
+    "realVpsAcceptance": false
+  },
+  "calibration": {
+    "rawRelativePath": "temp/performance/network-calibration.json",
+    "rawSha256": "e324964bb190854c27715a485ce55840bb6ccdfae4ac41acf7aa40ba8dade577",
+    "rawBytes": 5769,
+    "rawStatus": "complete",
+    "networkSourceSha256": "8462b80cdf355448b778d5b025a568f2ed31adaab766418e31c5b2c2241fdf7e",
+    "checks": {
+      "websocketDelayAdded": true,
+      "httpDelayAdded": true,
+      "oneAndSixConnectionsShareDownloadCap": true,
+      "sixConnectionsShareUploadCap": true
+    },
+    "cleanupSteps": 4,
+    "cleanupFailures": 0
+  },
+  "editor": {
+    "rawRelativePath": "temp/performance/editor-535ac-protocol5-20trials.json",
+    "rawSha256": "f4643b0996d3ea2899d2a8816cc984dc26cebde3d923c138f81a3e87532d0383",
+    "rawBytes": 194600,
+    "rawStatus": "complete",
+    "harnessCheckoutCommit": "2b325cb75a127504be166be3117a14bb3954a489",
+    "harnessSha256": "efb048612be64952692d75e8553ff87e122e0b7d075297c24f7c1c679e6a6150",
+    "measurementProtocolVersion": 5,
+    "criteria": {
+      "frameP95AtMost33ms": true,
+      "localReactionProxyAtMost50ms": false,
+      "oneFinalCoordinateTransaction": true,
+      "noPageErrors": true
+    },
+    "allCriteriaPass": false,
+    "trials": 20,
+    "frameP95Ms": {
+      "minimum": 24,
+      "maximum": 31.9
+    },
+    "activeDragReactionP95Ms": {
+      "minimum": 21.7,
+      "maximum": 29.3
+    },
+    "activeDragReactionMaximumByTrialMs": [
+      52.6,
+      28.7,
+      34,
+      35.4,
+      59.4,
+      26.9,
+      31.6,
+      31.9,
+      43.1,
+      38.3,
+      29.4,
+      50.5,
+      38.5,
+      33.7,
+      37.9,
+      40.3,
+      28.4,
+      25.1,
+      45.9,
+      35.5
+    ],
+    "reactionBudgetExceededTrials": 3,
+    "noCoordinateWritesBeforeReleaseTrials": 20,
+    "oneCoordinateTransactionTrials": 20,
+    "coordinateFieldsPerTrial": {
+      "minimum": 1000,
+      "maximum": 1000
+    },
+    "singleUndoRestoredAll500Trials": 20,
+    "pageErrors": 0,
+    "cleanupFailures": 0,
+    "closeErrors": 0
+  },
+  "mixed": {
+    "rawRelativePath": "temp/performance/active-room/candidate535ac/report.json",
+    "rawSha256": "6de68a4a39175676b226aca65bcecb02dbecc0ec30e4de126b63f7980be21810",
+    "rawBytes": 188545,
+    "rawStatus": "not-accepted",
+    "harnessCheckoutCommit": "2b325cb75a127504be166be3117a14bb3954a489",
+    "harnessSha256": "b5f0789da07efda735e1b01c4e47dc8f6727ee300d2dfc784f4935ed76aaa896",
+    "networkSourceSha256": "8462b80cdf355448b778d5b025a568f2ed31adaab766418e31c5b2c2241fdf7e",
+    "criteria": {
+      "tenConnectionsThroughoutWindow": true,
+      "everyWriterMaintainedCadence": true,
+      "browserFinalDomP95Within300ms": true,
+      "nodeCausalP95Within300ms": false,
+      "allCausalOperationsDelivered": true,
+      "tenCalibratedPathsWithMeasuredTraffic": true,
+      "nodeConnectAndBrowserUpgradeConfirmed": true,
+      "savedOnlyAfterAllWritersStopped": true,
+      "freshDurableAuditAfterTenActorsClosed": true,
+      "noRuntimeErrors": true
+    },
+    "allCriteriaPass": false,
+    "requestedSeconds": 120,
+    "uniqueUsers": 2,
+    "nodeProviders": 8,
+    "realBrowserProcesses": 2,
+    "observedConnections": {
+      "minimum": 10,
+      "maximum": 10
+    },
+    "nodeOperations": 1920,
+    "expectedDeliveries": 13440,
+    "pendingOperations": 0,
+    "missingDeliveries": 0,
+    "nodeCausalPropagationMs": {
+      "count": 13440,
+      "p50": 218.43439999999828,
+      "p95": 335.64940000000206,
+      "max": 448.7543000000005
+    },
+    "worstNodePairP95Ms": 375.3124,
+    "browserPropagation": [
+      {
+        "count": 120,
+        "p50": 165.400146,
+        "p95": 195.900146,
+        "max": 248.000244,
+        "undelivered": 0,
+        "outsideWindow": 0
+      },
+      {
+        "count": 120,
+        "p50": 162.5,
+        "p95": 198.199951,
+        "max": 212.499756,
+        "undelivered": 0,
+        "outsideWindow": 0
+      }
+    ],
+    "finalDrain": {
+      "milliseconds": 126.61300000001211,
+      "allNodeSnapshotsAcknowledged": true,
+      "bothBrowsersSaved": true,
+      "browserCoordinatesConverged": true
+    },
+    "durableAudit": {
+      "actorsClosedBeforeAudit": true,
+      "allCoordinatesMatch": true,
+      "persisted": true,
+      "objectCount": 3000,
+      "documentBytes": 578992
+    },
+    "cleanupSteps": 35,
+    "cleanupFailures": 0
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "version": 1,
+  "kind": "live-gmail-email-verification",
+  "appRevision": "a3f5997650d911ac4ae6fed203609079d5d4668a",
+  "receivedAt": "2026-10-28T12:06:31.000Z",
+  "mailbox": "Gmail",
+  "labels": [
+    "UNREAD",
+    "IMPORTANT",
+    "CATEGORY_PERSONAL",
+    "INBOX"
+  ],
+  "authentication": {
+    "spf": true,
+    "dkim": true,
+    "dmarc": true
+  },
+  "checks": {
+    "actualEmailCodeVerified": true,
+    "incorrectCodeRejected": true,
+    "parallelUseSucceededOnce": true,
+    "noAutomaticSessionAfterVerification": true,
+    "pendingFlagControlledByServer": true,
+    "resendLimitedWithRetryAfter": true,
+    "passwordLogin": true,
+    "repeatPasswordLogin": true,
+    "boardAccess": true,
+    "guestInviteWithoutEmailVerification": true,
+    "guestWebSocketSynced": true,
+    "legacySessionApiEmailNotVerified403": true,
+    "legacySessionWebSocketRejected": true
+  },
+  "service": {
+    "healthyAfterBackup": true,
+    "originalOwners": 2,
+    "originalGuests": 8,
+    "originalBoards": 1,
+    "originalDataUnchangedAfterAcceptanceCleanup": true,
+    "mailQueueEmpty": true,
+    "publicSmtpPorts": false
+  },
+  "backups": {
+    "beforeSnapshot": "394068c7054770a97171b3d46c95c2693c9e1fa21ddf0c6dffeb0a449668b507",
+    "afterSnapshot": "94fb7f549b44aca7eac6426e6d2b850ac34607fbc1a0c3582902a90bc657bcfb",
+    "afterCreatedAt": "2026-10-28T12:13:39.290Z",
+    "encrypted": true,
+    "dataVerified": true
+  }
+}

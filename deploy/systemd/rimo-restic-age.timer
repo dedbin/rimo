@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Rimo backup freshness every hour
+
+[Timer]
+OnCalendar=*-*-* *:00:00 Europe/Moscow
+Persistent=true
+AccuracySec=1min
+Unit=rimo-restic-age.service
+
+[Install]
+WantedBy=timers.target

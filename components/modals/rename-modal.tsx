@@ -15,12 +15,12 @@ import { useEffect, useState } from "react";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { useApiMutation } from "@/hooks/use-api-mutation";
-import { api } from "@/convex/_generated/api";
+import { boardApi } from "@/lib/api-client";
 import { toast } from "sonner";
 
 export const RenameModal = () => {
   const { t } = useTranslation();
-  const { mutate: renameBoard, pending } = useApiMutation(api.board.update);
+  const { mutate: renameBoard, pending } = useApiMutation(boardApi.rename);
   const { isOpen, values, handleClose } = useRenameModal();
   const [title, setTitle] = useState(values.title);
 

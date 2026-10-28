@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-10-28T07:40:29.823Z",
+  "baseUrl": "https://rimo-whiteboard.ru",
+  "checks": {
+    "registrationVisible": true,
+    "mobileNoHorizontalOverflow": true,
+    "registeredOverHttps": true,
+    "automaticLogin": true,
+    "ownBoardOpens": true,
+    "existingAccountLogin": true,
+    "boardPreservedAfterLogin": true,
+    "ownTestBoardRemoved": true,
+    "testAccountRemoved": true
+  },
+  "accountCleanup": "confirmed new account removed by exact id/email/name after its board was deleted",
+  "traceEnabled": false
+}

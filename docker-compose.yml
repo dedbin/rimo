@@ -1,16 +1,161 @@
-version: '3.8'
+x-service-logging: &service-logging
+  driver: local
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
-  rimo-prod:
+  db:
+    logging: *service-logging
+    image: postgres:18-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+    environment:
+      POSTGRES_DB: rimo
+      POSTGRES_USER: rimo
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    networks: [backend]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rimo -d rimo"]
+      interval: 5s
+      timeout: 3s
+      retries: 15
+    mem_limit: 768m
+    restart: unless-stopped
+
+  migrate:
+    logging: *service-logging
+    image: rimo:${RIMO_TAG:-local}
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: rimo-prod
-    ports:
-      - "3000:3000"
-    env_file:
-      - .env
+      target: runtime
+    command: ["node", "--import=tsx", "scripts/migrate.ts"]
+    environment: &service-environment
+      DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?Set BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?Set BETTER_AUTH_URL}
+      COLLABORATION_PUBLIC_URL: ${COLLABORATION_PUBLIC_URL:?Set COLLABORATION_PUBLIC_URL}
+      ASSET_STORAGE_PATH: /app/data/assets
+      MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-10485760}
+      MAX_BOARD_ASSET_BYTES: ${MAX_BOARD_ASSET_BYTES:-104857600}
+      MAX_IMAGE_PIXELS: ${MAX_IMAGE_PIXELS:-20000000}
+      MAX_OWNERS: ${MAX_OWNERS:-6}
+      MAX_BOARDS_PER_OWNER: ${MAX_BOARDS_PER_OWNER:-20}
+      MAX_OWNER_ASSET_BYTES: ${MAX_OWNER_ASSET_BYTES:-104857600}
+      MAX_GLOBAL_ASSET_BYTES: ${MAX_GLOBAL_ASSET_BYTES:-1073741824}
+      MAX_GLOBAL_DOCUMENT_BYTES: ${MAX_GLOBAL_DOCUMENT_BYTES:-524288000}
+    depends_on:
+      db: { condition: service_healthy }
+    networks: [backend]
+    mem_limit: 384m
+    restart: "no"
+
+  app:
+    logging: *service-logging
+    image: rimo:${RIMO_TAG:-local}
     environment:
-      - NODE_ENV=production
+      <<: *service-environment
+      PDF_WORKER_URL: http://export-worker:3100
+      PDF_WORKER_TOKEN: ${PDF_WORKER_TOKEN:?Set PDF_WORKER_TOKEN}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+    volumes:
+      - assets:/app/data/assets
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [backend, exports, mail-egress]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 20s
+    mem_limit: 768m
+    stop_grace_period: 30s
     restart: unless-stopped
+
+  export-worker:
+    logging: *service-logging
+    init: true
+    image: rimo-export:${RIMO_TAG:-local}
+    build:
+      context: .
+      dockerfile: export-worker/Dockerfile
+    environment:
+      PDF_WORKER_HOST: 0.0.0.0
+      PDF_WORKER_PORT: "3100"
+      PDF_WORKER_TOKEN: ${PDF_WORKER_TOKEN:?Set PDF_WORKER_TOKEN}
+      PDF_CHROMIUM_SANDBOX: "true"
+    networks: [exports]
+    read_only: true
+    tmpfs:
+      - /tmp:size=201326592,mode=1777
+    mem_limit: 768m
+    shm_size: 128m
+    pids_limit: 256
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./config/chromium-seccomp.json
+    stop_grace_period: 35s
+    restart: unless-stopped
+
+  collaboration:
+    logging: *service-logging
+    image: rimo:${RIMO_TAG:-local}
+    command: ["node", "--enable-source-maps", "dist/collaboration/index.mjs"]
+    environment:
+      <<: *service-environment
+      COLLABORATION_HOST: 0.0.0.0
+      COLLABORATION_PORT: "1234"
+      NODE_OPTIONS: --max-old-space-size=512 --max-semi-space-size=64
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    networks: [backend]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:1234/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 4s
+      retries: 10
+      start_period: 10s
+    mem_limit: 1g
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  caddy:
+    logging: *service-logging
+    image: caddy:2@sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?Set APP_DOMAIN}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      app: { condition: service_healthy }
+      collaboration: { condition: service_healthy }
+    networks: [backend, ingress]
+    mem_limit: 128m
+    restart: unless-stopped
+
+networks:
+  backend:
+    internal: true
+  exports:
+    internal: true
+  ingress:
+  mail-egress:
+
+volumes:
+  postgres-data:
+  assets:
+  caddy-data:
+  caddy-config:
 

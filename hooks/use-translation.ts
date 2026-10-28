@@ -6,8 +6,7 @@ export const useTranslation = () => {
   const { t, i18n } = useI18nTranslation();
 
   const changeLanguage = (lng: string) => {
-    i18n.changeLanguage(lng);
-    localStorage.setItem('i18nextLng', lng);
+    void i18n.changeLanguage(lng);
   };
 
   return {

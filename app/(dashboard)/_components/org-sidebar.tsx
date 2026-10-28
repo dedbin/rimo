@@ -2,22 +2,22 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { OrganizationSwitcher } from "@clerk/nextjs";
+import { authClient } from "@/lib/auth-client";
 import { LayoutDashboard, Star } from "lucide-react";
-import { Poppins } from "next/font/google";
+import localFont from "next/font/local";
 import Image from "next/image";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslation } from "@/hooks/use-translation";
 
-const font = Poppins({
-    subsets: ['latin'],
-    weight: ['600'],
+const font = localFont({
+    src: "../../../node_modules/@fontsource/poppins/files/poppins-latin-600-normal.woff2",
 });
 export const OrgSidebar = () => {
     const searchParams = useSearchParams();
     const favorites = searchParams.get("favorites");
     const { t } = useTranslation();
+    const { data: session } = authClient.useSession();
 
     return (
     <div className="hidden lg:flex flex-col space-y-6 w-[210px] pl-5 pt-5">
@@ -43,27 +43,9 @@ export const OrgSidebar = () => {
         </Link>
       </h1>
 
-      <OrganizationSwitcher 
-        hidePersonal
-        appearance={{
-          elements:{
-            rootBox:{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              width: "100%",
-            },
-            organizationSwitcherTrigger:{
-              padding: "6px",
-              width: "100%",
-              borderRadius: "8px",
-              border: "1px solid #E4E7EC",
-              justifyContent: "space-between",
-              backgroundColor: "white",
-            }
-          }
-        }}
-      />
+      <div className="truncate rounded-lg border border-[#E4E7EC] bg-white p-2 text-sm">
+        {session?.user.name ?? "Мои доски"}
+      </div>
 
       <div className="space-y-1 w-full">
         <Button

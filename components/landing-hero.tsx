@@ -1,22 +1,17 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import TypeWriterComponent from "typewriter-effect";
 import { Button } from "./ui/button";
-import { SignInButton, useAuth } from "@clerk/clerk-react";
+import { AuthButton } from "@/components/auth/auth-button";
+import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
+import { usePointerGlow } from "@/hooks/use-pointer-glow";
 
 export const RimoHero = () => {
-  const { isSignedIn } = useAuth();
-  const [coords, setCoords] = useState({ x: "50%", y: "50%" });
-  const [isHover, setIsHover] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setCoords({ x: `${x}%`, y: `${y}%` });
-  };
+  const { data: session } = authClient.useSession();
+  const isSignedIn = !!session;
+  usePointerGlow();
 
   return (
     <div className="text-white font-bold py-36 text-center space-y-5">
@@ -49,24 +44,16 @@ export const RimoHero = () => {
               </Button>
             </Link>
           ) : (
-            <SignInButton>
+            <AuthButton initialMode="sign-up">
               <Button
                 variant="default"
                 size="lg"
-                className="relative overflow-hidden rounded-full px-8 py-3 text-lg font-semibold border-2 border-white"
-                onMouseEnter={() => setIsHover(true)}
-                onMouseMove={handleMouseMove}
-                onMouseLeave={() => setIsHover(false)}
-                style={{
-                  background: isHover
-                    ? `radial-gradient(circle at ${coords.x} ${coords.y}, rgba(255,255,255,0.15), transparent 40%)`
-                    : 'transparent',
-                  transition: "background 0.3s ease-out",
-                }}
+                data-glow
+                className="rounded-full px-8 py-3 text-lg font-semibold border-2 border-white"
               >
-                <span className="relative z-10">Попробовать бесплатно</span>
+                <span>Попробовать бесплатно</span>
               </Button>
-            </SignInButton>
+            </AuthButton>
           )}
         </div>
         <div className="text-zinc-400 text-xs md:text-sm font-normal">

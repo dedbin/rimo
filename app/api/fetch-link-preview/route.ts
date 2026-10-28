@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLinkPreview } from "link-preview-js";
 
 export const runtime = 'nodejs';
 
@@ -10,21 +9,13 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const data = await getLinkPreview(url);
-
-    const title = "title" in data ? data.title : undefined;
-    const description = "description" in data ? data.description : undefined;
-    const image = "images" in data && data.images?.length ? data.images[0] : undefined;
-    const favicon = "favicons" in data && data.favicons?.length ? data.favicons[0] : undefined;
-
-    return NextResponse.json({
-      title,
-      description,
-      image,
-      favicon,
-    });
-  } catch (error) {
-    console.error("Link preview fetch failed:", error);
-    return NextResponse.json({ error: "Failed to fetch link preview" }, { status: 500 });
+    const parsed = new URL(url);
+    if (!["https:", "http:"].includes(parsed.protocol) || parsed.username || parsed.password || url.length > 2048) {
+      return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
+    }
+    // Keep link cards usable without letting board content initiate server-side requests.
+    return NextResponse.json({ title: parsed.hostname, description: parsed.href });
+  } catch {
+    return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
   }
 }

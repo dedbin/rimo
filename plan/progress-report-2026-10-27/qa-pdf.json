@@ -1,0 +1,125 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "headingExtractedByBothEngines": true,
+      "sizePoints": [
+        594.96,
+        841.92
+      ],
+      "renderSize": [
+        1190,
+        1684
+      ]
+    },
+    {
+      "page": 2,
+      "headingExtractedByBothEngines": true,
+      "sizePoints": [
+        594.96,
+        841.92
+      ],
+      "renderSize": [
+        1190,
+        1684
+      ]
+    },
+    {
+      "page": 3,
+      "headingExtractedByBothEngines": true,
+      "sizePoints": [
+        594.96,
+        841.92
+      ],
+      "renderSize": [
+        1190,
+        1684
+      ]
+    },
+    {
+      "page": 4,
+      "headingExtractedByBothEngines": true,
+      "sizePoints": [
+        594.96,
+        841.92
+      ],
+      "renderSize": [
+        1190,
+        1684
+      ]
+    },
+    {
+      "page": 5,
+      "headingExtractedByBothEngines": true,
+      "sizePoints": [
+        594.96,
+        841.92
+      ],
+      "renderSize": [
+        1190,
+        1684
+      ]
+    },
+    {
+      "page": 6,
+      "headingExtractedByBothEngines": true,
+      "sizePoints": [
+        594.96,
+        841.92
+      ],
+      "renderSize": [
+        1190,
+        1684
+      ]
+    },
+    {
+      "page": 7,
+      "headingExtractedByBothEngines": true,
+      "sizePoints": [
+        594.96,
+        841.92
+      ],
+      "renderSize": [
+        1190,
+        1684
+      ]
+    },
+    {
+      "page": 8,
+      "headingExtractedByBothEngines": true,
+      "sizePoints": [
+        594.96,
+        841.92
+      ],
+      "renderSize": [
+        1190,
+        1684
+      ]
+    }
+  ],
+  "textExtractedByTwoEngines": true,
+  "requiredFactsFound": true,
+  "legalQuestionsLinkPresent": true,
+  "noInvitationLinks": true,
+  "screenshotsDecoded": [
+    "01-board-saved.png",
+    "02-text-formulas-image.png",
+    "03-guest-entry.png",
+    "04-local-undo-before.png",
+    "05-collaboration-undo.png",
+    "06-local-undo-after.png",
+    "07-access-editor.png",
+    "08-access-viewer.png",
+    "09-guest-view-only.png",
+    "10-owner-login-empty.png",
+    "11-pdf-pages-preview.png",
+    "12-archive-actions.png",
+    "13-archive-restored.png",
+    "14-access-revoked.png"
+  ],
+  "demoPdf": {
+    "pages": 2,
+    "russianAndStudentTextFound": true
+  },
+  "reportBytes": 1651118
+}

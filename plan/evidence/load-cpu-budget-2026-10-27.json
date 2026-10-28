@@ -1,0 +1,221 @@
+{
+  "version": 1,
+  "scenario": "twoDockerVmLogicalCpusHostGenerator",
+  "rawArtifacts": {
+    "load.json": {
+      "sha256": "4a71bc108ba61d03235445f273b5c06d2420f40c01bfbcabb28ca30f823c6800",
+      "bytes": 1912023
+    },
+    "budget.json": {
+      "sha256": "5b5a8d21316395b32faa3305f77bc58a4d34bad610f8fa34fbbfe02cd55bd6cb",
+      "bytes": 4666
+    },
+    "recovery.json": {
+      "sha256": "8069ca954b25c01407015a14bc49984316fb6a86dd44bf2cca66f37888310315",
+      "bytes": 6982
+    },
+    "receive-limit.log": {
+      "sha256": "d277480b999f0cdcbe345adae06c2646b20acba38ed48ea3c2944ae77f17cd8b",
+      "bytes": 150
+    }
+  },
+  "rawLoadStatus": "failed",
+  "fullHourAccepted": false,
+  "failureKind": "receive-limit",
+  "closeCode": 1000,
+  "harnessCheckoutCommit": "662234d2afb888779e17b3e84b0518f7b46f60e3",
+  "harnessSourceSha256": "efb048612be64952692d75e8553ff87e122e0b7d075297c24f7c1c679e6a6150",
+  "runtimeBuildCommitRecordedInRaw": false,
+  "runtimeImages": {
+    "app": "sha256:535ac030bbdcde0b861a9295755d4cca7a5c0d029bc37234a70ef8d052887b50",
+    "collaboration": "sha256:535ac030bbdcde0b861a9295755d4cca7a5c0d029bc37234a70ef8d052887b50",
+    "db": "sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc",
+    "export-worker": "sha256:c51b10d47452c1e9375df2d81526a97f6658ab8733d813ff1735495618e0a393",
+    "caddy": "sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489"
+  },
+  "parameters": {
+    "requestedSeconds": 3600,
+    "rooms": 5,
+    "connections": 50,
+    "writers": 10,
+    "objectsPerRoom": 3000,
+    "editHz": 2,
+    "presenceHz": 10,
+    "batchSize": 500,
+    "batchEverySeconds": 30,
+    "sampleSeconds": 10,
+    "uniqueUsers": 2
+  },
+  "cpuBudget": {
+    "logicalCpuSet": [
+      0,
+      1
+    ],
+    "serviceCount": 5,
+    "updateAttempts": 5,
+    "allFiveStillBoundBeforeManualRecovery": true,
+    "aggregateContainerMemoryCapsBytes": 3623878656,
+    "containerMemoryCapsBytes": {
+      "app": 805306368,
+      "collaboration": 1073741824,
+      "db": 805306368,
+      "export-worker": 805306368,
+      "caddy": 134217728
+    },
+    "generatorOnHost": true,
+    "generatorOutsideServiceCpuSet": true,
+    "realVpsAcceptance": false,
+    "os4GiBLimitApplied": false
+  },
+  "criteria": {
+    "editCadenceAtLeast95Percent": true,
+    "fullRequestedHourCompleted": false,
+    "noPendingDeliveriesAtEnd": false,
+    "noMissingDeliveries": true
+  },
+  "result": {
+    "steadyDurationSeconds": 2875.1961284,
+    "sentChanges": 56440,
+    "causallyObservedDeliveries": 507484,
+    "actualEditsPerWriterHz": 1.9629965219592846,
+    "propagationP50Ms": 267.386879,
+    "propagationP95Ms": 767.033343,
+    "propagationMaximumMs": 5788.139519,
+    "pendingAtEnd": 60,
+    "highestPendingChanges": 94,
+    "missingDeliveries": 0,
+    "highestClientBufferedBytes": 0
+  },
+  "runtimeAfterLoad": {
+    "available": true,
+    "rssBytes": 691965952,
+    "heapUsedBytes": 377008208,
+    "heapLimitBytes": 738197504,
+    "serverProcessUptimeMs": 3075108,
+    "lifetimeGcTotalMs": 38900.56869484484,
+    "lifetimeGcMaximumMs": 119.3298269957304,
+    "lifetimeEventLoopP95Ms": 160.563199,
+    "lifetimeEventLoopMaximumMs": 559.939583,
+    "gcFractionOverHostElapsedInferred": false
+  },
+  "quartileMethod": {
+    "grouping": "consecutive-checkpoints-floor-q-times-N-over-four",
+    "groups": 4,
+    "totalCheckpoints": 288,
+    "cpuSeries": "collaboration-Docker-CPUPerc",
+    "aggregation": "arithmetic-mean-and-nearest-rank-p95",
+    "timeWeighted": false,
+    "derivedMetricsRoundedToDecimalPlaces": 6,
+    "terminalPendingIncluded": false,
+    "lastPeakRootCauseEstablished": false
+  },
+  "checkpointQuartiles": [
+    {
+      "quartile": 1,
+      "firstCheckpointIndexInclusive": 0,
+      "lastCheckpointIndexExclusive": 72,
+      "checkpointCount": 72,
+      "elapsedFirstSeconds": 0.009024,
+      "elapsedLastSeconds": 710.659027,
+      "sampledPendingMean": 4.125,
+      "sampledPendingP95": 10.0,
+      "sampledPendingMaximum": 10.0,
+      "sampledPendingLast": 10,
+      "cpuSamplesAvailable": 72,
+      "cpuSamplesUnavailable": 0,
+      "sampledCpuPercentMean": 56.267222,
+      "sampledCpuPercentP95": 76.17,
+      "sampledCpuPercentMaximum": 81.76
+    },
+    {
+      "quartile": 2,
+      "firstCheckpointIndexInclusive": 72,
+      "lastCheckpointIndexExclusive": 144,
+      "checkpointCount": 72,
+      "elapsedFirstSeconds": 720.672251,
+      "elapsedLastSeconds": 1431.206204,
+      "sampledPendingMean": 4.569444,
+      "sampledPendingP95": 10.0,
+      "sampledPendingMaximum": 10.0,
+      "sampledPendingLast": 10,
+      "cpuSamplesAvailable": 72,
+      "cpuSamplesUnavailable": 0,
+      "sampledCpuPercentMean": 71.018333,
+      "sampledCpuPercentP95": 96.29,
+      "sampledCpuPercentMaximum": 105.81
+    },
+    {
+      "quartile": 3,
+      "firstCheckpointIndexInclusive": 144,
+      "lastCheckpointIndexExclusive": 216,
+      "checkpointCount": 72,
+      "elapsedFirstSeconds": 1441.216843,
+      "elapsedLastSeconds": 2151.806237,
+      "sampledPendingMean": 5.833333,
+      "sampledPendingP95": 10.0,
+      "sampledPendingMaximum": 10.0,
+      "sampledPendingLast": 0,
+      "cpuSamplesAvailable": 72,
+      "cpuSamplesUnavailable": 0,
+      "sampledCpuPercentMean": 88.133889,
+      "sampledCpuPercentP95": 118.86,
+      "sampledCpuPercentMaximum": 123.13
+    },
+    {
+      "quartile": 4,
+      "firstCheckpointIndexInclusive": 216,
+      "lastCheckpointIndexExclusive": 288,
+      "checkpointCount": 72,
+      "elapsedFirstSeconds": 2161.809029,
+      "elapsedLastSeconds": 2872.364814,
+      "sampledPendingMean": 14.236111,
+      "sampledPendingP95": 52.0,
+      "sampledPendingMaximum": 89.0,
+      "sampledPendingLast": 89,
+      "cpuSamplesAvailable": 72,
+      "cpuSamplesUnavailable": 0,
+      "sampledCpuPercentMean": 115.204306,
+      "sampledCpuPercentP95": 138.25,
+      "sampledCpuPercentMaximum": 151.17
+    }
+  ],
+  "guardObservation": {
+    "source": "receive-limit.log",
+    "event": "collaboration_receive_limit",
+    "kind": "queued-messages",
+    "queuedFrames": 64,
+    "queuedBytes": 16820,
+    "totalQueuedBytes": 116185,
+    "incomingBytes": 302
+  },
+  "originalBudgetOutcome": {
+    "source": "budget.json",
+    "status": "failed",
+    "affinityRestored": false,
+    "restoreFailures": 5,
+    "loadCleanupConfirmed": true,
+    "privateCopiesRemoved": false,
+    "recoveryRequired": true
+  },
+  "separateManualRecovery": {
+    "source": "recovery.json",
+    "status": "complete",
+    "originalBudgetUnchanged": true,
+    "volumesDeleted": false,
+    "expectedServicesOnly": true,
+    "ownProjectLabelsMatched": true,
+    "containersRecreated": 5,
+    "sameRuntimeImages": true,
+    "sameMounts": true,
+    "sameMemoryCaps": true,
+    "allServicesRunningAfter": true,
+    "emptyCpuSetAfter": true,
+    "affinityRestored": true,
+    "privateCopiesRemoved": true,
+    "lockReleased": true
+  },
+  "errors": {
+    "cleanupFailures": 0,
+    "closeErrors": 0
+  }
+}

@@ -1,0 +1,24 @@
+.content {
+  width: 100%;
+  min-width: 0;
+  padding: 4px 8px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  outline: none;
+}
+
+.content :global(.ProseMirror) { outline: none; min-height: 1.4em; }
+.content p { margin: 0; min-height: 1.4em; }
+.content h1 { font-size: 1.75em; font-weight: 700; margin: 0 0 0.3em; }
+.content h2 { font-size: 1.4em; font-weight: 700; margin: 0 0 0.3em; }
+.content h3 { font-size: 1.15em; font-weight: 700; margin: 0 0 0.3em; }
+.content ul { list-style: disc; padding-left: 1.4em; text-align: left; margin: 0; }
+.content ol { list-style: decimal; padding-left: 1.4em; text-align: left; margin: 0; }
+.content li { margin: 0; }
+.content code { font-family: "Noto Sans Mono", monospace; border-radius: 3px; background: rgb(0 0 0 / 5%); padding: 0.05em 0.2em; }
+.content pre { text-align: left; white-space: pre-wrap; border-radius: 4px; padding: 0.5em; background: rgb(0 0 0 / 5%); }
+.content pre code { padding: 0; background: none; }
+.content :global(.katex-display) { margin: 0.3em 0; }
+.content :global(.tiptap-mathematics-render) { cursor: pointer; }
+.content :global(.inline-math-error), .content :global(.block-math-error) { color: #b91c1c; }

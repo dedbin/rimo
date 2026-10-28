@@ -1,0 +1,48 @@
+{
+  "date": "2026-10-27",
+  "origin": "http://localhost:3080",
+  "demoOnly": true,
+  "reload": {
+    "textBlocks": 2,
+    "math": 4,
+    "images": 1,
+    "saved": true
+  },
+  "localUndo": {
+    "before": 1,
+    "after": 0,
+    "guestTextPreserved": true
+  },
+  "roles": {
+    "editorJoined": true,
+    "viewerAppliedLive": true,
+    "editorToolsHidden": true,
+    "revoked": true
+  },
+  "pdf": {
+    "downloaded": true,
+    "pagesExpected": 2,
+    "warnings": 0
+  },
+  "archive": {
+    "importStatus": 201,
+    "separateBoard": true,
+    "textBlocks": 3,
+    "math": 4,
+    "images": 1,
+    "frameNames": [
+      "01. Объяснение и график",
+      "02. Проверка ученика"
+    ]
+  },
+  "cleanup": {
+    "createdBoards": 4,
+    "deleteStatuses": [
+      204,
+      204,
+      204,
+      204
+    ],
+    "allOwnBoardsDeleted": true
+  }
+}

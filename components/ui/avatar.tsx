@@ -4,6 +4,7 @@ import * as React from "react"
 import * as AvatarPrimitive from "@radix-ui/react-avatar"
 
 import { cn } from "@/lib/utils"
+import { safeAvatarSrc } from "@/lib/safe-avatar"
 
 function Avatar({
   className,
@@ -23,13 +24,19 @@ function Avatar({
 
 function AvatarImage({
   className,
+  src,
   ...props
 }: React.ComponentProps<typeof AvatarPrimitive.Image>) {
+  const safeSrc = safeAvatarSrc(src)
+  if (!safeSrc) return null
+  // Neither responsive sources nor slot children may introduce another image URL.
+  const imageProps = { ...props, src: safeSrc, srcSet: undefined, asChild: false, children: undefined }
+
   return (
     <AvatarPrimitive.Image
       data-slot="avatar-image"
       className={cn("aspect-square size-full", className)}
-      {...props}
+      {...imageProps}
     />
   )
 }

@@ -1,7 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { cn, connectionIdToColor, pointerEventToCanvasPoint, rgbToCss, resizeBounds, pickLayersInBox, getContrastingTextColor, measureText, makePathLayer, convertPointsToPath, isPointNearBoundingBox, doesPointIntersectPath, getLayerBounds } from '../lib/utils';
 import { side, LayerType, PathLayer, Layer } from '../types/board-canvas';
-import { LiveObject } from '@liveblocks/client';
 
 describe('utils', () => {
   it('cn merges classes correctly', () => {
@@ -34,9 +33,9 @@ describe('utils', () => {
   });
 
   it('pickLayersInBox returns ids within area', () => {
-    const layers = new Map([
-      ['a', { x:0, y:0, width:10, height:10 } as any],
-      ['b', { x:5, y:5, width:10, height:10 } as any],
+    const layers = new Map<string, Layer>([
+      ['a', { type: LayerType.Rectangle, fill: { r: 0, g: 0, b: 0 }, x:0, y:0, width:10, height:10 }],
+      ['b', { type: LayerType.Rectangle, fill: { r: 0, g: 0, b: 0 }, x:5, y:5, width:10, height:10 }],
     ]);
     const ids = pickLayersInBox(['a','b'], layers, {x:0,y:0}, {x:15,y:15});
     expect(ids).toEqual(['a','b']);
@@ -48,14 +47,14 @@ describe('utils', () => {
   });
 
   it('measureText returns width for text', () => {
-    const original = HTMLCanvasElement.prototype.getContext;
-    HTMLCanvasElement.prototype.getContext = () => ({
+    const context = {
       font: '',
       measureText: () => ({ width: 42 })
-    }) as any;
+    } as unknown as CanvasRenderingContext2D;
+    const spy = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context);
     const width = measureText('hello', 16);
     expect(width).toBe(42);
-    HTMLCanvasElement.prototype.getContext = original;
+    spy.mockRestore();
   });
 
   it('makePathLayer builds path layer from points', () => {
@@ -82,7 +81,7 @@ describe('utils', () => {
 });
 
   it('getLayerBounds extracts numeric bounds', () => {
-    const live = new LiveObject<Layer>({
+    const layer: Layer = {
         x: 1,
         y: 2,
         width: 3,
@@ -90,7 +89,7 @@ describe('utils', () => {
         type: LayerType.Path,
         fill: { r: 0, g: 0, b: 0 },
         points: [[0, 0], [10, 10]]
-    });
-    expect(getLayerBounds(live)).toEqual({ x:1, y:2, width:3, height:4 });
+    };
+    expect(getLayerBounds(layer)).toEqual({ x:1, y:2, width:3, height:4 });
   });
 });

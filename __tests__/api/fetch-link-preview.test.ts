@@ -1,12 +1,6 @@
-/// <reference types="vitest" />
 import { describe, it, expect, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
-vi.mock('link-preview-js', () => ({
-  getLinkPreview: vi.fn()
-}));
-
-import { getLinkPreview } from 'link-preview-js';
 import { GET } from '@/app/api/fetch-link-preview/route';
 
 describe('GET /api/fetch-link-preview', () => {
@@ -19,31 +13,24 @@ describe('GET /api/fetch-link-preview', () => {
   });
 
   it('returns preview data', async () => {
-    (getLinkPreview as unknown as vi.Mock).mockResolvedValue({
-      title: 'Title',
-      description: 'Desc',
-      images: ['img.png'],
-      favicons: ['fav.ico']
-    });
+    const network = vi.spyOn(globalThis, 'fetch');
     const req = new NextRequest('http://localhost/api/fetch-link-preview?url=https://example.com');
     const res = await GET(req);
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json).toEqual({
-      title: 'Title',
-      description: 'Desc',
-      image: 'img.png',
-      favicon: 'fav.ico'
+      title: 'example.com',
+      description: 'https://example.com/'
     });
-    expect(getLinkPreview).toHaveBeenCalledWith('https://example.com');
+    expect(network).not.toHaveBeenCalled();
+    network.mockRestore();
   });
 
-  it('handles errors from getLinkPreview', async () => {
-    (getLinkPreview as unknown as vi.Mock).mockRejectedValue(new Error('fail'));
-    const req = new NextRequest('http://localhost/api/fetch-link-preview?url=https://example.com');
+  it('rejects executable URLs', async () => {
+    const req = new NextRequest('http://localhost/api/fetch-link-preview?url=javascript:alert(1)');
     const res = await GET(req);
-    expect(res.status).toBe(500);
+    expect(res.status).toBe(400);
     const json = await res.json();
-    expect(json.error).toBe('Failed to fetch link preview');
+    expect(json.error).toBe('Invalid URL');
   });
 });

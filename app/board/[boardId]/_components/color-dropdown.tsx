@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { Color } from "@/types/board-canvas";
 import { rgbToCss } from "@/lib/utils";
 import { cn } from "@/lib/utils";

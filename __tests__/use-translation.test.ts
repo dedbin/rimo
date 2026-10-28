@@ -20,12 +20,11 @@ describe('useTranslation', () => {
     changeLanguageMock.mockClear();
   });
 
-  it('updates language and localStorage', () => {
+  it('requests the selected language', () => {
     const { result } = renderHook(() => useTranslation());
     act(() => {
       result.current.changeLanguage('ru');
     });
     expect(changeLanguageMock).toHaveBeenCalledWith('ru');
-    expect(localStorage.getItem('i18nextLng')).toBe('ru');
   });
 });

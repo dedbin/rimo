@@ -1,42 +1,26 @@
 "use client";
 
 import { toast } from "sonner";
-import { api } from "@/convex/_generated/api";
+import { boardApi } from "@/lib/api-client";
 import { useApiMutation } from "@/hooks/use-api-mutation";
 import { cn } from "@/lib/utils";
 import { Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/hooks/use-translation";
 
-interface NewBoardButtonProps {
-  orgId: string;
-}
-
-export const NewBoardButton = ({ orgId }: NewBoardButtonProps) => {
-  const { mutate: createBoard, pending } = useApiMutation(api.board.create);
+export const NewBoardButton = () => {
+  const { mutate: createBoard, pending } = useApiMutation(boardApi.create);
   const router = useRouter();
   const { t } = useTranslation();
 
   const onClick = async () => {
     try {
-      const res = await fetch("/api/generate-cover", { method: "POST" }); 
-      if (!res.ok) {
-        throw new Error(t("newBoard.errorGenerateCover"));
-      }
-      const { imageUrl } = await res.json();
-
       const defaultTitle = t("newBoard.defaultTitle");
-
-      const id = await createBoard({
-        orgId,
-       title: defaultTitle,
-        imageUrl,
-      });
+      const board = await createBoard({ title: defaultTitle });
 
       toast.success(t("newBoard.toastSuccess"));
-      router.push(`/board/${id}`);
-    } catch (error) {
-      console.error("error creating board:", error);
+      router.push(`/board/${board.id}`);
+    } catch {
       toast.error(t("newBoard.toastError"));
     }
   };

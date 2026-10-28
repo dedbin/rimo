@@ -1,7 +1,7 @@
 "use client";
 
 import { Layer, LayerType } from "@/types/board-canvas";
-import { useStorage } from "@liveblocks/react/suspense";
+import { useLayer } from "@/lib/collaboration/react";
 import { memo } from "react";
 import { Rectangle } from "./rectangle";
 import { Ellipse } from "./ellipse";
@@ -16,11 +16,13 @@ interface LayerPreviewProps {
   id: string;
   onLayerPointerDown: (e: React.PointerEvent, id: string) => void;
   selectionColor?: string;
+  layerOverride?: Layer;
 }
 
 export const LayerPreview: React.FC<LayerPreviewProps> = memo(
-  ({ id, onLayerPointerDown, selectionColor }) => {
-    const layer = useStorage((root): Layer | undefined => root.layers.get(id));
+  ({ id, onLayerPointerDown, selectionColor, layerOverride }) => {
+    const storedLayer = useLayer(id);
+    const layer = layerOverride ?? storedLayer;
     if (!layer) return null;
 
     switch (layer.type) {

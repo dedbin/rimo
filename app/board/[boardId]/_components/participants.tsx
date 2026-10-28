@@ -1,7 +1,7 @@
 "use client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UserAvatar } from "./user-avatar";
-import { useOthers, useSelf } from "@liveblocks/react";
+import { useOthers, useSelf } from "@/lib/collaboration/react";
 import { connectionIdToColor } from "@/lib/utils";
 
 const MAX_PARTICIPANTS = 2;
@@ -28,14 +28,14 @@ export const BoardParticipants = () => {
           <UserAvatar
             borderColor={connectionIdToColor(self.connectionId)}
             src={self?.info?.picture}
-            name={`${self?.info?.name} (You)`}
+            name={`${self?.info?.name} (вы)`}
             fallback={self?.info?.name?.slice(0, 1) || "A"}
           />
         )}
 
         {hasMore && (
           <UserAvatar
-            name={`${users.length - MAX_PARTICIPANTS} more`}
+            name={`Ещё ${users.length - MAX_PARTICIPANTS}`}
             fallback={`+${users.length - MAX_PARTICIPANTS}`}
           />
         )}

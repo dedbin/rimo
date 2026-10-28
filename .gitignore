@@ -16,6 +16,12 @@ public/uploads
 
 # testing
 /coverage
+/temp/
+/data/
+/test-results/
+/playwright-report/
+/backups/
+*.rimo
 
 # next.js
 /.next/
@@ -23,10 +29,18 @@ public/uploads
 
 # production
 /build
+/dist/
 
 # misc
 .DS_Store
 *.pem
+*.key
+credentials.json
+settings.json
+*_secret*
+*_token*
+*.sqlite
+*.db
 
 # debug
 npm-debug.log*
@@ -45,3 +59,7 @@ yarn-error.log*
 next-env.d.ts
 
 .VSCodeCounter
+
+# Python operator helpers
+__pycache__/
+*.py[cod]

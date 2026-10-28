@@ -1,7 +1,7 @@
 import { Camera, Color, Point, side, XYWH, Layer, LayerType, PathLayer } from "@/types/board-canvas"
-import { LiveObject } from "@liveblocks/client";
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+export { getContrastingTextColor, rgbToCss } from "./board/colors";
 
 const MIN_WIDTH  = 40;  
 const MIN_HEIGHT = 20; 
@@ -40,14 +40,6 @@ export function pointerEventToCanvasPoint(
   const x = (clientX - rect.left - camera.x) / camera.scale;
   const y = (clientY - rect.top - camera.y) / camera.scale;
   return { x, y };
-}
-
-export function rgbToCss(color: Color) {
-  const rgb = [color.r, color.g, color.b]
-  const r = rgb[0].toString(16).padStart(2, "0")
-  const g = rgb[1].toString(16).padStart(2, "0")
-  const b = rgb[2].toString(16).padStart(2, "0")
-  return `#${r}${g}${b}`
 }
 
 export function resizeBounds(
@@ -124,11 +116,6 @@ export function pickLayersInBox(
       box.bottom >= layerBottom
     );
   });
-}
-
-export function getContrastingTextColor(color: Color) {
-    const luminance = 0.299 * color.r + 0.587 * color.g + 0.114 * color.b; // Luminance formula
-    return luminance > 182 ? "black" : "white";
 }
 
 export function measureText(text: string, fontSize: number): number {
@@ -229,7 +216,7 @@ function distanceToSegment(p: Point, a: Point, b: Point): number {
   return Math.sqrt(distX * distX + distY * distY);
 }
 
-export function doesPointIntersectPath(point: Point, path: PathLayer, layerId?: string): boolean {
+export function doesPointIntersectPath(point: Point, path: PathLayer): boolean {
   const offsetX = path.x;
   const offsetY = path.y;
   const points = path.points;
@@ -248,11 +235,8 @@ export function doesPointIntersectPath(point: Point, path: PathLayer, layerId?: 
 }
 
 
-export function getLayerBounds(layer: LiveObject<Layer>) {
-  const x = layer.get("x");
-  const y = layer.get("y");
-  const width = layer.get("width");
-  const height = layer.get("height");
+export function getLayerBounds(layer: Layer): XYWH | null {
+  const { x, y, width, height } = layer;
 
   if (
     typeof x === "number" &&

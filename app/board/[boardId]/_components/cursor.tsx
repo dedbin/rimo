@@ -3,16 +3,15 @@
 import { memo } from "react";
 import { connectionIdToColor } from "@/lib/utils";
 import { MousePointer2 } from "lucide-react";
-import { useOther } from "@liveblocks/react";
+import { BoardParticipant } from "@/lib/collaboration/presence";
 
 interface CursorProps {
-    connectionId: number;
+    participant: BoardParticipant;
 }
 
-export const Cursor = memo(({connectionId}: CursorProps) => {
-    const info = useOther(connectionId, (user) => user?.info);
-    const cursor  = useOther(connectionId, (user) => user?.presence.cursor);
-    const name = info?.name || "Anonymous";
+export const Cursor = memo(({participant}: CursorProps) => {
+    const { connectionId, info, presence: { cursor } } = participant;
+    const name = info.name || "Гость";
 
     if (!cursor) return null;
 

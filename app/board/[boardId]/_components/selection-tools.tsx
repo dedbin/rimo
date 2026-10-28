@@ -3,7 +3,7 @@
 import { useState, useEffect, memo } from "react";
 import { useActiveSelectionArea } from "@/hooks/use-selection-bounds";
 import { Camera, Color } from "@/types/board-canvas";
-import { useMutation, useSelf } from "@liveblocks/react/suspense";
+import { useBoardRuntime, useSelection } from "@/lib/collaboration/react";
 import { ColorPicker } from "./color-picker";
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { Button } from "@/components/ui/button";
@@ -18,53 +18,18 @@ interface SelectionToolsProps {
 
 export const SelectionTools = memo(
   ({ camera, setLastUsedColor }: SelectionToolsProps) => {
-    const selection = useSelf((me) => me.presence.selection ?? []);
+    const runtime = useBoardRuntime();
+    const selection = useSelection();
     const { t } = useTranslation();
     const bounds = useActiveSelectionArea();
     const deleteLayers = useDeleteLayers();
 
-const moveToBack = useMutation(({ storage }) => {
-  const liveLayerIds = storage.get("layerIds");
-  const arr = liveLayerIds.toImmutable();
-  const indices = arr
-    .map((id, idx) => ({ id, idx }))
-    .filter(item => selection.includes(item.id))
-    .map(item => item.idx)
-    .sort((a, b) => a - b);
-
-  
-  indices.forEach((origIdx, i) => {
-    liveLayerIds.move(origIdx, i);
-  });
-}, [selection]);
-
-
-const moveToFront = useMutation(({ storage }) => {
-  const liveLayerIds = storage.get("layerIds");
-  const arr = liveLayerIds.toImmutable();
-  
-  const indices = arr
-    .map((id, idx) => ({ id, idx }))
-    .filter(item => selection.includes(item.id))
-    .map(item => item.idx)
-    .sort((a, b) => b - a);
-  const length = arr.length;
-  indices.forEach((origIdx, i) => {
-    liveLayerIds.move(origIdx, length - 1 - i);
-  });
-}, [selection]);
-
-
-    const setFill = useMutation(
-      ({ storage }, fill: Color) => {
-        const liveLayers = storage.get("layers");
-        setLastUsedColor(fill);
-        for (const id of selection) {
-          liveLayers.get(id)?.set("fill", fill);
-        }
-      },
-      [selection, setLastUsedColor]
-    );
+    const moveToBack = () => runtime.board.reorder(selection, "back");
+    const moveToFront = () => runtime.board.reorder(selection, "front");
+    const setFill = (fill: Color) => {
+      setLastUsedColor(fill);
+      runtime.board.update(selection, { fill });
+    };
 
     const [hoveringDelete, setHoveringDelete] = useState(false);
 
@@ -72,7 +37,7 @@ const moveToFront = useMutation(({ storage }) => {
       setHoveringDelete(false);
     }, [selection]);
 
-    if (!bounds || selection.length === 0) {
+    if (!bounds || selection.length === 0 || !runtime.board.canEdit) {
       return null;
     }
 

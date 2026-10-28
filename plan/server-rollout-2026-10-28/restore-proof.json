@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "kind": "isolated-vps-restic-restore",
+  "sourceProject": "rimo",
+  "targetProject": "rimo-restore-check",
+  "startedAt": "2026-10-28T06:19:39.105Z",
+  "status": "accepted",
+  "stage": "target-checks",
+  "checks": {
+    "sourceInitiallyHealthy": true,
+    "targetInitiallyAbsent": true,
+    "resticVerifiedExactThreeFiles": true,
+    "configIsolatedAndLoopbackOnly": true,
+    "sameImagesAndHealthyTarget": true,
+    "restoredHealthAndExistingOwnerLogin": true,
+    "sourceUnchanged": true
+  },
+  "cleanup": {
+    "attempted": true,
+    "complete": true
+  },
+  "recoveryRequired": false,
+  "limitations": [
+    "Initial technical-owner snapshot; no lesson or asset-content readback claimed",
+    "Loopback HTTP login does not prove transfer of the original Secure cookie"
+  ],
+  "sourceBeforeFingerprint": "80ed9fdc4d4dcfbadc5dd24a6de7e82357b7dcbccb955d8de016a36a1e3eb3ff",
+  "snapshotID": "e9177bde5574fe15497e639a4e4aa4b02bbacbdd10405eb08c51d2b3d9863f50",
+  "backupFiles": {
+    "database.dump": {
+      "bytes": 23733,
+      "sha256": "904ca879c72fc0dfdbf09e1a6012817a06711308e7c38339dbd579b9cc65cc8d"
+    },
+    "assets.tar": {
+      "bytes": 10240,
+      "sha256": "c214082bc7fb684627e498af187d01b72347f5acf959dfa864bb7091d868cdcd"
+    }
+  },
+  "sourceAfterFingerprint": "80ed9fdc4d4dcfbadc5dd24a6de7e82357b7dcbccb955d8de016a36a1e3eb3ff",
+  "finishedAt": "2026-10-28T06:20:01.058Z"
+}

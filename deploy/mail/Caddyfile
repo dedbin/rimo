@@ -1,0 +1,5 @@
+import /etc/caddy/RimoOps
+
+{$MAIL_TLS_NAME} {
+    respond "SMTP endpoint" 404
+}
