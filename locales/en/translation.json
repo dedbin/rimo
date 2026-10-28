@@ -124,6 +124,24 @@
     "fitToScreen": "Fit to screen"
   },
   "selectionTools": {
+    "objectStyle": "Object style",
+    "color": "Color",
+    "outline": "Outline",
+    "fill": "Fill",
+    "noFill": "No fill",
+    "noOutline": "No outline",
+    "mixed": "Mixed colors",
+    "colors": {
+      "black": "Black",
+      "white": "White",
+      "emerald": "Green",
+      "blue": "Blue",
+      "purple": "Purple",
+      "red": "Red",
+      "yellow": "Yellow",
+      "orange": "Orange",
+      "custom": "Custom color"
+    },
     "bringToFront": "Bring to front",
     "sendToBack": "Send to back",
     "delete": "Delete"

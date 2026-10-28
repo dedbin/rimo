@@ -24,9 +24,9 @@ test("active editor becomes viewer and editor again without reload, cancelling t
   // A viewer keeps receiving the teacher's independent edits.
   await page.getByRole("button", { name: /^Прямоугольник/ }).click();
   await page.mouse.click(820, 270);
-  const teacherRectangle = canvas(page).locator("rect.drop-shadow-md");
+  const teacherRectangle = canvas(page).locator("[data-layer-id] > rect");
   await expect(teacherRectangle).toHaveCount(1);
-  await expect(canvas(student).locator("rect.drop-shadow-md")).toHaveCount(1);
+  await expect(canvas(student).locator("[data-layer-id] > rect")).toHaveCount(1);
   await saved(page);
   const initial = await teacherRectangle.boundingBox();
   if (!initial) throw new Error("Fixture rectangle missing");
@@ -43,13 +43,20 @@ test("active editor becomes viewer and editor again without reload, cancelling t
   await student.mouse.move(initial.x + 140, initial.y + 100, { steps: 4 });
   await change("viewer");
   await expect(student.getByText("Только просмотр", { exact: true })).toBeVisible({ timeout: 10_000 });
-  await expect.poll(async () => Math.round((await canvas(student).locator("rect.drop-shadow-md").boundingBox())?.x ?? -1))
-    .toBe(Math.round(initial.x));
+  // Remote selection can widen the outline; compare the object's center.
+  const initialCenterX = Math.round(initial.x + initial.width / 2);
+  await expect.poll(async () => {
+    const bounds = await canvas(student).locator("[data-layer-id] > rect").boundingBox();
+    return bounds ? Math.round(bounds.x + bounds.width / 2) : -1;
+  }).toBe(initialCenterX);
   await change("editor");
   await expect(student.getByRole("button", { name: /^Прямоугольник/ })).toBeVisible({ timeout: 10_000 });
   await student.mouse.up();
   await finishText(student);
-  await expect.poll(async () => Math.round((await teacherRectangle.boundingBox())?.x ?? -1)).toBe(Math.round(initial.x));
+  await expect.poll(async () => {
+    const bounds = await teacherRectangle.boundingBox();
+    return bounds ? Math.round(bounds.x + bounds.width / 2) : -1;
+  }).toBe(initialCenterX);
   await expect(canvas(page).getByText("Условие сохраняется", { exact: true })).toBeVisible();
   await expect(student).toHaveURL(studentLocation);
 });

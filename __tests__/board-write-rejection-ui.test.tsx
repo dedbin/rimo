@@ -70,7 +70,7 @@ describe("write rejection recovery UI", () => {
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
     expect(screen.queryByTestId("canvas-loading")).toBeNull();
     expect(result.container.querySelector(".absolute.inset-0.z-20")).toBeNull();
-    expect(screen.getByLabelText("Холст доски").querySelector("rect.drop-shadow-md")).toBeTruthy();
+    expect(screen.getByLabelText("Холст доски").querySelector("[data-layer-id] > rect")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Инструменты редактирования" })).toBeNull();
     act(() => {
       acknowledge(current); mocked.options!.onStatus?.({ status: WebSocketStatus.Connected }); role(); mocked.options!.onSynced?.({ state: true });

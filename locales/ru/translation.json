@@ -124,6 +124,24 @@
     "fitToScreen": "Уместить все"
   },
   "selectionTools": {
+    "objectStyle": "Оформление объекта",
+    "color": "Цвет",
+    "outline": "Контур",
+    "fill": "Заливка",
+    "noFill": "Без заливки",
+    "noOutline": "Без контура",
+    "mixed": "Разные цвета",
+    "colors": {
+      "black": "Чёрный",
+      "white": "Белый",
+      "emerald": "Зелёный",
+      "blue": "Синий",
+      "purple": "Фиолетовый",
+      "red": "Красный",
+      "yellow": "Жёлтый",
+      "orange": "Оранжевый",
+      "custom": "Другой цвет"
+    },
     "bringToFront": "Наверх",
     "sendToBack": "Вниз",
     "delete": "Удалить"
