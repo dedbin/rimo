@@ -1,0 +1,50 @@
+{
+  "revision": "3584866c4b6dda429020f6df4a0efab68f946b20",
+  "tag": "server-3584866c4b6d",
+  "release": "/srv/rimo/releases/3584866c4b6d",
+  "previous": "/srv/rimo/releases/acaf679808ba",
+  "builtAt": "2026-10-28T17:49:23.225559+03:00",
+  "appImage": "sha256:e54a674279b163ddf57ecb7e33335ec06f92b5fe5db347a68cfabd8246aac9a6",
+  "pdfImage": "sha256:315d27554409e6271ec2231ca08c844d58bc913829e4e0069d8376ae8c506331",
+  "activatedAt": "2026-10-28T17:51:14.677128+03:00",
+  "backupBeforeUpdate": "success",
+  "namedVolumesPreserved": true,
+  "databaseFingerprintsMatch": true,
+  "publicHealth": 200,
+  "mailConnectionVerified": true,
+  "acceptanceCompletedAt": "2026-10-28T17:52:58.425235+03:00",
+  "temporaryDataCleanup": {
+    "temporaryAccountDeleted": true,
+    "temporaryBoardsDeleted": true
+  },
+  "originalDataAfterAcceptanceMatch": true,
+  "originalCounts": {
+    "user": 10,
+    "account": 2,
+    "boards": 1,
+    "board_documents": 1,
+    "assets": 0,
+    "board_invites": 0,
+    "board_members": 0,
+    "board_favorites": 0,
+    "schema_migrations": 2
+  },
+  "backup": {
+    "snapshotID": "1186269dc4a2783512d5f6a8a8a68e6a5c308c206db6268bcf9b6cdd3d30139f",
+    "createdAt": "2026-10-28T14:50:04.377Z",
+    "sourceCreatedAt": "2026-10-28T14:49:59.054Z",
+    "encrypted": true,
+    "dataVerified": true,
+    "offsiteVerified": false
+  },
+  "browserAcceptance": {
+    "origin": "https://rimo-whiteboard.ru",
+    "passed": 2,
+    "failed": 0,
+    "durationSeconds": 9.7,
+    "specs": [
+      "e2e/selection-hitbox.spec.ts",
+      "e2e/shape-style.spec.ts"
+    ]
+  }
+}
