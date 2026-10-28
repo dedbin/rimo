@@ -6,7 +6,7 @@ export const texts = (page: Page): Locator => canvas(page).locator("[data-board-
 export const images = (page: Page): Locator => canvas(page).locator('img[alt^="Превью слоя "]');
 export async function saved(page: Page): Promise<void> { await expect(page.getByText("Сохранено", { exact: true })).toBeVisible(); }
 export async function openBoard(page: Page, id: string): Promise<void> {
-  await page.goto(`/board/${id}`, { waitUntil: "networkidle" });
+  await page.goto(`/board/${id}`, { waitUntil: "domcontentloaded" });
   await expect(canvas(page)).toBeVisible();
   await saved(page);
 }

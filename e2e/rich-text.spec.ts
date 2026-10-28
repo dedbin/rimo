@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures";
-import { finishText, insertText, invitation, openBoard, saved, texts } from "./board-ui";
+import { canvas, finishText, insertText, invitation, openBoard, saved, texts } from "./board-ui";
 
 test("rich text, math and Markdown survive two editors, local undo and reload", async ({ page, scenario }) => {
   const boardId = await scenario.createBoard("E2E русский текст и формулы");
@@ -46,7 +46,8 @@ test("rich text, math and Markdown survive two editors, local undo and reload", 
   await expect(editor).toContainText("Ученик ");
   await finishText(page);
   await finishText(peer);
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(canvas(page)).toBeVisible();
   await saved(page);
   await expect(texts(page).locator("h2")).toContainText("Контрольный урок");
   await expect(texts(page)).toContainText("Ученик ");

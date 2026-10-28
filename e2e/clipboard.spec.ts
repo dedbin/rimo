@@ -1,7 +1,7 @@
 import sharp from "sharp";
 
 import { test, expect } from "./fixtures";
-import { copySelection, images, openBoard, pasteSelection, saved, selectAll, uploadImage } from "./board-ui";
+import { canvas, copySelection, images, openBoard, pasteSelection, saved, selectAll, uploadImage } from "./board-ui";
 
 test("copying an image to another board preserves it after the source board is deleted", async ({ page, scenario, baseURL }) => {
   const source = await scenario.createBoard("E2E изображение: источник");
@@ -22,7 +22,8 @@ test("copying an image to another board preserves it after the source board is d
   await saved(page);
   const removed = await page.request.delete(`/api/boards/${source}`, { headers: { origin: new URL(baseURL!).origin } });
   expect(removed.status()).toBe(204);
-  await page.reload({ waitUntil: "networkidle" });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(canvas(page)).toBeVisible();
   await saved(page);
   await expect(images(page)).toHaveCount(1);
   await expect.poll(() => images(page).evaluateAll((nodes) => nodes.every((node) => (node as HTMLImageElement).complete && (node as HTMLImageElement).naturalWidth === 80))).toBe(true);

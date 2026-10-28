@@ -2,7 +2,7 @@ import { test, expect } from "./fixtures";
 import { canvas, invitation, saved } from "./board-ui";
 
 test("owner creates a board, guests collaborate, local undo preserves the peer and access is revoked", async ({ page, scenario }) => {
-  await page.goto("/", { waitUntil: "networkidle" });
+  await page.goto("/", { waitUntil: "domcontentloaded" });
   const created = page.waitForResponse((response) => new URL(response.url()).pathname === "/api/boards" && response.request().method() === "POST");
   await page.getByRole("button", { name: "Создать доску", exact: true }).first().click();
   const response = await created;
@@ -10,6 +10,7 @@ test("owner creates a board, guests collaborate, local undo preserves the peer a
   const { board } = await response.json() as { board: { id: string } };
   scenario.createdBoards.add(board.id);
   await expect(page).toHaveURL(new RegExp(`/board/${board.id}$`));
+  await expect(canvas(page)).toBeVisible();
   await saved(page);
   const editor = await scenario.guest(await invitation(page, "editor"), "E2E ученик");
   await page.getByRole("button", { name: /^Прямоугольник/ }).click();

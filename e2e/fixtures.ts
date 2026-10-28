@@ -1,6 +1,8 @@
 import { expect, test as base } from "@playwright/test";
 import type { Page } from "@playwright/test";
 
+import { canvas, saved } from "./board-ui";
+
 interface BoardResponse { board?: { id?: string } }
 interface Scenario {
   readonly createdBoards: Set<string>;
@@ -52,10 +54,11 @@ export const test = base.extend<{ scenario: Scenario }>({
         guests.push(guest);
         guest.on("page", watch);
         const page = await guest.newPage();
-        await page.goto(url, { waitUntil: "networkidle" });
+        await page.goto(url, { waitUntil: "domcontentloaded" });
         await page.getByLabel("Как вас представить", { exact: true }).fill(name);
         await page.getByRole("button", { name: "Войти на доску", exact: true }).click();
-        await expect(page.getByText("Сохранено", { exact: true })).toBeVisible();
+        await expect(canvas(page)).toBeVisible();
+        await saved(page);
         return page;
       },
     };
