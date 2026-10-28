@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up Rimo daily at 04:00 Moscow time
+
+[Timer]
+OnCalendar=*-*-* 04:00:00 Europe/Moscow
+Persistent=true
+AccuracySec=1s
+Unit=rimo-backup.service
+
+[Install]
+WantedBy=timers.target

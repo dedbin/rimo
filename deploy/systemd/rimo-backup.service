@@ -1,0 +1,18 @@
+[Unit]
+Description=Consistent encrypted Rimo daily backup
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+WorkingDirectory=/srv/rimo/current
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+EnvironmentFile=/srv/rimo/private/backup.env
+ExecStart=/usr/bin/bash /srv/rimo/current/deploy/backup-daily.sh
+TimeoutStartSec=75min
+TimeoutStopSec=60s
+StandardOutput=journal
+StandardError=journal

@@ -1,0 +1,17 @@
+[Unit]
+Description=Read-only Rimo service observation
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+WorkingDirectory=/srv/rimo/current
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/local/bin/node /srv/rimo/current/scripts/monitor-service.mjs --project rimo --env-file /srv/rimo/private/rimo.env --compose-file /srv/rimo/current/docker-compose.yml
+TimeoutStartSec=55s
+TimeoutStopSec=15s
+SuccessExitStatus=1
+StandardOutput=journal
+StandardError=journal
