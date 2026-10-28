@@ -4,11 +4,12 @@ import { expect, test } from "@playwright/test";
 import { Pool } from "pg";
 
 import { openBoard } from "./board-ui";
+import { waitForVerificationCode } from "./mailbox";
 
 // Sign-up request bodies contain passwords; retain no Playwright trace for this test.
 test.use({ trace: "off" });
 
-test("registration creates a private workspace and supports signing in again", async ({ browser, context, baseURL }, info) => {
+test("registration verifies email, creates a private workspace and supports signing in again", async ({ browser, context, baseURL }, info) => {
   test.skip(Boolean(info.config.metadata.external), "Account cleanup requires the isolated local/CI database.");
   if (!baseURL || !process.env.DATABASE_URL) throw new Error("Local registration E2E requires its application database.");
   const runId = String(info.config.metadata.runId);
@@ -39,12 +40,18 @@ test("registration creates a private workspace and supports signing in again", a
     await dialog.getByLabel("Повторите пароль", { exact: true }).fill(password);
     const registration = page.waitForResponse(response => new URL(response.url()).pathname === "/api/auth/sign-up/email" && response.request().method() === "POST");
     registrationStarted = true;
+    const verificationRequestedAt = Date.now();
     await dialog.getByRole("button", { name: "Создать аккаунт", exact: true }).click();
     const response = await registration;
     expect(response.status()).toBe(200);
     const user = (await response.json()).user;
     if (typeof user?.id !== "string" || user.email !== email || user.name !== name) throw new Error("Registration returned an unexpected account.");
     registeredId = user.id;
+    await expect(page.getByRole("heading", { name: "Подтвердите почту", exact: true })).toBeVisible();
+    expect(await fresh.request.get("/api/auth/get-session").then(result => result.json())).toBeNull();
+    const code = await waitForVerificationCode(email, verificationRequestedAt);
+    await page.getByLabel("Код из письма", { exact: true }).fill(code);
+    await page.getByRole("button", { name: "Подтвердить почту", exact: true }).click();
     await expect(page.getByRole("button", { name: "Создать доску", exact: true }).first()).toBeVisible();
     const session = await fresh.request.get("/api/auth/get-session");
     expect((await session.json()).user.id).toBe(registeredId);

@@ -22,12 +22,38 @@ export async function withOwnerQuota<T>(create: () => Promise<T>): Promise<T> {
   return inTransaction(async (client) => {
     await lockBudget(client, "owners");
     const usage = await client.query<{ total: string }>(
-      'SELECT count(*) AS total FROM "user" WHERE "isAnonymous" = false',
+      'SELECT count(*) AS total FROM "user" WHERE "isAnonymous" = false AND "registrationPending" = false',
     );
     if (BigInt(usage.rows[0].total) >= BigInt(limits.maxOwners)) {
       throw new HttpError(409, "OWNER_LIMIT_REACHED", `Достигнут лимит аккаунтов владельцев: ${limits.maxOwners}.`);
     }
     return create();
+  });
+}
+
+// Called only after Better Auth has consumed a valid email verification OTP.
+export async function activateVerifiedOwner(userId: string): Promise<void> {
+  await inTransaction(async (client) => {
+    await lockBudget(client, "owners");
+    const result = await client.query<{ isAnonymous: boolean; registrationPending: boolean }>(
+      'SELECT "isAnonymous", "registrationPending" FROM "user" WHERE id = $1 FOR UPDATE', [userId],
+    );
+    const user = result.rows[0];
+    if (!user || user.isAnonymous) {
+      throw new HttpError(403, "OWNER_REQUIRED", "Подтверждение доступно владельцу аккаунта.");
+    }
+    if (user.registrationPending) {
+      const usage = await client.query<{ total: string }>(
+        'SELECT count(*) AS total FROM "user" WHERE "isAnonymous" = false AND "registrationPending" = false',
+      );
+      if (BigInt(usage.rows[0].total) >= BigInt(getQuotaLimits().maxOwners)) {
+        throw new HttpError(409, "OWNER_LIMIT_REACHED", "Свободных аккаунтов пока нет. Повторите подтверждение новым кодом, когда появится место.");
+      }
+    }
+    await client.query(
+      'UPDATE "user" SET "emailVerified" = true, "registrationPending" = false, "updatedAt" = now() WHERE id = $1',
+      [userId],
+    );
   });
 }
 

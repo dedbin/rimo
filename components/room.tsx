@@ -5,6 +5,7 @@ import Link from "next/link";
 import { BoardSession } from "@/types/service";
 import { BoardRuntime } from "@/lib/collaboration/runtime";
 import { BoardRuntimeContext } from "@/lib/collaboration/react";
+import { EmailVerificationGate } from "@/components/auth/email-verification-gate";
 
 interface RoomProps {
   children: ReactNode;
@@ -13,6 +14,14 @@ interface RoomProps {
 }
 
 export function Room({ children, roomId, fallback }: RoomProps) {
+  return (
+    <EmailVerificationGate fallback={fallback}>
+      <RoomContent roomId={roomId} fallback={fallback}>{children}</RoomContent>
+    </EmailVerificationGate>
+  );
+}
+
+function RoomContent({ children, roomId, fallback }: RoomProps) {
   const [runtime, setRuntime] = useState<BoardRuntime | null>(null);
   const [error, setError] = useState<string | null>(null);
 

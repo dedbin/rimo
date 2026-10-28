@@ -1,7 +1,7 @@
 # Лицензии сторонних компонентов Rimo
 
 Проверено 27 октября 2026 года по исходникам, `package-lock.json` и установленным
-пакетам. Ниже — все **61 прямые production-зависимости** из
+пакетам; SMTP-компонент добавлен 28 октября 2026 года. Ниже — все **62 прямые production-зависимости** из
 [`package.json`](../../package.json). Точные установленные версии и поля `license`
 совпали с [`package-lock.json`](../../package-lock.json); у каждой найден файл
 лицензии. Это инвентарь компонентов, а не заключение о правовой готовности сервиса.
@@ -54,6 +54,7 @@
 | `nanoid` | 5.1.16 | MIT | [LICENSE](../../node_modules/nanoid/LICENSE) |
 | `next` | 15.5.28 | MIT | [license.md](../../node_modules/next/license.md) |
 | `next-themes` | 0.4.6 | MIT | [license.md](../../node_modules/next-themes/license.md) |
+| `nodemailer` | 10.2.1 | MIT-0 | [LICENSE](../../node_modules/nodemailer/LICENSE) |
 | `perfect-freehand` | 1.2.3 | MIT | [LICENSE](../../node_modules/perfect-freehand/LICENSE) |
 | `pg` | 8.23.1 | MIT | [LICENSE](../../node_modules/pg/LICENSE) |
 | `playwright` | 1.64.1 | Apache-2.0 | [LICENSE](../../node_modules/playwright/LICENSE), [NOTICE](../../node_modules/playwright/NOTICE) |

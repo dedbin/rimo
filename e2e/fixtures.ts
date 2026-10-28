@@ -4,6 +4,7 @@ import type { Page } from "@playwright/test";
 import { canvas, saved } from "./board-ui";
 
 interface BoardResponse { board?: { id?: string } }
+let guestSequence = 0;
 interface Scenario {
   readonly createdBoards: Set<string>;
   createBoard: (title: string) => Promise<string>;
@@ -50,7 +51,10 @@ export const test = base.extend<{ scenario: Scenario }>({
         return body.board.id;
       },
       guest: async (url, name) => {
-        const guest = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] }, locale: "ru-RU", viewport: { width: 1440, height: 1000 } });
+        // Independent pupils use independent client addresses on the local test server.
+        // This avoids coupling unrelated tests through the anonymous sign-in IP budget.
+        const guest = await browser.newContext({ baseURL, storageState: { cookies: [], origins: [] }, locale: "ru-RU", viewport: { width: 1440, height: 1000 },
+          extraHTTPHeaders: { "X-Forwarded-For": `198.51.100.${++guestSequence}` } });
         guests.push(guest);
         guest.on("page", watch);
         const page = await guest.newPage();

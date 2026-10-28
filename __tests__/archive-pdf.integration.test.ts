@@ -23,6 +23,7 @@ import { getAuth } from "../server/auth";
 import { createBoard } from "../server/boards";
 import { getPool } from "../server/db";
 import { runMigrations } from "../server/migrations";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL;
 const suffix = randomUUID().replaceAll("-", "");
@@ -106,6 +107,7 @@ describe.skipIf(!databaseUrl || process.env.RIMO_PDF_BROWSER_TEST !== "1")("arch
     const owner = await getAuth({ allowSignUp: true }).api.signUpEmail({ body: {
       name: "Владелец переносимого PDF", email: `archive-pdf-${suffix}@example.test`, password,
     } });
+    await verifyFixtureOwner(getPool(), owner.user.id);
     const login = await getAuth().handler(request("/api/auth/sign-in/email", "", { email: owner.user.email, password }));
     const cookie = login.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");
     const board = await createBoard(owner.user.id, "Переносимый урок");

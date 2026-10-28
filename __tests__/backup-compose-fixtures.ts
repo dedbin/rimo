@@ -11,6 +11,7 @@ const fixture=JSON.parse(Buffer.concat(parts).toString('utf8'));
 if (!/^[a-f0-9-]{36}$/.test(fixture.assetId)) throw new Error('Invalid fixture asset ID');
 const owner=await authModule.getAuth({allowSignUp:true}).api.signUpEmail({body:{name:'Backup owner',email:fixture.email,password:fixture.password}});
 const pool=dbModule.getPool();
+await pool.query('UPDATE "user" SET "emailVerified"=true,"registrationPending"=false WHERE id=$1',[owner.user.id]);
 const bytes=Buffer.from(fixture.image,'base64');
 const hash=createHash('sha256').update(bytes).digest('hex');
 const document=new Y.Doc();

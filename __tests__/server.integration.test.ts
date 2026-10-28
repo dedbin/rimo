@@ -23,6 +23,7 @@ import { acceptInvite, createInvite, revokeInvite } from "../server/invites";
 import { revokeMember, updateMember } from "../server/members";
 import { runMigrations } from "../server/migrations";
 import type { BoardSummary } from "../types/service";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL;
 const testId = randomUUID();
@@ -79,11 +80,13 @@ describe.skipIf(!databaseUrl)("PostgreSQL auth and board integration", () => {
     });
     ownerId = owner.user.id;
     userIds.push(ownerId);
+    await verifyFixtureOwner(getPool(), ownerId);
     const outsider = await provisioner.api.signUpEmail({
       body: { name: "Другой владелец", email: `other-${testId}@example.test`, password },
     });
     outsiderId = outsider.user.id;
     userIds.push(outsiderId);
+    await verifyFixtureOwner(getPool(), outsiderId);
     const login = await getAuth().handler(request("/api/auth/sign-in/email", {
       email: `owner-${testId}@example.test`, password,
     }));

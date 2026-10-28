@@ -1,12 +1,13 @@
 "use client";
 
-import { useId, useState, type FormEvent, type ReactNode } from "react";
+import { useId, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
+import { EmailVerification } from "./email-verification";
 
 type AuthMode = "sign-in" | "sign-up";
 
@@ -22,19 +23,25 @@ export function AuthButton({ children, initialMode = "sign-in" }: { children: Re
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<AuthMode>(initialMode);
   const [pending, setPending] = useState(false);
+  const [verificationPending, setVerificationPending] = useState(false);
+  const [verification, setVerification] = useState<{ email: string; password: string } | null>(null);
+  const [loginEmail, setLoginEmail] = useState("");
   const [error, setError] = useState("");
+  const submitting = useRef(false);
   const passwordHintId = useId();
   const signUp = mode === "sign-up";
 
   const changeOpen = (value: boolean): void => {
-    if (pending) return;
+    if (pending || verificationPending) return;
     setOpen(value);
-    if (value) { setMode(initialMode); setError(""); }
+    setVerification(null);
+    setVerificationPending(false);
+    if (value) { setMode(initialMode); setError(""); setLoginEmail(""); }
   };
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (pending) return;
+    if (submitting.current) return;
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
@@ -45,12 +52,16 @@ export function AuthButton({ children, initialMode = "sign-in" }: { children: Re
       setError("Пароли не совпадают.");
       return;
     }
+    submitting.current = true;
     setPending(true);
     try {
       const result = signUp
         ? await authClient.signUp.email({ name, email, password })
         : await authClient.signIn.email({ email, password });
-      if (result.error) {
+      if ((signUp && !result.error) || result.error?.code === "EMAIL_NOT_VERIFIED") {
+        setVerification({ email, password });
+        setLoginEmail(email);
+      } else if (result.error) {
         setError(failureMessage(result.error, signUp));
       } else {
         setOpen(false);
@@ -58,7 +69,30 @@ export function AuthButton({ children, initialMode = "sign-in" }: { children: Re
     } catch {
       setError("Сервис временно недоступен. Попробуйте ещё раз.");
     } finally {
+      submitting.current = false;
       setPending(false);
+    }
+  };
+
+  const completeVerification = async (): Promise<void> => {
+    if (!verification) return;
+    const { email, password } = verification;
+    try {
+      const result = await authClient.signIn.email({ email, password });
+      if (result.error) {
+        setMode("sign-in");
+        setLoginEmail(email);
+        setError("Почта подтверждена. Войдите с паролем своего аккаунта.");
+      } else {
+        setOpen(false);
+      }
+    } catch {
+      setMode("sign-in");
+      setLoginEmail(email);
+      setError("Почта подтверждена. Не удалось войти — проверьте соединение и попробуйте ещё раз.");
+    } finally {
+      setVerification(null);
+      setVerificationPending(false);
     }
   };
 
@@ -67,12 +101,21 @@ export function AuthButton({ children, initialMode = "sign-in" }: { children: Re
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{signUp ? "Регистрация в Rimo" : "Вход в Rimo"}</DialogTitle>
+          <DialogTitle>{verification ? "Подтвердите почту" : signUp ? "Регистрация в Rimo" : "Вход в Rimo"}</DialogTitle>
           <DialogDescription>
-            {signUp ? "Создайте аккаунт для своих досок." : "Войдите, чтобы открыть свои доски."}
-            {" Ученики открывают доску по приглашению."}
+            {verification ? "Подтвердите адрес, чтобы завершить вход." : <>
+              {signUp ? "Создайте аккаунт для своих досок." : "Войдите, чтобы открыть свои доски."}
+              {" Ученики открывают доску по приглашению."}
+            </>}
           </DialogDescription>
         </DialogHeader>
+        {verification ? <>
+          <EmailVerification key={verification.email} email={verification.email}
+            onVerified={completeVerification} onPendingChange={setVerificationPending} />
+          <Button type="button" variant="link" disabled={verificationPending} onClick={() => {
+            setVerification(null); setError("");
+          }}>Вернуться к форме</Button>
+        </> : <>
         <form key={mode} onSubmit={onSubmit} aria-busy={pending} className="space-y-4">
           {signUp && (
             <label className="block space-y-2 text-sm">
@@ -82,7 +125,7 @@ export function AuthButton({ children, initialMode = "sign-in" }: { children: Re
           )}
           <label className="block space-y-2 text-sm">
             <span>Почта</span>
-            <Input name="email" type="email" autoComplete="username" required maxLength={254} disabled={pending} />
+            <Input name="email" type="email" autoComplete="username" required maxLength={254} disabled={pending} defaultValue={loginEmail} />
           </label>
           <label className="block space-y-2 text-sm">
             <span>Пароль</span>
@@ -110,6 +153,7 @@ export function AuthButton({ children, initialMode = "sign-in" }: { children: Re
         }}>
           {signUp ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
         </Button>
+        </>}
       </DialogContent>
     </Dialog>
   );

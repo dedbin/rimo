@@ -10,6 +10,13 @@ PDF_WORKER_TOKEN=REPLACE_WITH_AN_INDEPENDENT_RANDOM_SECRET_OF_AT_LEAST_32_CHARAC
 # Local development only. Compose uses its private export-worker hostname.
 PDF_WORKER_URL=http://localhost:3100
 
+# Email confirmation. Use a provider-approved sender address and SMTP credentials.
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=REPLACE_WITH_SMTP_USER
+SMTP_PASSWORD=REPLACE_WITH_SMTP_PASSWORD
+MAIL_FROM=no-reply@example.com
+
 # Optional safeguards; defaults are enforced by the server.
 MAX_UPLOAD_BYTES=10485760
 MAX_BOARD_ASSET_BYTES=104857600

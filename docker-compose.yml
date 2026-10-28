@@ -58,11 +58,16 @@ services:
       <<: *service-environment
       PDF_WORKER_URL: http://export-worker:3100
       PDF_WORKER_TOKEN: ${PDF_WORKER_TOKEN:?Set PDF_WORKER_TOKEN}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
     volumes:
       - assets:/app/data/assets
     depends_on:
       migrate: { condition: service_completed_successfully }
-    networks: [backend, exports]
+    networks: [backend, exports, mail-egress]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
@@ -146,6 +151,7 @@ networks:
   exports:
     internal: true
   ingress:
+  mail-egress:
 
 volumes:
   postgres-data:

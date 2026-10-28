@@ -16,6 +16,7 @@ import { getAuth } from "../server/auth";
 import { getPool } from "../server/db";
 import { runMigrations } from "../server/migrations";
 import type { BoardSummary } from "../types/service";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 function request(endpoint: string, cookie: string, body?: unknown): Request {
   return new Request(`http://localhost:3000${endpoint}`, {
@@ -37,6 +38,7 @@ async function restoreAndPrint(): Promise<void> {
   const owner = await getAuth({ allowSignUp: true }).api.signUpEmail({ body: {
     name: "Новый владелец PDF", email: "archive-pdf-restore@example.test", password,
   } });
+  await verifyFixtureOwner(getPool(), owner.user.id);
   const login = await getAuth().handler(request("/api/auth/sign-in/email", "", { email: owner.user.email, password }));
   assert.equal(login.status, 200);
   const cookie = login.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");

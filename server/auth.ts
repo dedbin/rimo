@@ -1,13 +1,23 @@
 import { randomUUID } from "node:crypto";
 
 import { betterAuth } from "better-auth";
-import { anonymous } from "better-auth/plugins";
+import { APIError } from "better-auth/api";
+import { anonymous, emailOTP } from "better-auth/plugins";
 
 import { getServerConfig } from "./config";
 import { getPool } from "./db";
 import { validatedProfile } from "./auth-profile";
 import { HttpError } from "./http-error";
-import { withOwnerQuota } from "./quotas";
+import { sendVerificationCode } from "./mail";
+import { activateVerifiedOwner, withOwnerQuota } from "./quotas";
+
+const disabledPaths = [
+  "/verify-email", "/send-verification-email", "/sign-in/email-otp",
+  "/email-otp/check-verification-otp", "/email-otp/forget-password",
+  "/forget-password/email-otp", "/email-otp/request-password-reset", "/email-otp/reset-password",
+  "/email-otp/request-email-change", "/email-otp/change-email",
+  "/request-password-reset", "/reset-password", "/change-email",
+];
 
 function createAuth(allowSignUp: boolean) {
   const config = getServerConfig();
@@ -16,10 +26,34 @@ function createAuth(allowSignUp: boolean) {
     secret: config.authSecret,
     baseURL: config.authUrl,
     trustedOrigins: [...config.trustedOrigins],
+    disabledPaths,
+    user: {
+      additionalFields: {
+        registrationPending: { type: "boolean", required: true, defaultValue: true, input: false },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       disableSignUp: !allowSignUp,
       minPasswordLength: 12,
+      requireEmailVerification: true,
+    },
+    emailVerification: {
+      sendOnSignUp: false,
+      sendOnSignIn: false,
+      autoSignInAfterVerification: false,
+      async beforeEmailVerification(user) {
+        try {
+          await activateVerifiedOwner(user.id);
+        } catch (error) {
+          if (error instanceof HttpError) {
+            throw new APIError(error.status === 409 ? "CONFLICT" : "FORBIDDEN", {
+              code: error.code, message: error.message,
+            });
+          }
+          throw error;
+        }
+      },
     },
     session: {
       expiresIn: 60 * 60 * 24 * 7,
@@ -28,15 +62,43 @@ function createAuth(allowSignUp: boolean) {
     advanced: {
       useSecureCookies: config.authUrl.startsWith("https://"),
       database: { generateId: () => randomUUID() },
+      ipAddress: { ipAddressHeaders: ["x-forwarded-for"] },
     },
     rateLimit: { enabled: true, window: 60, max: 30 },
     databaseHooks: {
       user: {
-        create: { before: async (user) => ({ data: { ...user, ...validatedProfile(user) } }) },
+        create: { before: async (user) => ({
+          data: { ...user, ...validatedProfile(user), emailVerified: false, registrationPending: user.isAnonymous !== true },
+        }) },
         update: { before: async (user) => ({ data: { ...user, ...validatedProfile(user) } }) },
       },
     },
-    plugins: [anonymous({ disableDeleteAnonymousUser: true })],
+    plugins: [
+      anonymous({ disableDeleteAnonymousUser: true }),
+      emailOTP({
+        otpLength: 6,
+        expiresIn: 600,
+        allowedAttempts: 5,
+        storeOTP: "hashed",
+        resendStrategy: "rotate",
+        disableSignUp: true,
+        sendVerificationOnSignUp: false,
+        overrideDefaultEmailVerification: true,
+        rateLimit: { window: 60, max: 10 },
+        async sendVerificationOTP({ email, otp, type }) {
+          if (type !== "email-verification") {
+            throw new APIError("BAD_REQUEST", { code: "INVALID_OTP_TYPE", message: "Недопустимый тип кода." });
+          }
+          try {
+            await sendVerificationCode(email, otp);
+          } catch {
+            throw new APIError("SERVICE_UNAVAILABLE", {
+              code: "MAIL_SEND_FAILED", message: "Не удалось отправить код. Попробуйте позже.",
+            });
+          }
+        },
+      }),
+    ],
   });
 }
 

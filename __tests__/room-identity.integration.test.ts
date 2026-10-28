@@ -19,6 +19,7 @@ import { getAuth } from "../server/auth";
 import { createBoard } from "../server/boards";
 import { getPool } from "../server/db";
 import { runMigrations } from "../server/migrations";
+import { verifyFixtureOwner } from "./verified-owner-fixture";
 
 const databaseUrl = process.env.RIMO_TEST_DATABASE_URL ?? process.env.DATABASE_URL;
 const schema = `rimo_room_identity_${randomUUID().replaceAll("-", "")}`;
@@ -75,6 +76,7 @@ describe.skipIf(!databaseUrl)("canonical room identity with real cookies and Pos
     const password = randomBytes(24).toString("base64url");
     const owner = await getAuth({ allowSignUp: true }).api.signUpEmail({ body: { email, password, name: "Room identity test" } });
     ownerId = owner.user.id;
+    await verifyFixtureOwner(getPool(), ownerId);
     const response = await getAuth().handler(new Request(`${ORIGIN}/api/auth/sign-in/email`, {
       method: "POST", headers: { origin: ORIGIN, "content-type": "application/json" }, body: JSON.stringify({ email, password }),
     }));

@@ -56,6 +56,7 @@ async function main() {
   const password = randomBytes(24).toString('base64url');
   const email = 'resource-' + randomBytes(12).toString('hex') + '@example.test';
   const owner = await authModule.createOwnerAccount({ name: 'Resource test owner', email, password });
+  await pool.query('UPDATE "user" SET "emailVerified"=true,"registrationPending"=false WHERE id=$1', [owner.user.id]);
   const board = await boardsModule.createBoard(owner.user.id, 'Assets tmpfs failure');
   const login = await request('/api/auth/sign-in/email', {
     method: 'POST', headers: { origin, 'content-type': 'application/json' },
