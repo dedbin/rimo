@@ -4,6 +4,8 @@ import path from "node:path";
 import { chromium, expect } from "@playwright/test";
 import type { FullConfig } from "@playwright/test";
 
+import { waitForVerificationCode } from "./mailbox";
+
 export default async function authenticate(config: FullConfig): Promise<void> {
   const project = config.projects[0];
   const state = String(config.metadata.authState);
@@ -16,6 +18,7 @@ export default async function authenticate(config: FullConfig): Promise<void> {
   let phase = "navigation";
   try {
     const page = await context.newPage();
+    const verificationRequestedAt = Date.now();
     await page.goto("/", { waitUntil: "domcontentloaded" });
     if (!existing) {
       phase = "open-dialog";
@@ -26,8 +29,17 @@ export default async function authenticate(config: FullConfig): Promise<void> {
       phase = "submit-login";
       await page.getByRole("dialog").getByRole("button", { name: "Войти", exact: true }).click();
     }
+    const workspace = page.getByRole("button", { name: "Создать доску", exact: true }).first();
+    const verification = page.getByLabel("Код из письма", { exact: true });
+    await expect(workspace.or(verification)).toBeVisible();
+    if (await verification.isVisible()) {
+      phase = "confirm-email";
+      const code = await waitForVerificationCode(process.env.RIMO_E2E_EMAIL!, verificationRequestedAt);
+      await verification.fill(code);
+      await page.getByRole("button", { name: "Подтвердить почту", exact: true }).click();
+    }
     phase = "owner-interface";
-    await expect(page.getByRole("button", { name: "Создать доску", exact: true }).first()).toBeVisible();
+    await expect(workspace).toBeVisible();
     if (!existing) {
       phase = "save-state";
       await mkdir(path.dirname(state), { recursive: true });
