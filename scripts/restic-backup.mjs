@@ -1,8 +1,7 @@
 import { hostname } from "node:os";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
 
 import { interruptController } from "./backup-common.mjs";
+import { isCliEntry } from "./cli-entry.mjs";
 import { CLOCK_SKEW_MS, COMMAND_TIMEOUT_MS, METADATA_TIMEOUT_MS, ResticFailure,
   readSnapshots, readSummary, resticEnvironment, resticOptions, runRestic, SNAPSHOT_ID, verifyLocalBackup,
   snapshotSourceTime, sourceFreshness, sourceTag } from "./restic-common.mjs";
@@ -78,7 +77,7 @@ export async function performRestic(options, environment, {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (await isCliEntry(import.meta.url)) {
   const interruption = interruptController();
   try {
     const result = await performRestic(resticOptions(process.argv.slice(2)), process.env, { signal: interruption.signal });

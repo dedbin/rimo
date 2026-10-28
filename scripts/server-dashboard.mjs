@@ -3,8 +3,9 @@ import { randomUUID } from "node:crypto";
 import { readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { isIP } from "node:net";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { parseArgs, promisify } from "node:util";
+
+import { isCliEntry } from "./cli-entry.mjs";
 
 class DashboardError extends Error {
   constructor(code) { super(code); this.code = code; }
@@ -143,7 +144,7 @@ export async function main(args = process.argv.slice(2), dependencies = {}) {
   catch (error) { throw error instanceof DashboardError ? error : new DashboardError("DASHBOARD_OPERATION_FAILED"); }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (await isCliEntry(import.meta.url)) {
   main().catch((error) => {
     process.stderr.write(`${JSON.stringify({ status: "failed", code: error instanceof DashboardError ? error.code : "DASHBOARD_OPERATION_FAILED" })}\n`);
     process.exitCode = 1;

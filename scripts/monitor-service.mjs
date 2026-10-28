@@ -1,6 +1,4 @@
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-
+import { isCliEntry } from "./cli-entry.mjs";
 import { aggregate, APP_STATUS_SCRIPT, createDockerRunner, critical, exitCode, INSPECT_FORMAT, LIMITS, MonitorError,
   monitorEnvironment, monitorOptions, parseAppStatus, parseCollaborationLogs, parseContainers, parseFilesystems,
   parseIds, parsePdfHealth, PDF_HEALTH_SCRIPT, PG_FILESYSTEM_SCRIPT, SERVICES, successful } from "./monitor-common.mjs";
@@ -93,7 +91,7 @@ export async function main(args = process.argv.slice(2)) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
+if (await isCliEntry(import.meta.url)) {
   process.stdout.on("error", () => { process.exitCode = 2; });
   await main();
 }
