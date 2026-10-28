@@ -102,7 +102,7 @@ describe.skipIf(!databaseUrl)("PostgreSQL auth and board integration", () => {
     await rm(resolvedStorage, { recursive: true, force: true });
   });
 
-  it("migrations are repeatable and public owner registration is disabled", async () => {
+  it("migrations are repeatable and the default raw auth instance cannot bypass registration quotas", async () => {
     expect(await runMigrations()).toEqual([]);
     const response = await getAuth().handler(request("/api/auth/sign-up/email", {
       name: "Unexpected", email: `blocked-${testId}@example.test`, password,

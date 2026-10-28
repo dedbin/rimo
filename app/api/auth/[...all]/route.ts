@@ -1,7 +1,7 @@
 import { toNextJsHandler } from "better-auth/next-js";
 
-import { getAuth } from "@/server/auth";
-import { handleApi, readRequestBuffer } from "@/server/http";
+import { getAuth, registerOwnerAccount } from "@/server/auth";
+import { assertSameOrigin, handleApi, readRequestBuffer } from "@/server/http";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,6 +19,10 @@ export async function POST(request: Request): Promise<Response> {
       body: new Uint8Array(bytes),
       signal: request.signal,
     });
+    if (new URL(request.url).pathname.replace(/\/+$/, "") === "/api/auth/sign-up/email") {
+      assertSameOrigin(bounded);
+      return registerOwnerAccount(bounded);
+    }
     return toNextJsHandler(getAuth()).POST(bounded);
   });
 }

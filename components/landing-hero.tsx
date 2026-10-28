@@ -3,7 +3,7 @@
 import React from "react";
 import TypeWriterComponent from "typewriter-effect";
 import { Button } from "./ui/button";
-import { SignInButton } from "@/components/auth/sign-in-button";
+import { AuthButton } from "@/components/auth/auth-button";
 import { authClient } from "@/lib/auth-client";
 import Link from "next/link";
 import { usePointerGlow } from "@/hooks/use-pointer-glow";
@@ -44,7 +44,7 @@ export const RimoHero = () => {
               </Button>
             </Link>
           ) : (
-            <SignInButton>
+            <AuthButton initialMode="sign-up">
               <Button
                 variant="default"
                 size="lg"
@@ -53,7 +53,7 @@ export const RimoHero = () => {
               >
                 <span>Попробовать бесплатно</span>
               </Button>
-            </SignInButton>
+            </AuthButton>
           )}
         </div>
         <div className="text-zinc-400 text-xs md:text-sm font-normal">

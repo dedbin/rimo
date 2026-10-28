@@ -5,7 +5,7 @@ import Image from "next/image";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import React from "react";
-import { SignInButton } from "@/components/auth/sign-in-button";
+import { AuthButton } from "@/components/auth/auth-button";
 import { UserButton } from "@/components/auth/user-button";
 import { authClient } from "@/lib/auth-client";
 import { usePointerGlow } from "@/hooks/use-pointer-glow";
@@ -28,7 +28,7 @@ export const RimoNavbar = () => {
         </div>
         <h1 className={cn("text-2xl font-bold text-white")}>Rimo</h1>
       </Link>
-      <div className="flex items-center gap-x-4">
+      <div className="flex items-center gap-x-2 sm:gap-x-4">
         {isSignedIn ? (
           <>
             <Link href="/">
@@ -37,14 +37,21 @@ export const RimoNavbar = () => {
             <UserButton />
           </>
         ) : (
-          <SignInButton>
+          <>
+          <AuthButton initialMode="sign-up">
+            <Button variant="ghost" className="rounded-full px-3 text-white hover:bg-white/10 hover:text-white">
+              Регистрация
+            </Button>
+          </AuthButton>
+          <AuthButton>
             <Button
               data-glow
-              className="rounded-full px-8 py-3 text-lg"
+              className="rounded-full px-4 py-3 text-sm sm:px-8 sm:text-lg"
             >
               <span>Войти</span>
             </Button>
-          </SignInButton>
+          </AuthButton>
+          </>
         )}
       </div>
     </nav>

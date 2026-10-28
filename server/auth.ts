@@ -6,6 +6,7 @@ import { anonymous } from "better-auth/plugins";
 import { getServerConfig } from "./config";
 import { getPool } from "./db";
 import { validatedProfile } from "./auth-profile";
+import { HttpError } from "./http-error";
 import { withOwnerQuota } from "./quotas";
 
 function createAuth(allowSignUp: boolean) {
@@ -40,6 +41,7 @@ function createAuth(allowSignUp: boolean) {
 }
 
 let authInstance: ReturnType<typeof createAuth> | undefined;
+let registrationInstance: ReturnType<typeof createAuth> | undefined;
 
 export function getAuth(options: { allowSignUp?: boolean } = {}) {
   if (options.allowSignUp) return createAuth(true);
@@ -49,6 +51,21 @@ export function getAuth(options: { allowSignUp?: boolean } = {}) {
 
 export async function createOwnerAccount(input: { email: string; password: string; name: string }) {
   return withOwnerQuota(() => createAuth(true).api.signUpEmail({ body: input }));
+}
+
+export async function registerOwnerAccount(request: Request): Promise<Response> {
+  const auth = registrationInstance ??= createAuth(true);
+  try {
+    return await withOwnerQuota(() => auth.handler(request));
+  } catch (error) {
+    if (error instanceof HttpError && error.code === "OWNER_LIMIT_REACHED") {
+      return Response.json({ code: error.code, message: error.message }, {
+        status: error.status,
+        headers: { "Cache-Control": "no-store" },
+      });
+    }
+    throw error;
+  }
 }
 
 export type AuthSession = NonNullable<
