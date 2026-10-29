@@ -7,7 +7,7 @@ import { DEFAULT_LIMITS } from "../../collaboration-server/types";
 import { MAX_PDF_ASSET_BYTES, MAX_PDF_IMAGE_PIXELS, MAX_PDF_LAYERS } from "../../export-worker/contract";
 import type { PdfAsset, PdfJob, PdfLayer, PdfPage, PdfRequest } from "../../export-worker/contract";
 import { parsePdfJob } from "../../export-worker/validation";
-import { boundsForLayers, FRAME_ROOT, intersectsBounds, parseFrame, visualBounds } from "../../lib/board/frames";
+import { boundsForLayers, FRAME_ROOT, layerIntersectsBounds, parseFrame } from "../../lib/board/frames";
 import { normalizeLayerOrder, parseLayer } from "../../lib/board/model";
 import { getRichTextJson } from "../../lib/board/rich-text/document";
 import { LayerType } from "../../types/board-canvas";
@@ -32,7 +32,7 @@ function selectedPages(document: Y.Doc, request: PdfRequest, layers: ReadonlyMap
     const raw = document.getMap(FRAME_ROOT).get(page.source.frameId);
     const frame = raw instanceof Y.Map ? parseFrame(raw.toJSON()) : null;
     if (!frame) throw new HttpError(409, "PDF_FRAME_CHANGED", "Фрейм изменился. Дождитесь сохранения и создайте предпросмотр заново.");
-    const layerIds = order.filter((id) => intersectsBounds(visualBounds(layers.get(id)!), frame));
+    const layerIds = order.filter((id) => layerIntersectsBounds(layers.get(id)!, frame));
     if (!layerIds.length) throw new HttpError(400, "PDF_EMPTY_PAGE", `Фрейм «${frame.name}» пуст.`);
     return { format: page.format, orientation: page.orientation, name: frame.name,
       bounds: { x: frame.x, y: frame.y, width: frame.width, height: frame.height }, layerIds };

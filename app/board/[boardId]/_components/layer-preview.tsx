@@ -1,6 +1,7 @@
 "use client";
 
 import { Layer, LayerType } from "@/types/board-canvas";
+import type { XYWH } from "@/types/board-canvas";
 import { useLayer } from "@/lib/collaboration/react";
 import { memo } from "react";
 import { Rectangle } from "./rectangle";
@@ -10,6 +11,7 @@ import { Sticker } from "./sticker";
 import { Path } from "./path";
 import { Image } from "./image";
 import { LinkPreview } from "./link-preview";
+import { Line } from "./line";
 import { rgbToCss } from "@/lib/utils";
 
 interface LayerPreviewProps {
@@ -17,15 +19,19 @@ interface LayerPreviewProps {
   onLayerPointerDown: (e: React.PointerEvent, id: string) => void;
   selectionColor?: string;
   layerOverride?: Layer;
+  viewport?: XYWH;
 }
 
 export const LayerPreview: React.FC<LayerPreviewProps> = memo(
-  ({ id, onLayerPointerDown, selectionColor, layerOverride }) => {
+  ({ id, onLayerPointerDown, selectionColor, layerOverride, viewport }) => {
     const storedLayer = useLayer(id);
     const layer = layerOverride ?? storedLayer;
     if (!layer) return null;
 
     switch (layer.type) {
+      case LayerType.Line:
+        return <Line id={id} layer={layer} onPointerDown={onLayerPointerDown}
+          selectionColor={selectionColor} viewport={viewport} />;
       case LayerType.Text:
         return (
           <Text

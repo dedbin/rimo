@@ -5,11 +5,13 @@ import { useBoardRuntime } from "@/lib/collaboration/react";
 import { useEvent } from "@/lib/collaboration/use-event";
 import { getBounds, isInsideBounds } from "@/lib/board/geometry";
 import { createLayer } from "@/lib/board/model";
+import { createLine, distanceToLine, lineBounds, lineEndpoints, snapLineEnd } from "@/lib/board/line";
+import type { LineLayer } from "@/types/board-canvas";
 import { doesPointIntersectPath, isPointNearBoundingBox, makePathLayer, pickLayersInBox, pointerEventToCanvasPoint, resizeBounds } from "@/lib/utils";
 import { BoardCanvasMode, BoardCanvasState, Camera, Color, LayerType, Point, side, XYWH } from "@/types/board-canvas";
 import { toast } from "sonner";
 
-interface PointerSample { clientX: number; clientY: number; pressure: number; buttons: number }
+interface PointerSample { clientX: number; clientY: number; pressure: number; buttons: number; shiftKey?: boolean }
 interface ActiveGesture {
   pointerId: number;
   origin: Point;
@@ -21,14 +23,17 @@ interface ActiveGesture {
   resize: XYWH | null;
   corner: side | null;
   screen: Point;
+  line: LineLayer | null;
+  initialLine: LineLayer | null;
 }
 export interface GesturePreview {
   ids: readonly string[];
   delta: Point;
   resize: XYWH | null;
   erased: ReadonlySet<string>;
+  line: LineLayer | null;
 }
-const emptyPreview = (): GesturePreview => ({ ids: [], delta: { x: 0, y: 0 }, resize: null, erased: new Set() });
+const emptyPreview = (): GesturePreview => ({ ids: [], delta: { x: 0, y: 0 }, resize: null, erased: new Set(), line: null });
 
 interface Options {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -56,7 +61,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   ), [cameraRef, svgRef]);
 
   const publishPreview = (gesture: ActiveGesture) => {
-    setPreview({ ids: gesture.ids, delta: { ...gesture.delta }, resize: gesture.resize, erased: new Set(gesture.erase) });
+    setPreview({ ids: gesture.ids, delta: { ...gesture.delta }, resize: gesture.resize, erased: new Set(gesture.erase), line: gesture.line });
   };
 
   const processMove = (sample: PointerSample) => {
@@ -64,7 +69,20 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     const point = toPoint(sample);
     const gesture = active.current;
     const mode = state.current.mode;
-    if (gesture && mode === BoardCanvasMode.Panning) {
+    if (gesture && state.current.mode === BoardCanvasMode.Inserting && state.current.layerType === LayerType.Line) {
+      const end = sample.shiftKey ? snapLineEnd(gesture.origin, point) : point;
+      gesture.line = createLine(gesture.origin, end, color, state.current.lineKind);
+      publishPreview(gesture);
+    } else if (gesture && state.current.mode === BoardCanvasMode.EditingLine && gesture.initialLine) {
+      const [start, end] = lineEndpoints(gesture.initialLine);
+      const editingStart = state.current.endpoint === "start";
+      const fixed = editingStart ? end : start;
+      const moving = sample.shiftKey ? snapLineEnd(fixed, point) : point;
+      if (Math.hypot(moving.x - fixed.x, moving.y - fixed.y) >= 0.001) {
+        gesture.line = { ...gesture.initialLine, ...lineBounds(editingStart ? moving : start, editingStart ? end : moving) };
+        publishPreview(gesture);
+      }
+    } else if (gesture && mode === BoardCanvasMode.Panning) {
       const current = cameraRef.current!;
       updateCamera({ ...current, x: current.x + sample.clientX - gesture.screen.x,
         y: current.y + sample.clientY - gesture.screen.y });
@@ -92,7 +110,8 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     } else if (gesture && mode === BoardCanvasMode.Eraser && runtime.board.canEdit) {
       for (const [id, layer] of runtime.board.getSnapshot().layers) {
         if (gesture.erase.has(id)) continue;
-        const hit = layer.type === LayerType.Path
+        const hit = layer.type === LayerType.Line ? distanceToLine(point, layer) <= 12 / cameraRef.current!.scale + layer.strokeWidth / 2
+          : layer.type === LayerType.Path
           ? doesPointIntersectPath(point, layer)
           : isPointNearBoundingBox(point, layer);
         if (hit) gesture.erase.add(id);
@@ -141,7 +160,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     const point = toPoint(event);
     active.current = { pointerId: event.pointerId, origin: point, ids, delta: { x: 0, y: 0 },
       draft: [[point.x, point.y, event.pressure || 0.5]], erase: new Set(), initialBounds: bounds,
-      resize: null, corner, screen: { x: event.clientX, y: event.clientY } };
+      resize: null, corner, screen: { x: event.clientX, y: event.clientY }, line: null, initialLine: null };
     if (mode === BoardCanvasMode.Panning) {
       setCanvasState({ mode, origin: point, current: point, screenX: event.clientX, screenY: event.clientY,
         previousState: state.current });
@@ -189,6 +208,19 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     if (runtime.board.canEdit) begin(event, [...runtime.getSelf().presence.selection], BoardCanvasMode.Resizing, initial, corner);
   });
 
+  const onLineEndpointPointerDown = useEvent((id: string, endpoint: "start" | "end", event: PointerEvent) => {
+    if (state.current.mode === BoardCanvasMode.Inserting || state.current.mode === BoardCanvasMode.Pencil ||
+      state.current.mode === BoardCanvasMode.Eraser) return;
+    const layer = runtime.board.getLayer(id);
+    if (!runtime.board.canEdit || layer?.type !== LayerType.Line || event.button !== 0) return;
+    begin(event, [id], BoardCanvasMode.EditingLine);
+    if (!active.current) return;
+    active.current.initialLine = layer;
+    active.current.line = layer;
+    setCanvasState({ mode: BoardCanvasMode.EditingLine, id, endpoint });
+    publishPreview(active.current);
+  });
+
   const onPointerMove = (event: PointerEvent<SVGSVGElement>) => {
     const gesture = active.current;
     const svg = svgRef.current;
@@ -198,7 +230,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
         svg.setPointerCapture(event.pointerId);
       }
     }
-    latest.current = { clientX: event.clientX, clientY: event.clientY, pressure: event.pressure, buttons: event.buttons };
+    latest.current = { clientX: event.clientX, clientY: event.clientY, pressure: event.pressure, buttons: event.buttons, shiftKey: event.shiftKey };
     if (frame.current !== null) return;
     frame.current = requestAnimationFrame(() => {
       frame.current = null;
@@ -217,16 +249,28 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     try {
       if (runtime.board.canEdit) {
         if (current.mode === BoardCanvasMode.Translating) runtime.board.translate(gesture.ids, gesture.delta);
+        else if (current.mode === BoardCanvasMode.EditingLine && gesture.line) {
+          const { x, y, width, height, start, end } = gesture.line;
+          runtime.board.update([current.id], { x, y, width, height, start, end });
+        }
         else if (current.mode === BoardCanvasMode.Resizing && gesture.resize) runtime.board.update(gesture.ids, { ...gesture.resize });
         else if (current.mode === BoardCanvasMode.Eraser) runtime.board.remove([...gesture.erase]);
         else if (current.mode === BoardCanvasMode.Pencil && gesture.draft.length > 1) {
           runtime.board.insert([makePathLayer(gesture.draft, color, penSize)]);
+        } else if (current.mode === BoardCanvasMode.Inserting && current.layerType === LayerType.Line) {
+          if (gesture.line) {
+            const [start, end] = lineEndpoints(gesture.line);
+            if (Math.hypot(end.x - start.x, end.y - start.y) * cameraRef.current!.scale >= 3) {
+              runtime.updatePresence({ selection: runtime.board.insert([gesture.line]) });
+            }
+          }
         } else if (current.mode === BoardCanvasMode.Inserting && current.layerType !== LayerType.Image && current.layerType !== LayerType.LinkPreview) {
           runtime.updatePresence({ selection: runtime.board.insert([createLayer(current.layerType, toPoint(event), color)]) });
         }
       }
     } catch (error) { toast.error(error instanceof Error ? error.message : "Не удалось изменить доску"); }
-    const next: BoardCanvasState = current.mode === BoardCanvasMode.Pencil || current.mode === BoardCanvasMode.Eraser
+    const next: BoardCanvasState = current.mode === BoardCanvasMode.Inserting && current.layerType === LayerType.Line ? current
+      : current.mode === BoardCanvasMode.Pencil || current.mode === BoardCanvasMode.Eraser
       ? { mode: current.mode } : current.mode === BoardCanvasMode.Panning && current.previousState
         ? current.previousState : { mode: BoardCanvasMode.None };
     cancel();
@@ -249,7 +293,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   useEffect(() => () => { if (frame.current !== null) cancelAnimationFrame(frame.current); }, []);
 
   return { canvasState, setCanvasState, preview, cancel, onPointerDown, onLayerPointerDown,
-    onResizeHandlePointerDown, onPointerMove, onPointerUp, onPointerCancel: cancel,
+    onResizeHandlePointerDown, onLineEndpointPointerDown, onPointerMove, onPointerUp, onPointerCancel: cancel,
     onLostPointerCapture: () => { if (active.current) cancel(); },
     onPointerLeave: () => {
       const gesture = active.current;

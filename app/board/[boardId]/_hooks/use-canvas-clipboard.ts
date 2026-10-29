@@ -153,6 +153,7 @@ export function useCanvasClipboard({ color, cancel, setCanvasState }: Options) {
           KeyS: () => setCanvasState({ mode: BoardCanvasMode.Inserting, layerType: LayerType.Sticker }),
           KeyR: () => setCanvasState({ mode: BoardCanvasMode.Inserting, layerType: LayerType.Rectangle }),
           KeyO: () => setCanvasState({ mode: BoardCanvasMode.Inserting, layerType: LayerType.Ellipse }),
+          KeyL: () => setCanvasState({ mode: BoardCanvasMode.Inserting, layerType: LayerType.Line, lineKind: "segment" }),
         };
         const command = commands[event.code];
         if (command) { event.preventDefault(); command(); }

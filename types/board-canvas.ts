@@ -38,7 +38,22 @@ export enum LayerType {
   Path,
   Image,
   LinkPreview = "linkPreview",
+  Line = 6,
 }
+
+export type LineKind = "segment" | "line";
+
+export type LineLayer = XYWH & {
+    type: LayerType.Line;
+    fill: Color;
+    strokeWidth: number;
+    start: Point;
+    end: Point;
+    lineKind: LineKind;
+    startArrow: boolean;
+    endArrow: boolean;
+    value?: string;
+};
 
 export type RectangleLayer = {
     type: LayerType.Rectangle;
@@ -127,7 +142,7 @@ export type LinkPreviewLayer = {
   fill?: Color;
 };
 
-export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer | LinkPreviewLayer
+export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer | LinkPreviewLayer | LineLayer
 
 export enum BoardCanvasMode {
     None,
@@ -139,6 +154,7 @@ export enum BoardCanvasMode {
     Pencil,
     Panning,
     Eraser,
+    EditingLine,
 }
 
 type BaseCanvasState = { previousState?: BoardCanvasState  };
@@ -148,11 +164,12 @@ export type BoardCanvasState =
   | ({ mode: BoardCanvasMode.Pressing; origin: Point } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.SelectionNet; origin: Point; current?: Point } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Translating; current: Point } & BaseCanvasState)
-  | ({ mode: BoardCanvasMode.Inserting; layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Inserting; layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview | LayerType.Line; lineKind?: LineKind } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Resizing; initial: XYWH; corner: side } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Pencil } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Panning; origin: Point; current: Point; screenX: number; screenY: number } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Eraser } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.EditingLine; id: string; endpoint: "start" | "end" } & BaseCanvasState)
 
 
 

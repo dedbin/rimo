@@ -23,6 +23,7 @@ import {
   DropdownMenuContent,
 } from "@/components/ui/dropdown-menu";
 import { PenSizePicker } from "./pen-size-picker";
+import { LineTool } from "./line-tool";
 import {
   BoardCanvasMode,
   BoardCanvasState,
@@ -187,6 +188,8 @@ export const BoardToolbar = ({
             canvasState.layerType === LayerType.Ellipse
           }
         />
+
+        <LineTool canvasState={canvasState} setCanvasState={setCanvasState} />
 
         <ToolButton
           label={t("toolbar.image")}

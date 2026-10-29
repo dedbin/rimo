@@ -23,6 +23,7 @@ import { ZoomControls } from "./zoom-controls";
 import { CanvasLoading } from "./canvas-loading";
 import { SaveStatus } from "./save-status";
 import { BoardTextProvider } from "@/components/board-text/provider";
+import { Line } from "./line";
 
 export { createLayer } from "@/lib/board/model";
 
@@ -48,6 +49,8 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
   const { insertImage } = useCanvasClipboard({ color: lastUsedColor, cancel: gestures.cancel, setCanvasState: gestures.setCanvasState });
   const { canvasState, preview } = gestures;
   const canEdit = runtime.board.canEdit && connection.synced && !connection.error;
+  const visibleBounds = useMemo(() => ({ x: -camera.x / camera.scale, y: -camera.y / camera.scale,
+    width: viewport.width / camera.scale, height: viewport.height / camera.scale }), [camera, viewport]);
 
   useEffect(() => {
     const resize = () => setViewport({ width: svgRef.current?.clientWidth ?? window.innerWidth,
@@ -87,6 +90,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     "--rimo-preview-y": `${sharedTranslation ? 0 : preview.delta.y}px`,
   };
   const selectionBounds = useMemo(() => {
+    if (preview.line && preview.ids.length) return preview.line;
     if (preview.resize) return preview.resize;
     if (!preview.ids.length) return null;
     const bounds = getBounds(preview.ids.map((id) => snapshot.layers.get(id)).filter((layer) => layer !== undefined));
@@ -103,7 +107,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
       selectedPenSize={lastUsedSize} onImageUpload={insertImage} onPenSizeChange={(size) => {
         setLastUsedSize(size); gestures.setCanvasState({ mode: BoardCanvasMode.Pencil });
       }} camera={camera} animateCameraTo={animateCameraTo} />}
-    {canEdit && preview.ids.length === 0 && (selectedLayer?.type === LayerType.Text || selectedLayer?.type === LayerType.Sticker
+    {canEdit && preview.ids.length === 0 && !preview.line && (selectedLayer?.type === LayerType.Text || selectedLayer?.type === LayerType.Sticker
       ? <TextSelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />
       : <SelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />)}
     <svg ref={svgRef} className="h-[100vh] w-[100vw]" aria-label="Холст доски"
@@ -120,9 +124,14 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
           transform={`translate(${sharedTranslation ? preview.delta.x : 0} ${sharedTranslation ? preview.delta.y : 0})`}>
           <CanvasLayers snapshot={snapshot} visibleIds={visibleIds} movingIds={movingIds} previewIds={preview.ids}
             erased={preview.erased.size ? preview.erased : null} resize={preview.resize} sharedTranslation={sharedTranslation}
+            viewport={visibleBounds} linePreview={preview.ids.length ? preview.line : null}
+            lineDelta={preview.ids.some((id) => snapshot.layers.get(id)?.type === LayerType.Line) ? preview.delta : undefined}
             remoteTransforms={remoteTransforms} selectionColors={selectionColors} onLayerPointerDown={gestures.onLayerPointerDown} />
         </g>
-        <SelectionBox onResizeHandlePointerDown={gestures.onResizeHandlePointerDown} boundsOverride={selectionBounds} />
+        {preview.line && !preview.ids.length && <Line id="line-draft" layer={preview.line} viewport={visibleBounds} />}
+        <SelectionBox onResizeHandlePointerDown={gestures.onResizeHandlePointerDown} boundsOverride={selectionBounds}
+          showLineHandles={![BoardCanvasMode.Inserting, BoardCanvasMode.Pencil, BoardCanvasMode.Eraser].includes(canvasState.mode)}
+          onLineEndpointPointerDown={gestures.onLineEndpointPointerDown} lineOverride={preview.ids.length ? preview.line : null} scale={camera.scale} />
         {canvasState.mode === BoardCanvasMode.SelectionNet && canvasState.current && <rect
           className="fill-blue-500/5 stroke-blue-500 stroke-1"
           x={Math.min(canvasState.origin.x, canvasState.current.x)} y={Math.min(canvasState.origin.y, canvasState.current.y)}

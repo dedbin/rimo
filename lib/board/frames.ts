@@ -1,5 +1,6 @@
 import { LayerType } from "../../types/board-canvas";
 import type { Layer, XYWH } from "../../types/board-canvas";
+import { clipLineToBounds } from "./line";
 
 export interface BoardFrame extends XYWH { readonly name: string }
 
@@ -34,8 +35,18 @@ export function normalizeFrameOrder(ids: readonly string[], frames: ReadonlyMap<
 }
 
 export function visualBounds(layer: Layer): XYWH {
-  const padding = layer.type === LayerType.Path ? (layer.size ?? 16) : "strokeWidth" in layer ? (layer.strokeWidth ?? 0) / 2 : 0;
+  const padding = layer.type === LayerType.Path ? (layer.size ?? 16)
+    : layer.type === LayerType.Line && layer.lineKind === "segment" && (layer.startArrow || layer.endArrow)
+      ? Math.max(10, layer.strokeWidth * 4)
+      : "strokeWidth" in layer ? (layer.strokeWidth ?? 0) / 2 : 0;
   return { x: layer.x - padding, y: layer.y - padding, width: Math.max(1, layer.width) + padding * 2, height: Math.max(1, layer.height) + padding * 2 };
+}
+
+export function layerIntersectsBounds(layer: Layer, bounds: XYWH): boolean {
+  if (layer.type !== LayerType.Line || layer.lineKind !== "line") return intersectsBounds(visualBounds(layer), bounds);
+  const padding = layer.strokeWidth / 2;
+  return clipLineToBounds(layer, { x: bounds.x - padding, y: bounds.y - padding,
+    width: bounds.width + padding * 2, height: bounds.height + padding * 2 }) !== null;
 }
 
 export function boundsForLayers(layers: readonly Layer[], padding = 12): XYWH | null {

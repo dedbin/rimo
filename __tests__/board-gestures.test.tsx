@@ -7,7 +7,9 @@ import type { BoardRuntime } from "@/lib/collaboration/runtime";
 import { emptyPresence } from "@/lib/collaboration/presence";
 import type { BoardPresence } from "@/lib/collaboration/presence";
 import { createLayer } from "@/lib/board/model";
+import { createLine, lineEndpoints } from "@/lib/board/line";
 import { BoardCanvasMode, LayerType } from "@/types/board-canvas";
+import type { LineLayer } from "@/types/board-canvas";
 import { useCanvasGestures } from "@/app/board/[boardId]/_hooks/use-canvas-gestures";
 
 let board: BoardDocument;
@@ -16,9 +18,9 @@ let svg: SVGSVGElement;
 let runtime: BoardRuntime;
 const stateListeners = new Set<() => void>();
 
-function pointer(x: number, y: number): PointerEvent<SVGSVGElement> {
+function pointer(x: number, y: number, shiftKey = false): PointerEvent<SVGSVGElement> {
   return { clientX: x, clientY: y, pressure: 0.5, buttons: 1, button: 0, pointerId: 1,
-    currentTarget: svg, preventDefault: vi.fn(), stopPropagation: vi.fn(), shiftKey: false } as unknown as PointerEvent<SVGSVGElement>;
+    currentTarget: svg, preventDefault: vi.fn(), stopPropagation: vi.fn(), shiftKey } as unknown as PointerEvent<SVGSVGElement>;
 }
 
 function setup() {
@@ -50,6 +52,74 @@ beforeEach(() => {
 afterEach(() => { cleanup(); board.destroy(); vi.unstubAllGlobals(); });
 
 describe("canvas gesture lifecycle", () => {
+  it("draws the final Shift-constrained segment once and keeps the tool for a polygon", () => {
+    const { result } = setup();
+    const updates = vi.fn(); board.doc.on("update", updates);
+    act(() => result.current.setCanvasState({ mode: BoardCanvasMode.Inserting, layerType: LayerType.Line, lineKind: "segment" }));
+    act(() => result.current.onPointerDown(pointer(10, 20)));
+    act(() => result.current.onPointerMove(pointer(60, 30)));
+    expect(board.getSnapshot().layerIds).toEqual([]);
+    act(() => result.current.onPointerUp(pointer(110, 25, true)));
+    const [id] = board.getSnapshot().layerIds;
+    const [start, end] = lineEndpoints(board.getLayer(id) as LineLayer);
+    expect(start).toEqual({ x: 10, y: 20 });
+    expect(end.x).toBeGreaterThan(110);
+    expect(end.y).toBe(20);
+    expect(updates).toHaveBeenCalledTimes(1);
+    expect(result.current.canvasState).toMatchObject({ mode: BoardCanvasMode.Inserting, layerType: LayerType.Line, lineKind: "segment" });
+    act(() => board.undo());
+    expect(board.getSnapshot().layerIds).toEqual([]);
+    act(() => board.redo());
+    expect(board.getSnapshot().layerIds).toEqual([id]);
+  });
+
+  it("ignores line clicks and cancels a line draft without creating an object", () => {
+    const { result } = setup();
+    act(() => result.current.setCanvasState({ mode: BoardCanvasMode.Inserting, layerType: LayerType.Line, lineKind: "line" }));
+    act(() => result.current.onPointerDown(pointer(30, 40)));
+    act(() => result.current.onPointerUp(pointer(30, 40)));
+    expect(board.getSnapshot().layerIds).toEqual([]);
+    act(() => result.current.onPointerDown(pointer(30, 40)));
+    act(() => result.current.onPointerMove(pointer(300, 400)));
+    act(() => result.current.onPointerCancel());
+    act(() => result.current.onPointerUp(pointer(300, 400)));
+    expect(board.getSnapshot().layerIds).toEqual([]);
+    expect(result.current.preview.line).toBeNull();
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.None);
+  });
+
+  it("moves an endpoint through its opposite end without swapping arrow identity or clamping dimensions", () => {
+    const initial = { ...createLine({ x: 30, y: 40 }, { x: 130, y: 40 }, { r: 0, g: 0, b: 0 }), endArrow: true };
+    const [id] = board.insert([initial]);
+    const { result } = setup();
+    const updates = vi.fn(); board.doc.on("update", updates);
+    act(() => result.current.onLineEndpointPointerDown(id, "start", pointer(30, 40)));
+    act(() => result.current.onPointerMove(pointer(160, 60)));
+    expect(board.getLayer(id)).toEqual(initial);
+    act(() => result.current.onPointerUp(pointer(200, 80)));
+    const layer = board.getLayer(id) as LineLayer;
+    expect(lineEndpoints(layer)).toEqual([{ x: 200, y: 80 }, { x: 130, y: 40 }]);
+    expect(layer).toMatchObject({ width: 70, height: 40, startArrow: false, endArrow: true });
+    expect(updates).toHaveBeenCalledTimes(1);
+    act(() => board.undo());
+    expect(board.getLayer(id)).toEqual(initial);
+  });
+
+  it("erases an infinite line beyond its anchors without erasing empty space inside a segment hitbox", () => {
+    const [infinite, diagonal] = board.insert([
+      createLine({ x: -1000, y: 200 }, { x: -900, y: 200 }, { r: 0, g: 0, b: 0 }, "line"),
+      createLine({ x: 0, y: 0 }, { x: 100, y: 100 }, { r: 0, g: 0, b: 0 }),
+    ]);
+    const { result } = setup();
+    act(() => result.current.setCanvasState({ mode: BoardCanvasMode.Eraser }));
+    act(() => result.current.onPointerDown(pointer(300, 200)));
+    act(() => result.current.onPointerUp(pointer(300, 200)));
+    expect(board.getLayer(infinite)).toBeUndefined();
+    act(() => result.current.onPointerDown(pointer(0, 100)));
+    act(() => result.current.onPointerUp(pointer(0, 100)));
+    expect(board.getLayer(diagonal)).toBeDefined();
+  });
+
   it("selects a partially touched hitbox at pointer-up even before the queued frame runs", () => {
     const [id] = board.insert([createLayer(LayerType.Rectangle, { x: 100, y: 100 }, { r: 0, g: 0, b: 0 })]);
     const { result } = setup();
