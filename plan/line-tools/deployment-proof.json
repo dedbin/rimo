@@ -1,0 +1,42 @@
+{
+  "revision": "c121cbad5597f0522486d0bc4b98f85599d7338c",
+  "tag": "server-c121cbad5597",
+  "appImage": "sha256:8c4d8f4d0287cdad7e3c7b5a1231e9f1d094a8fe4bf3042765ad6c6335caaab3",
+  "pdfImage": "sha256:932e51eb2ebfd4b629449f98bf355b96cd53576bc46180b60ed14b8569ad904b",
+  "activatedAt": "2026-10-29T12:39:47.754600+00:00",
+  "acceptanceCompletedAt": "2026-10-29T12:43:29.298141+00:00",
+  "backup": {
+    "snapshotID": "b45c5d472e042e5e376f7a6aaa856e271db09e8e2d815314812ebe439657afcc",
+    "createdAt": "2026-10-29T12:37:32.071Z",
+    "sourceCreatedAt": "2026-10-29T12:37:26.474Z",
+    "encrypted": true,
+    "dataVerified": true,
+    "offsiteVerified": false
+  },
+  "namedVolumesPreserved": true,
+  "databaseFingerprintsMatch": true,
+  "originalDataAfterAcceptanceMatch": true,
+  "temporaryDataCleanup": {
+    "temporaryAccountDeleted": true,
+    "temporaryBoardsDeleted": true,
+    "temporaryGuestsDeleted": 1
+  },
+  "publicHealth": 200,
+  "mailConnectionVerified": true,
+  "checks": [
+    "hint-removed",
+    "connected-triangle",
+    "shift-alignment",
+    "endpoint-crossing",
+    "arrows-color-width",
+    "undo-redo",
+    "guest-sync",
+    "durable-reload",
+    "infinite-pan-selection",
+    "escape",
+    "production-vector-pdf"
+  ],
+  "legacyBrowserScenarios": 2,
+  "ci": "https://github.com/dedbin/rimo/actions/runs/40873887963",
+  "pullRequest": "https://github.com/dedbin/rimo/pull/13"
+}
