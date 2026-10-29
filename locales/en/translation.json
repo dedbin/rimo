@@ -111,6 +111,19 @@
     "zoomIn": "Zoom In",
     "zoomOut": "Zoom Out"
   },
+  "lineTools": {
+    "label": "Lines",
+    "segment": "Segment",
+    "line": "Line",
+    "color": "Line color",
+    "thickness": "Thickness",
+    "widthValue": "{{width}} px",
+    "mixed": "Mixed values",
+    "type": "Line type",
+    "startArrow": "Arrow at start",
+    "endArrow": "Arrow at end",
+    "arrowsHint": "Arrows are available for segments"
+  },
   "canvas":{
     "max-layers-reached": "Maximum layers reached"
   },

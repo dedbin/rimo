@@ -7,6 +7,7 @@ import { useBoardRuntime, useBoardSnapshot, useSelection } from "@/lib/collabora
 import { isShape } from "@/lib/board/shape-style";
 import { ColorPicker } from "./color-picker";
 import { ShapeColorControls } from "./shape-color-controls";
+import { LineStyleControls } from "./line-style-controls";
 import { PaintPicker } from "./paint-picker";
 import { samePaint } from "@/lib/board/shape-style";
 import { useSelectionToolbarPosition } from "../_hooks/use-selection-toolbar-position";
@@ -31,6 +32,7 @@ export const SelectionTools = memo(
     const { ref, position } = useSelectionToolbarPosition(bounds, camera);
     const deleteLayers = useDeleteLayers();
     const hasShapes = selection.some((id) => isShape(snapshot.layers.get(id)));
+    const hasLines = selection.some((id) => snapshot.layers.get(id)?.type === LayerType.Line);
     const colorIds = selection.filter((id) => {
       const layer = snapshot.layers.get(id);
       return layer?.type === LayerType.Text || layer?.type === LayerType.Sticker || layer?.type === LayerType.Path;
@@ -63,7 +65,8 @@ export const SelectionTools = memo(
         style={position}
       >
         {hasShapes && <ShapeColorControls setLastUsedColor={setLastUsedColor} />}
-        {colors.length > 0 && (hasShapes
+        {hasLines && <LineStyleControls setLastUsedColor={setLastUsedColor} />}
+        {colors.length > 0 && (hasShapes || hasLines
           ? <PaintPicker label={t("selectionTools.color")} value={colors[0]} mixed={colors.some((color) => !samePaint(color, colors[0]))}
               onChange={(color) => { if (color) setFill(color); }} />
           : <ColorPicker onChange={setFill} />)}

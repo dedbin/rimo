@@ -4,10 +4,16 @@ import { memo, PointerEvent } from "react";
 import { useActiveSelectionArea } from "@/hooks/use-selection-bounds";
 import { LayerType, side, XYWH } from "@/types/board-canvas";
 import { useBoardRuntime, useLayer, useSelection } from "@/lib/collaboration/react";
+import { lineEndpoints } from "@/lib/board/line";
+import type { LineLayer } from "@/types/board-canvas";
 
 interface SelectionBoxProps {
   onResizeHandlePointerDown: (corner: side, initialBounds: XYWH, event: PointerEvent) => void;
   boundsOverride?: XYWH | null;
+  lineOverride?: LineLayer | null;
+  scale?: number;
+  showLineHandles?: boolean;
+  onLineEndpointPointerDown?: (id: string, endpoint: "start" | "end", event: PointerEvent) => void;
 }
 
 const HANDLE_SIZE = 8;
@@ -22,13 +28,27 @@ const handles = [
   { corner: side.left, x: 0, y: 0.5, cursor: "ew-resize" },
 ];
 
-export const SelectionBox = memo(({ onResizeHandlePointerDown, boundsOverride }: SelectionBoxProps) => {
+export const SelectionBox = memo(({ onResizeHandlePointerDown, boundsOverride, lineOverride, scale = 1, showLineHandles = true, onLineEndpointPointerDown }: SelectionBoxProps) => {
   const { board } = useBoardRuntime();
   const selection = useSelection();
   const layer = useLayer(selection.length === 1 ? selection[0] : "");
   const storedBounds = useActiveSelectionArea();
   const bounds = boundsOverride ?? storedBounds;
   if (!bounds) return null;
+  if (layer?.type === LayerType.Line) {
+    if (!showLineHandles) return null;
+    const displayed = lineOverride ?? { ...layer, ...bounds };
+    const endpoints = lineEndpoints(displayed);
+    return board.canEdit ? <>{endpoints.map((point, index) => {
+      const endpoint = index === 0 ? "start" : "end";
+      return <circle key={endpoint} data-line-handle={endpoint} aria-label={index === 0 ? "Начало линии" : "Конец линии"}
+        cx={point.x} cy={point.y} r={5 / scale} fill="white" stroke="#3b82f6" strokeWidth={1.5 / scale}
+        style={{ cursor: "crosshair" }} onPointerDown={(event) => {
+          event.stopPropagation();
+          onLineEndpointPointerDown?.(selection[0], endpoint, event);
+        }} />;
+    })}</> : null;
+  }
   const showHandles = board.canEdit && selection.length === 1 && layer?.type !== LayerType.Path;
   return <>
     <rect className="fill-transparent stroke-green-500 stroke-3 pointer-events-none"

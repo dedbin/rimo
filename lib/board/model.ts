@@ -1,4 +1,6 @@
 import { Color, Layer, LayerType, Point } from "@/types/board-canvas";
+import type { LineLayer } from "@/types/board-canvas";
+import { lineEndpoints } from "./line";
 
 export const BOARD_SCHEMA_VERSION = 2;
 export const MAX_LAYERS = 10_000;
@@ -30,6 +32,19 @@ export function parseLayer(value: unknown): Layer | null {
   const text = typeof value.value === "string" ? { value: value.value } : {};
   const fill = isColor(value.fill) ? { ...value.fill } : { r: 0, g: 0, b: 0 };
   switch (type) {
+    case LayerType.Line: {
+      const anchor = (point: unknown): point is Point => isRecord(point) &&
+        [point.x, point.y].every((coordinate) => typeof coordinate === "number" && coordinate >= 0 && coordinate <= 1);
+      if (!anchor(value.start) || !anchor(value.end) || !isColor(value.fill)) return null;
+      if (value.lineKind !== "segment" && value.lineKind !== "line") return null;
+      if (typeof value.startArrow !== "boolean" || typeof value.endArrow !== "boolean") return null;
+      if (!finite(value.strokeWidth) || value.strokeWidth < 1 || value.strokeWidth > 20) return null;
+      const layer: LineLayer = { ...base, ...text, type: LayerType.Line, fill, strokeWidth: value.strokeWidth,
+        start: { ...value.start }, end: { ...value.end }, lineKind: value.lineKind,
+        startArrow: value.startArrow, endArrow: value.endArrow };
+      const [start, end] = lineEndpoints(layer);
+      return Math.hypot(end.x - start.x, end.y - start.y) >= 0.001 ? layer : null;
+    }
     case LayerType.Rectangle:
     case LayerType.Ellipse:
       return { ...base, ...text, type, fill,

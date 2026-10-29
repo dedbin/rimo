@@ -2,8 +2,9 @@ import getStroke from "perfect-freehand";
 
 import { resolveBoardFont } from "../lib/board/fonts";
 import { getContrastingTextColor, rgbToCss } from "../lib/board/colors";
+import { clipLineToBounds, lineArrowPoints, lineEndpoints } from "../lib/board/line";
 import { LayerType } from "../types/board-canvas";
-import type { Layer } from "../types/board-canvas";
+import type { Layer, LineLayer } from "../types/board-canvas";
 import { MAX_PDF_HTML_BYTES, pageMetrics, PDF_CONTENT_POLICY, PDF_FORMATS, PdfJobError } from "./contract";
 import type { PdfJob, PdfLayer, PdfPage } from "./contract";
 import { escapeHtml, renderPdfRichText } from "./rich-text";
@@ -21,7 +22,25 @@ function pathData(points: number[][]): string {
   }).join(" ")} Z`;
 }
 
+function lineShape(layer: LineLayer, placement: Placement): string {
+  const { bounds, scale } = placement;
+  const padding = layer.strokeWidth / 2;
+  const points = layer.lineKind === "line" ? clipLineToBounds(layer, {
+    x: bounds.x - padding, y: bounds.y - padding,
+    width: bounds.width + padding * 2, height: bounds.height + padding * 2,
+  }) : lineEndpoints(layer);
+  if (!points) return "";
+  const [start, end] = points;
+  const color = rgbToCss(layer.fill);
+  const arrows = layer.lineKind === "segment" ? [
+    layer.startArrow ? `<polygon points="${lineArrowPoints(start, end, layer.strokeWidth)}" fill="${color}"/>` : "",
+    layer.endArrow ? `<polygon points="${lineArrowPoints(end, start, layer.strokeWidth)}" fill="${color}"/>` : "",
+  ].join("") : "";
+  return `<svg class="object vector" data-line-kind="${layer.lineKind}" style="left:0;top:0;width:${bounds.width * scale}px;height:${bounds.height * scale}px;" viewBox="${bounds.x} ${bounds.y} ${bounds.width} ${bounds.height}"><line x1="${start.x}" y1="${start.y}" x2="${end.x}" y2="${end.y}" stroke="${color}" stroke-width="${layer.strokeWidth}" stroke-linecap="round"/>${arrows}</svg>`;
+}
+
 function shape(layer: Layer, placement: Placement): string {
+  if (layer.type === LayerType.Line) return lineShape(layer, placement);
   const width = Math.max(1, layer.width);
   const height = Math.max(1, layer.height);
   if (layer.type === LayerType.Path) {

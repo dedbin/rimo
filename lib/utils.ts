@@ -1,6 +1,7 @@
 import { Camera, Color, Point, side, XYWH, Layer, LayerType, PathLayer } from "@/types/board-canvas"
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
+import { clipLineToBounds } from "./board/line";
 export { getContrastingTextColor, rgbToCss } from "./board/colors";
 
 const MIN_WIDTH  = 40;  
@@ -102,6 +103,9 @@ export function pickLayersInBox(
   return layerIds.filter((id) => {
     const layer = layerMap.get(id);
     if (!layer) return false;
+    if (layer.type === LayerType.Line && layer.lineKind === "line") {
+      return clipLineToBounds(layer, { x: box.left, y: box.top, width: box.right - box.left, height: box.bottom - box.top }) !== null;
+    }
 
     const layerLeft = layer.x;
     const layerRight = layer.x + layer.width;

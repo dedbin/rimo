@@ -1,4 +1,5 @@
-import { Camera, Layer, Point, XYWH } from "@/types/board-canvas";
+import { Camera, Layer, LayerType, Point, XYWH } from "@/types/board-canvas";
+import { clipLineToBounds } from "./line";
 
 export function getBounds(layers: readonly Layer[]): XYWH | null {
   if (!layers.length) return null;
@@ -24,6 +25,10 @@ export function intersectsViewport(layer: Layer, camera: Camera, viewport: { wid
   const margin = 200 / camera.scale;
   const left = -camera.x / camera.scale - margin;
   const top = -camera.y / camera.scale - margin;
+  if (layer.type === LayerType.Line && layer.lineKind === "line") {
+    return clipLineToBounds(layer, { x: left, y: top, width: viewport.width / camera.scale + margin * 2,
+      height: viewport.height / camera.scale + margin * 2 }) !== null;
+  }
   return layer.x + layer.width >= left && layer.y + layer.height >= top &&
     layer.x <= left + viewport.width / camera.scale + margin * 2 &&
     layer.y <= top + viewport.height / camera.scale + margin * 2;
