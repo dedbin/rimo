@@ -14,8 +14,9 @@ import { useSelectionToolbarPosition } from "../_hooks/use-selection-toolbar-pos
 import { useDeleteLayers } from "@/hooks/use-delete-layers";
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
-import { BringToFront, SendToBack, Trash2 } from "lucide-react";
+import { BringToFront, SendToBack, Trash2, SlidersHorizontal } from "lucide-react";
 import { useTranslation } from "@/hooks/use-translation";
+import { useGraphEditor } from "@/components/board-graph/provider";
 
 interface SelectionToolsProps {
   camera: Camera;
@@ -27,6 +28,7 @@ export const SelectionTools = memo(
     const runtime = useBoardRuntime();
     const snapshot = useBoardSnapshot();
     const selection = useSelection();
+    const graphEditor = useGraphEditor();
     const { t } = useTranslation();
     const bounds = useActiveSelectionArea();
     const { ref, position } = useSelectionToolbarPosition(bounds, camera);
@@ -64,6 +66,10 @@ export const SelectionTools = memo(
         className="absolute z-10 w-max max-w-[calc(100vw-16px)] rounded-xl border border-neutral-200 bg-white p-1.5 shadow-md flex flex-wrap items-center select-none"
         style={position}
       >
+        {selection.length === 1 && snapshot.layers.get(selection[0])?.type === LayerType.Graph &&
+          <Button variant="ghost" onClick={() => graphEditor.open(selection[0])} aria-label="Редактировать график">
+            <SlidersHorizontal className="mr-2 size-4" />Редактировать
+          </Button>}
         {hasShapes && <ShapeColorControls setLastUsedColor={setLastUsedColor} />}
         {hasLines && <LineStyleControls setLastUsedColor={setLastUsedColor} />}
         {colors.length > 0 && (hasShapes || hasLines

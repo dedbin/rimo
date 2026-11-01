@@ -12,7 +12,8 @@ import {
   ZoomIn, 
   ZoomOut,
   EraserIcon,
-  Crosshair
+  Crosshair,
+  ChartSpline
 } from "lucide-react";
 import { ToolButton } from "./tool-button";
 import { PenTool } from "./pen-tool";
@@ -168,6 +169,10 @@ export const BoardToolbar = ({
         />
 
         <LineTool canvasState={canvasState} setCanvasState={setCanvasState} />
+
+        <ToolButton label="График" icon={ChartSpline}
+          onClick={() => setCanvasState({ mode: BoardCanvasMode.Inserting, layerType: LayerType.Graph })}
+          isActive={canvasState.mode === BoardCanvasMode.Inserting && canvasState.layerType === LayerType.Graph} />
 
         <ToolButton
           label={t("toolbar.image")}

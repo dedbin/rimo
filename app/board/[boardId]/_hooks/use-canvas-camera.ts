@@ -57,6 +57,7 @@ export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>, onManua
     const svg = svgRef.current;
     if (!svg) return;
     const handleWheel = (event: WheelEvent) => {
+      if (event.target instanceof Element && event.target.closest('[data-graph-interaction="true"]')) return;
       event.preventDefault();
       const current = cameraRef.current;
       if (event.ctrlKey || event.metaKey) {

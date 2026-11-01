@@ -13,6 +13,7 @@ import { Image } from "./image";
 import { LinkPreview } from "./link-preview";
 import { Line } from "./line";
 import { rgbToCss } from "@/lib/utils";
+import { GraphBlock } from "@/components/board-graph/block";
 
 interface LayerPreviewProps {
   id: string;
@@ -29,6 +30,8 @@ export const LayerPreview: React.FC<LayerPreviewProps> = memo(
     if (!layer) return null;
 
     switch (layer.type) {
+      case LayerType.Graph:
+        return <GraphBlock id={id} layer={layer} onPointerDown={onLayerPointerDown} selectionColor={selectionColor} />;
       case LayerType.Line:
         return <Line id={id} layer={layer} onPointerDown={onLayerPointerDown}
           selectionColor={selectionColor} viewport={viewport} />;

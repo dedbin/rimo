@@ -29,7 +29,7 @@ interface BoardInfoProps {
 }
 
 const TabSeparator = () => {
-  return <div className="text-neutral-300 px-1.5">|</div>;
+  return <div className="hidden text-neutral-300 px-1.5 sm:block">|</div>;
 };
 
 export const BoardInfo = ({ boardId }: BoardInfoProps) => {
@@ -47,7 +47,7 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
   const data = result.data?.board ?? runtime.session.board;
 
   return (
-    <div className="absolute flex top-2 left-2 h-12 rounded-md px-1.5 items-center shadow-md bg-white p-4">
+    <div className="absolute top-2 left-2 z-10 flex h-12 w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] items-center rounded-md bg-white px-1.5 shadow-md sm:w-auto sm:max-w-[calc(100vw-12rem)]">
       <Hint label={t("boardInfo.goHome")} side="bottom" sideOffset={10}>
         <Button asChild variant="board" className="px-2">
           <Link href="/">
@@ -62,7 +62,7 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
               />
               <span
                 className={cn(
-                  "font-semibold text-xl ml-2 text-black",
+                  "hidden font-semibold text-xl ml-2 text-black sm:inline",
                   font.className
                 )}
               >
@@ -80,11 +80,12 @@ export const BoardInfo = ({ boardId }: BoardInfoProps) => {
       >
         <Button
           variant="board"
-          className="px-2 text-base font-normal"
+          className="min-w-0 flex-1 shrink px-2 text-sm font-normal sm:text-base"
+          title={data.title}
           disabled={role !== "owner"}
           onClick={() => handleOpen(data.id, data.title)}
         >
-          {data.title}
+          <span className="truncate">{data.title}</span>
         </Button>
       </Hint>
       <TabSeparator />
