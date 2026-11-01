@@ -36,6 +36,24 @@ async function expectNormalWriter(context: Awaited<ReturnType<typeof ingressFixt
 }
 
 describe("early SDK ingress over real WebSocket connections", () => {
+  it("rejects an excess native WebSocket upgrade with 503 and admits it after a slot is released", async () => {
+    const context = await ingressFixture(undefined, { maxConnections: 1 });
+    const first = context.provider(randomUUID());
+    await first.connect();
+    const excess = new WebSocket(`ws://127.0.0.1:${context.server.address.port}`, { headers: { Origin: ORIGIN } });
+    let httpStatus = 0;
+    excess.on("error", () => undefined);
+    excess.on("unexpected-response", (_request, response) => { httpStatus = response.statusCode ?? 0; response.resume(); });
+    try {
+      await waitFor(() => httpStatus !== 0);
+      expect(httpStatus).toBe(503);
+      expect(first.provider.isSynced).toBe(true);
+      first.websocketProvider.disconnect();
+      await waitFor(() => first.websocketProvider.status === "disconnected");
+      await expectNormalWriter(context);
+    } finally { excess.terminate(); }
+  });
+
   it("enforces the unchanged 32 MiB aggregate before authentication completes", async () => {
     const auth = ingressBarrier();
     let started = 0;

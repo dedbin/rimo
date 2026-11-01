@@ -1,4 +1,4 @@
-import { HocuspocusProvider } from "@hocuspocus/provider";
+import { HocuspocusProvider, WebSocketStatus } from "@hocuspocus/provider";
 import * as Y from "yjs";
 import { BoardRole, BoardSession } from "@/types/service";
 import { BOARD_SCHEMA_VERSION } from "@/lib/board/model";
@@ -7,6 +7,8 @@ import { configureOfflineSync } from "./offline-sync";
 import { BoardParticipant, BoardPresence, emptyPresence, parseParticipant } from "./presence";
 import { parseServerMessage } from "./protocol";
 import { decodePersistedSnapshot, matchesPersistedSnapshot } from "./save-state";
+import { CAPACITY_MESSAGES, parseCapacityRejection } from "./capacity";
+import type { CapacityRejection } from "./capacity";
 
 export type WriteRejection = "storage-limit" | "object-limit";
 
@@ -31,6 +33,7 @@ export interface ConnectionState {
   savedAt: string | null;
   pending: boolean;
   writeRejection: WriteRejection | null;
+  capacityRejection?: CapacityRejection | null;
 }
 
 export class BoardRuntime {
@@ -39,6 +42,7 @@ export class BoardRuntime {
   readonly provider: HocuspocusProvider;
   private state: ConnectionState = {
     connected: false, synced: false, saved: false, error: null, revision: 0, savedAt: null, pending: false, writeRejection: null,
+    capacityRejection: null,
   };
   private readonly stateListeners = new Set<() => void>();
   private readonly presenceListeners = new Set<() => void>();
@@ -49,6 +53,7 @@ export class BoardRuntime {
   private destroyed = false;
   private accessDenied = false;
   private effectiveRole: BoardRole | null = null;
+  private retryRequested = false;
 
   constructor(session: BoardSession) {
     this.session = session;
@@ -66,7 +71,7 @@ export class BoardRuntime {
         this.updateState({ connected: status === "connected", ...(status !== "connected" ? { synced: false } : {}) });
       },
       onSynced: ({ state }) => {
-        if (this.accessDenied || this.state.writeRejection) return;
+        if (this.accessDenied || this.state.writeRejection || this.state.capacityRejection) return;
         const schema = this.board.doc.getMap("meta").get("schemaVersion");
         if (state && schema !== BOARD_SCHEMA_VERSION) {
           this.updateState({ synced: false, error: "Версия документа не поддерживается. Обновите страницу." });
@@ -78,13 +83,15 @@ export class BoardRuntime {
           this.provider.sendStateless(JSON.stringify({ type: "persistence-status" }));
         }
       },
-      onAuthenticationFailed: () => {
+      onAuthenticationFailed: ({ reason }) => {
+        if (this.rejectCapacity(reason)) return;
         this.accessDenied = true;
         this.effectiveRole = null;
         this.updateState({ connected: false, synced: false });
       },
       onClose: ({ event }) => {
         this.effectiveRole = null;
+        if (this.rejectCapacity(event.reason)) return;
         if (event.code === 1008 || /access revoked|read.only|board removed|permission denied/i.test(event.reason)) this.accessDenied = true;
         const rejection = rejectedWrite(event.reason);
         if (!this.accessDenied && rejection && !this.state.writeRejection) {
@@ -98,6 +105,9 @@ export class BoardRuntime {
       onDisconnect: () => {
         this.effectiveRole = null;
         this.updateState({ connected: false, synced: false });
+        // The SDK updates transport.status before this callback. Let its close
+        // handler finish before a requested retry starts another connection.
+        if (this.retryRequested) queueMicrotask(() => this.startCapacityRetry());
       },
       onStateless: ({ payload }) => this.handleServerMessage(payload),
     });
@@ -119,10 +129,39 @@ export class BoardRuntime {
     return () => this.presenceListeners.delete(listener);
   };
 
+  retryConnection = (): void => {
+    if (this.destroyed || this.accessDenied || this.state.writeRejection || !this.state.capacityRejection) return;
+    this.retryRequested = true;
+    this.startCapacityRetry();
+  };
+
+  private startCapacityRetry(): void {
+    if (!this.retryRequested || this.destroyed || this.accessDenied || this.state.writeRejection) return;
+    if (this.provider.configuration.websocketProvider.status === WebSocketStatus.Connected) return;
+    this.retryRequested = false;
+    this.effectiveRole = null;
+    this.updateState({ capacityRejection: null, error: null, connected: false, synced: false });
+    void Promise.resolve(this.provider.connect()).catch(() => {
+      this.updateState({ connected: false, synced: false });
+    });
+  }
+
+  private rejectCapacity(reason: string): boolean {
+    const rejection = parseCapacityRejection(reason);
+    if (!rejection) return false;
+    if (this.accessDenied || this.state.writeRejection) return true;
+    const first = !this.state.capacityRejection;
+    this.effectiveRole = null;
+    this.updateState({ capacityRejection: rejection, connected: false, synced: false });
+    // Preserve the local document while stopping automatic admission retries.
+    if (first) this.provider.disconnect();
+    return true;
+  }
+
   updatePresence = (patch: Partial<BoardPresence>, broadcast = true): void => {
     if (this.destroyed) return;
     this.self = { ...this.self, presence: { ...this.self.presence, ...patch } };
-    if (broadcast && !this.accessDenied && !this.state.writeRejection) {
+    if (broadcast && !this.accessDenied && !this.state.writeRejection && !this.state.capacityRejection) {
       this.pendingPresence = this.self.presence;
       this.flushPendingPresence();
     }
@@ -130,7 +169,7 @@ export class BoardRuntime {
   };
 
   private flushPendingPresence(): void {
-    if (this.destroyed || !this.state.connected || !this.state.synced || this.accessDenied || this.state.writeRejection || !this.pendingPresence) return;
+    if (this.destroyed || !this.state.connected || !this.state.synced || this.accessDenied || this.state.writeRejection || this.state.capacityRejection || !this.pendingPresence) return;
     const presence = this.pendingPresence;
     this.pendingPresence = null;
     this.provider.awareness?.setLocalStateField("presence", presence);
@@ -156,12 +195,15 @@ export class BoardRuntime {
   private updateState(patch: Partial<ConnectionState>): void {
     if (this.destroyed) return;
     const writeRejection = this.accessDenied ? null : this.state.writeRejection ?? patch.writeRejection ?? null;
-    if (this.accessDenied || writeRejection) this.pendingPresence = null;
-    const saved = !this.accessDenied && !writeRejection && matchesPersistedSnapshot(this.board.doc, this.committedSnapshot);
-    this.state = { ...this.state, ...patch, writeRejection, saved,
+    const capacityRejection = this.accessDenied || writeRejection ? null
+      : ("capacityRejection" in patch ? patch.capacityRejection : this.state.capacityRejection) ?? null;
+    if (this.accessDenied || writeRejection || capacityRejection) this.pendingPresence = null;
+    const saved = !this.accessDenied && !writeRejection && !capacityRejection && matchesPersistedSnapshot(this.board.doc, this.committedSnapshot);
+    this.state = { ...this.state, ...patch, writeRejection, capacityRejection, saved,
       pending: writeRejection ? true : saved ? false : patch.pending ?? this.state.pending,
       ...(this.accessDenied || writeRejection ? { connected: false, synced: false,
-        error: this.accessDenied ? ACCESS_DENIED_MESSAGE : WRITE_REJECTION_MESSAGES[writeRejection!] } : {}) };
+        error: this.accessDenied ? ACCESS_DENIED_MESSAGE : WRITE_REJECTION_MESSAGES[writeRejection!] }
+        : capacityRejection ? { connected: false, synced: false, error: CAPACITY_MESSAGES[capacityRejection] } : {}) };
     this.board.setWritable(this.state.connected && this.state.synced && !this.state.error && !this.accessDenied &&
       !writeRejection && this.effectiveRole !== null && this.effectiveRole !== "viewer");
     for (const listener of this.stateListeners) listener();
@@ -172,7 +214,7 @@ export class BoardRuntime {
   };
 
   private handleServerMessage(payload: string): void {
-    if (this.destroyed || this.accessDenied || this.state.writeRejection) return;
+    if (this.destroyed || this.accessDenied || this.state.writeRejection || this.state.capacityRejection) return;
     const message = parseServerMessage(payload);
     if (!message) return;
     if (message.type === "access-role") {
@@ -197,6 +239,7 @@ export class BoardRuntime {
 
   destroy(): void {
     this.destroyed = true;
+    this.retryRequested = false;
     this.pendingPresence = null;
     this.provider.awareness?.off("update", this.handleAwarenessUpdate);
     this.provider.destroy();
