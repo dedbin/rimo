@@ -54,6 +54,7 @@ test("registration verifies email, creates a private workspace and supports sign
     await page.getByRole("button", { name: "Подтвердить почту", exact: true }).click();
     await expect(page.getByRole("button", { name: "Создать доску", exact: true }).first()).toBeVisible();
     const session = await fresh.request.get("/api/auth/get-session");
+    expect(session.status(), "A session read after registration must remain available").toBe(200);
     expect((await session.json()).user.id).toBe(registeredId);
     const privateBoard = await fresh.request.get(`/api/boards/${existingOwnerBoardId}`);
     expect(privateBoard.status()).toBe(404);

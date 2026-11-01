@@ -39,8 +39,9 @@ test("native two-finger pinch cancels a pencil draft, suppresses the remaining f
     await expect(canvas(page).locator("[data-layer-id]")).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^Отменить/ })).toBeDisabled();
     const pinched = await camera(page);
-    // CDP compares the active contact set; removing one point releases it.
-    await touch(session, "touchMove", [{ id: 1, x: 330, y: 280 }]);
+    // touchMove only updates the listed contacts; it does not release omitted
+    // ones. Chromium's partial touchEnd releases the explicitly listed ID.
+    await touch(session, "touchEnd", [{ id: 2, x: 690, y: 280 }]);
     await touch(session, "touchMove", [{ id: 1, x: 550, y: 550 }]);
     await touch(session, "touchEnd", []);
     await expect.poll(() => camera(page)).toEqual(pinched);
@@ -92,6 +93,10 @@ test("pinch over a selected layer and its resize handle changes only the camera,
     await touch(viewerSession, "touchEnd", []);
     await expect.poll(() => camera(viewer)).toEqual({ x: 50, y: 40, scale: 1 });
     expect(await camera(page)).toEqual(ownerCamera);
+    // Opening/closing sharing uses Escape, which intentionally clears the
+    // owner's selection. Select the stored object again to check its content.
+    await page.getByRole("button", { name: "Выделение", exact: true }).click();
+    await canvas(page).locator("[data-layer-id] > rect").first().click();
     expect(await copySelection(page)).toBe(original);
     await saved(viewer);
   } finally { await touch(viewerSession, "touchCancel", []).catch(() => {}); await viewerSession.detach(); }

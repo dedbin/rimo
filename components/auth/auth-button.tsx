@@ -8,12 +8,14 @@ import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { EmailVerification } from "./email-verification";
+import { AuthSupportLink } from "./support-link";
 
 type AuthMode = "sign-in" | "sign-up";
 
 function failureMessage(error: { code?: string; status?: number }, signUp: boolean): string {
   if (error.status === 429) return "Слишком много попыток. Попробуйте через минуту.";
   if (error.code === "OWNER_LIMIT_REACHED") return "Свободных аккаунтов пока нет. Обратитесь к владельцу сервиса.";
+  if (error.code === "REGISTRATION_CLOSED") return "Регистрация временно закрыта. В существующий аккаунт можно войти.";
   return signUp
     ? "Не удалось создать аккаунт. Проверьте данные. Если аккаунт уже есть, войдите."
     : "Не удалось войти. Проверьте почту и пароль.";
@@ -154,6 +156,7 @@ export function AuthButton({ children, initialMode = "sign-in" }: { children: Re
           {signUp ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
         </Button>
         </>}
+        <AuthSupportLink recovery={!verification && !signUp} />
       </DialogContent>
     </Dialog>
   );

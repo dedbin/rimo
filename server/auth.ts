@@ -4,7 +4,7 @@ import { betterAuth } from "better-auth";
 import { APIError } from "better-auth/api";
 import { anonymous, emailOTP } from "better-auth/plugins";
 
-import { getServerConfig } from "./config";
+import { getRegistrationMode, getServerConfig } from "./config";
 import { getPool } from "./db";
 import { validatedProfile } from "./auth-profile";
 import { HttpError } from "./http-error";
@@ -64,7 +64,11 @@ function createAuth(allowSignUp: boolean) {
       database: { generateId: () => randomUUID() },
       ipAddress: { ipAddressHeaders: ["x-forwarded-for"] },
     },
-    rateLimit: { enabled: true, window: 60, max: 30 },
+    rateLimit: { enabled: true, window: 60, max: 30,
+      // Session reads are routine navigation, including a shared classroom NAT.
+      // Credential and OTP endpoints retain their stricter independent rules.
+      customRules: { "/get-session": { window: 60, max: 240 } },
+    },
     databaseHooks: {
       user: {
         create: { before: async (user) => ({
@@ -116,6 +120,12 @@ export async function createOwnerAccount(input: { email: string; password: strin
 }
 
 export async function registerOwnerAccount(request: Request): Promise<Response> {
+  // Closing new sign-ups leaves password login and pending email confirmations intact.
+  if (getRegistrationMode() === "closed") {
+    return Response.json({ code: "REGISTRATION_CLOSED", message: "Регистрация временно закрыта. В существующий аккаунт можно войти." }, {
+      status: 403, headers: { "Cache-Control": "no-store" },
+    });
+  }
   const auth = registrationInstance ??= createAuth(true);
   try {
     return await withOwnerQuota(() => auth.handler(request));

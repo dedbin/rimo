@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { sendVerificationCode, verifyMailTransport } from "../server/mail";
+import { sendOwnerRecoveryCode, sendVerificationCode, verifyMailTransport } from "../server/mail";
 
 const smtp = vi.hoisted(() => ({ createTransport: vi.fn(), sendMail: vi.fn(), verify: vi.fn() }));
 vi.mock("nodemailer", () => ({ default: { createTransport: smtp.createTransport } }));
@@ -99,5 +99,17 @@ describe("verification email transport", () => {
     await expect(verifyMailTransport()).rejects.toMatchObject({
       status: 503, code: "MAIL_SEND_FAILED", message: "Не удалось отправить код. Попробуйте позже.",
     });
+  });
+
+  it("makes operator recovery visibly distinct from normal email confirmation", async () => {
+    await sendOwnerRecoveryCode("teacher@example.test", "000012");
+    expect(smtp.sendMail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+      to: "teacher@example.test", subject: "Восстановление доступа к Rimo через поддержку",
+      text: expect.stringContaining("000012"),
+    }));
+    const text = smtp.sendMail.mock.calls[0][0].text as string;
+    expect(text).toContain("10 минут");
+    expect(text).toContain("сменить пароль и завершить все сеансы");
+    expect(text).toContain("только в обращении за восстановлением, которое вы сами начали");
   });
 });
