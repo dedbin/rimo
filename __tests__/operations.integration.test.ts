@@ -77,8 +77,10 @@ describe.skipIf(!databaseUrl)("operator status and conservative physical orphan 
   it("reports real aggregate PostgreSQL and filesystem usage without board, person, path or connection data", async () => {
     const report = await collectServiceStatus({ database, uploadDir: storage, quotas: getQuotaLimits() });
     expect(report.database.reachable).toBe(true);
-    expect(report.usage).toEqual({ owners: 2, boards: 3, documents: 2, documentBytes: 18, assets: 2, assetBytes: 30,
+    expect(report.usage).toEqual({ owners: 2, pendingOwners: 0, boards: 3, documents: 2, documentBytes: 18, assets: 2, assetBytes: 30,
       maxBoardsPerOwner: 2, maxOwnerAssetBytes: 20, maxBoardAssetBytes: 20 });
+    expect(report.registration.mode).toBe("open");
+    expect(report.collaborationAdmission).toMatchObject({ maxConnections: 50, maxEditors: 10, maxOpenDocuments: 10 });
     expect(report.storage).toMatchObject({ readable: true, writable: true, regularFileCount: 2, fileBytes: 7 });
     expect(report.storage!.freeBytes).toBeGreaterThan(0);
     const json = JSON.stringify(report);
@@ -104,6 +106,7 @@ describe.skipIf(!databaseUrl)("operator status and conservative physical orphan 
       );
       const report = await collectServiceStatus({ database, uploadDir: storage, quotas: getQuotaLimits() });
       expect(report.usage?.owners).toBe(2);
+      expect(report.usage?.pendingOwners).toBe(1);
       expect(report.reasonCodes).not.toContain("OWNERS_LIMIT_REACHED");
     } finally {
       await database.query('DELETE FROM "user" WHERE id = $1', [pending]);
