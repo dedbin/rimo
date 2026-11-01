@@ -10,10 +10,15 @@ import type { LineLayer } from "@/types/board-canvas";
 import { doesPointIntersectPath, isPointNearBoundingBox, makePathLayer, pickLayersInBox, pointerEventToCanvasPoint, resizeBounds } from "@/lib/utils";
 import { BoardCanvasMode, BoardCanvasState, Camera, Color, LayerType, Point, side, XYWH } from "@/types/board-canvas";
 import { toast } from "sonner";
+import { useCanvasTouch } from "./use-canvas-touch";
 
 interface PointerSample { clientX: number; clientY: number; pressure: number; buttons: number; shiftKey?: boolean }
 interface ActiveGesture {
   pointerId: number;
+  pointerType: string;
+  initialState: BoardCanvasState;
+  penColor: Color;
+  penSize: number;
   origin: Point;
   ids: string[];
   delta: Point;
@@ -40,10 +45,11 @@ interface Options {
   cameraRef: RefObject<Camera>;
   updateCamera: (camera: Camera) => void;
   color: Color;
+  penColor?: Color;
   penSize: number;
 }
 
-export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penSize }: Options) {
+export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penColor = color, penSize }: Options) {
   const runtime = useBoardRuntime();
   const [canvasState, setCanvasStateValue] = useState<BoardCanvasState>({ mode: BoardCanvasMode.None });
   const state = useRef(canvasState);
@@ -128,17 +134,28 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   const processMoveRef = useRef(processMove);
   processMoveRef.current = processMove;
 
-  const cancel = useCallback(() => {
+  const clearGesture = useCallback((releaseCapture = true) => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
     latest.current = null;
     const pointerId = active.current?.pointerId;
     active.current = null;
-    if (pointerId !== undefined && svgRef.current?.hasPointerCapture(pointerId)) svgRef.current.releasePointerCapture(pointerId);
+    if (releaseCapture && pointerId !== undefined && svgRef.current?.hasPointerCapture(pointerId)) svgRef.current.releasePointerCapture(pointerId);
     setPreview(emptyPreview());
     runtime.updatePresence({ pencilDraft: null, eraserDraft: null, drag: null });
+  }, [runtime, svgRef]);
+  const touch = useCanvasTouch({ svgRef, cameraRef, updateCamera, onNavigate: () => {
+    const initial = active.current?.initialState ?? state.current;
+    clearGesture(false);
+    setCanvasState(initial.mode === BoardCanvasMode.Pencil || initial.mode === BoardCanvasMode.Eraser ||
+      initial.mode === BoardCanvasMode.Inserting ? initial : { mode: BoardCanvasMode.None });
+  } });
+  const cancel = useEvent(() => {
+    if (active.current?.pointerType === "pen") touch.finish(active.current);
+    clearGesture();
+    touch.cancelNavigation();
     setCanvasState({ mode: BoardCanvasMode.None });
-  }, [runtime, setCanvasState, svgRef]);
+  });
 
   useEffect(() => {
     let writable = runtime.board.canEdit;
@@ -151,14 +168,15 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   }, [runtime, cancel]);
 
   const begin = (event: PointerEvent, ids: string[], mode: BoardCanvasMode, bounds: XYWH | null = null, corner: side | null = null) => {
-    if (event.button !== 0 && event.button !== 1) return;
+    if (active.current || touch.blocks(event) || (event.button !== 0 && event.button !== 1)) return false;
     const svg = svgRef.current;
-    if (!svg) return;
+    if (!svg) return false;
     // Capturing a click on SVG retargets its later dblclick away from text content.
     // A translating gesture captures only after movement crosses the drag threshold.
     if (mode !== BoardCanvasMode.Translating) svg.setPointerCapture(event.pointerId);
     const point = toPoint(event);
-    active.current = { pointerId: event.pointerId, origin: point, ids, delta: { x: 0, y: 0 },
+    active.current = { pointerId: event.pointerId, pointerType: event.pointerType || "mouse", initialState: state.current,
+      penColor: { ...penColor }, penSize, origin: point, ids, delta: { x: 0, y: 0 },
       draft: [[point.x, point.y, event.pressure || 0.5]], erase: new Set(), initialBounds: bounds,
       resize: null, corner, screen: { x: event.clientX, y: event.clientY }, line: null, initialLine: null };
     if (mode === BoardCanvasMode.Panning) {
@@ -168,12 +186,13 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     else if (mode === BoardCanvasMode.Resizing && bounds && corner !== null) setCanvasState({ mode, initial: bounds, corner });
     else if (mode === BoardCanvasMode.Pressing) setCanvasState({ mode, origin: point });
     if (mode === BoardCanvasMode.Pencil) runtime.updatePresence({ pencilDraft: active.current.draft,
-      penColor: color, penSize });
+      penColor: active.current.penColor, penSize: active.current.penSize });
     event.preventDefault();
+    return true;
   };
 
   const onPointerDown = (event: PointerEvent<SVGSVGElement>) => {
-    if (active.current) return;
+    if (active.current || touch.blocks(event)) return;
     if (event.button === 1) { begin(event, [], BoardCanvasMode.Panning); return; }
     if (event.button !== 0) return;
     const mode = state.current.mode;
@@ -194,6 +213,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   };
 
   const onLayerPointerDown = useEvent((event: PointerEvent, id: string) => {
+    if (active.current || touch.blocks(event)) return;
     if (event.button === 1 || state.current.mode === BoardCanvasMode.Inserting ||
       state.current.mode === BoardCanvasMode.Pencil || state.current.mode === BoardCanvasMode.Eraser) return;
     if (event.button !== 0) return;
@@ -213,8 +233,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
       state.current.mode === BoardCanvasMode.Eraser) return;
     const layer = runtime.board.getLayer(id);
     if (!runtime.board.canEdit || layer?.type !== LayerType.Line || event.button !== 0) return;
-    begin(event, [id], BoardCanvasMode.EditingLine);
-    if (!active.current) return;
+    if (!begin(event, [id], BoardCanvasMode.EditingLine) || !active.current) return;
     active.current.initialLine = layer;
     active.current.line = layer;
     setCanvasState({ mode: BoardCanvasMode.EditingLine, id, endpoint });
@@ -222,7 +241,9 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   });
 
   const onPointerMove = (event: PointerEvent<SVGSVGElement>) => {
+    if (touch.onPointerMove(event)) return;
     const gesture = active.current;
+    if (gesture && gesture.pointerId !== event.pointerId) return;
     const svg = svgRef.current;
     if (gesture && svg && state.current.mode === BoardCanvasMode.Translating && !svg.hasPointerCapture(event.pointerId)) {
       const point = toPoint(event);
@@ -240,6 +261,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
   };
 
   const onPointerUp = (event: PointerEvent<SVGSVGElement>) => {
+    if (touch.finish(event)) return;
     const gesture = active.current;
     if (!gesture || gesture.pointerId !== event.pointerId) return;
     if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -256,7 +278,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
         else if (current.mode === BoardCanvasMode.Resizing && gesture.resize) runtime.board.update(gesture.ids, { ...gesture.resize });
         else if (current.mode === BoardCanvasMode.Eraser) runtime.board.remove([...gesture.erase]);
         else if (current.mode === BoardCanvasMode.Pencil && gesture.draft.length > 1) {
-          runtime.board.insert([makePathLayer(gesture.draft, color, penSize)]);
+          runtime.board.insert([makePathLayer(gesture.draft, gesture.penColor, gesture.penSize)]);
         } else if (current.mode === BoardCanvasMode.Inserting && current.layerType === LayerType.Line) {
           if (gesture.line) {
             const [start, end] = lineEndpoints(gesture.line);
@@ -277,26 +299,48 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penS
     setCanvasState(next);
   };
 
+  const onPointerCancel = useEvent((event?: Pick<PointerEvent, "pointerId">) => {
+    if (!event) { cancel(); return; }
+    const consumed = touch.finish(event);
+    if (consumed) touch.cancelNavigation();
+    if (active.current?.pointerId === event.pointerId) cancel();
+  });
+
   useEffect(() => {
     const releaseOutside = (event: globalThis.PointerEvent) => {
-      if (active.current && event.target instanceof Node && !svgRef.current?.contains(event.target)) cancel();
+      if (!(event.target instanceof Node) || svgRef.current?.contains(event.target)) return;
+      touch.finish(event);
+      if (active.current?.pointerId === event.pointerId) cancel();
     };
-    window.addEventListener("blur", cancel);
+    const blur = () => { cancel(); touch.reset(); };
+    window.addEventListener("blur", blur);
     window.addEventListener("pointerup", releaseOutside);
-    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("pointercancel", onPointerCancel);
     return () => {
-      window.removeEventListener("blur", cancel);
+      window.removeEventListener("blur", blur);
       window.removeEventListener("pointerup", releaseOutside);
-      window.removeEventListener("pointercancel", cancel);
+      window.removeEventListener("pointercancel", onPointerCancel);
     };
-  }, [cancel, svgRef]);
-  useEffect(() => () => { if (frame.current !== null) cancelAnimationFrame(frame.current); }, []);
+  }, [cancel, onPointerCancel, svgRef, touch]);
+  useEffect(() => () => {
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    touch.reset();
+  }, [touch]);
 
   return { canvasState, setCanvasState, preview, cancel, onPointerDown, onLayerPointerDown,
-    onResizeHandlePointerDown, onLineEndpointPointerDown, onPointerMove, onPointerUp, onPointerCancel: cancel,
-    onLostPointerCapture: () => { if (active.current) cancel(); },
-    onPointerLeave: () => {
+    onPointerDownCapture: (event: PointerEvent<SVGSVGElement>) => touch.onPointerDownCapture(event, active.current?.pointerType),
+    pencilStyle: { color: active.current?.penColor ?? penColor, size: active.current?.penSize ?? penSize },
+    onResizeHandlePointerDown, onLineEndpointPointerDown, onPointerMove, onPointerUp, onPointerCancel,
+    onLostPointerCapture: (event?: PointerEvent<SVGSVGElement>) => {
+      // A touch target's implicit capture may be transferred to our SVG. Its
+      // bubbling lostcapture is expected while the SVG still owns the pointer.
+      if (event && svgRef.current?.hasPointerCapture(event.pointerId)) return;
+      if (active.current && (!event || active.current.pointerId === event.pointerId)) cancel();
+      else if (event && touch.owns(event.pointerId)) touch.cancelNavigation();
+    },
+    onPointerLeave: (event?: Pick<PointerEvent, "pointerId">) => {
       const gesture = active.current;
+      if (event && gesture && gesture.pointerId !== event.pointerId) return;
       if (gesture && !svgRef.current?.hasPointerCapture(gesture.pointerId)) cancel();
       if (!active.current) runtime.updatePresence({ cursor: null });
     } };

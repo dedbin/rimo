@@ -154,7 +154,7 @@ describe("canvas gesture lifecycle", () => {
     act(() => result.current.onLayerPointerDown(pointer(50, 50), id));
     act(() => window.dispatchEvent(new Event("pointerup")));
     // A native pointer event targets an element, not Window; reproduce that path too.
-    act(() => document.body.dispatchEvent(new Event("pointerup", { bubbles: true })));
+    act(() => document.body.dispatchEvent(Object.assign(new Event("pointerup", { bubbles: true }), { pointerId: 1 })));
     expect(result.current.canvasState.mode).toBe(BoardCanvasMode.None);
     expect(board.getLayer(id)).toMatchObject({ x: 0, y: 0 });
   });
