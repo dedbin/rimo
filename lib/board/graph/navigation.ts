@@ -5,7 +5,8 @@ const MAX_SPAN = 1_000_000;
 
 export function boundedGraphViewport(value: GraphViewport): GraphViewport {
   const axis = (min: number, max: number): readonly [number, number] => {
-    const span = Math.max(MIN_SPAN, Math.min(MAX_SPAN, max - min));
+    // Leave a few ULPs so subtraction near large coordinates stays above the schema minimum.
+    const span = Math.max(MIN_SPAN + Number.EPSILON * MAX_SPAN * 8, Math.min(MAX_SPAN, max - min));
     const center = Math.max(-MAX_SPAN + span / 2, Math.min(MAX_SPAN - span / 2, (min + max) / 2));
     return [center - span / 2, center + span / 2];
   };

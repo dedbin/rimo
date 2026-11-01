@@ -43,6 +43,12 @@ function setup() {
 }
 
 describe("graph coordinate navigation", () => {
+  it.each([1000, -1000, 1_000_000, -1_000_000])("keeps the minimum zoom serializable near %s", (center) => {
+    const viewport = boundedGraphViewport({ xMin: center - 1e-8, xMax: center + 1e-8, yMin: -1, yMax: 1 });
+    expect(parseGraphViewport(viewport)).not.toBeNull();
+    expect(viewport.xMax - viewport.xMin).toBeGreaterThanOrEqual(0.0001);
+  });
+
   it("zooms around the cursor without mutating the viewport and clamps extremes", () => {
     const original = createGraphSettings().viewport;
     const copy = { ...original };
