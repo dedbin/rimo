@@ -1,6 +1,9 @@
 import type { GraphExpression, GraphSettings, GraphViewport } from "../../../types/board-canvas";
 
 export const MAX_GRAPH_EXPRESSIONS = 12;
+// Concurrent additions can exceed the interactive limit before peers synchronize.
+// Keep those rows editable; rendering remains capped at MAX_GRAPH_EXPRESSIONS.
+export const MAX_STORED_GRAPH_EXPRESSIONS = 256;
 export const MAX_GRAPH_FORMULA_LENGTH = 256;
 export const MIN_GRAPH_SPAN = 0.0001;
 export const MAX_GRAPH_SPAN = 1_000_000;
@@ -41,7 +44,7 @@ export function parseGraphSettings(value: unknown): GraphSettings | null {
   const viewport = parseGraphViewport(value.viewport);
   if (!viewport) return null;
   const entries = Object.entries(value.expressions);
-  if (entries.length > MAX_GRAPH_EXPRESSIONS) return null;
+  if (entries.length > MAX_STORED_GRAPH_EXPRESSIONS) return null;
   const expressions: [string, GraphExpression][] = [];
   for (const [id, input] of entries) {
     if (!/^[a-zA-Z0-9_-]{1,64}$/.test(id) || ["__proto__", "prototype", "constructor"].includes(id)) return null;

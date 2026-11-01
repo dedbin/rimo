@@ -22,6 +22,16 @@ function graphFixture(): GraphLayer {
   };
 }
 
+function graphWithRows(count: number): GraphLayer {
+  const layer = graphFixture();
+  for (let index = 2; index < count; index += 1) {
+    layer.graph.expressions[`extra_${index}`] = {
+      formula: `y = x + ${index}`, color: "#16a34a", visible: true, order: index,
+    };
+  }
+  return layer;
+}
+
 function graphLayer(board: BoardDocument, id: string): GraphLayer {
   const layer = board.getLayer(id);
   if (layer?.type !== LayerType.Graph) throw new Error("Expected graph layer");
@@ -32,11 +42,11 @@ function sync(source: BoardDocument, target: BoardDocument): void {
   Y.applyUpdate(target.doc, Y.encodeStateAsUpdate(source.doc), "remote");
 }
 
-function withPeers(run: (first: BoardDocument, second: BoardDocument, id: string) => void): void {
+function withPeers(run: (first: BoardDocument, second: BoardDocument, id: string) => void, input = graphFixture()): void {
   const first = new BoardDocument();
   const second = new BoardDocument();
   try {
-    const [id] = first.insert([graphFixture()]);
+    const [id] = first.insert([input]);
     sync(first, second);
     run(first, second, id);
   } finally { first.destroy(); second.destroy(); }
@@ -100,6 +110,57 @@ describe("graph document persistence", () => {
 });
 
 describe("collaborative graph expressions", () => {
+  it("retains every row when two peers independently fill the last interactive slot", () => {
+    const input = graphWithRows(11);
+    withPeers((first, second, id) => {
+      const firstRow = first.addGraphExpression(id, { formula: "y = cos(x)", color: "#dc2626" });
+      const secondRow = second.addGraphExpression(id, { formula: "x > 2", color: "#9333ea" });
+      expect(firstRow).toBeTruthy();
+      expect(secondRow).toBeTruthy();
+      expect(Object.keys(graphLayer(first, id).graph.expressions)).toHaveLength(12);
+      expect(Object.keys(graphLayer(second, id).graph.expressions)).toHaveLength(12);
+      sync(first, second);
+      sync(second, first);
+      const merged = graphLayer(first, id);
+      expect(Object.keys(merged.graph.expressions)).toHaveLength(13);
+      expect(merged.graph.expressions).toMatchObject(input.graph.expressions);
+      expect(merged.graph.expressions[firstRow!]).toMatchObject({ formula: "y = cos(x)", color: "#dc2626" });
+      expect(merged.graph.expressions[secondRow!]).toMatchObject({ formula: "x > 2", color: "#9333ea" });
+      expect(graphLayer(second, id)).toEqual(merged);
+      expect(parseClipboardLayers(serializeLayers([merged]))).toEqual([merged]);
+      first.updateGraphExpression(id, firstRow!, { visible: false });
+      sync(first, second);
+      expect(graphLayer(second, id).graph.expressions[firstRow!].visible).toBe(false);
+      expect(Object.keys(graphLayer(second, id).graph.expressions)).toHaveLength(13);
+    }, input);
+  });
+
+  it("keeps a graph valid when undo restores a deleted row after a peer fills its slot", () => {
+    const input = graphWithRows(12);
+    withPeers((first, second, id) => {
+      first.removeGraphExpression(id, "curve_a");
+      sync(first, second);
+      const addedRow = second.addGraphExpression(id, { formula: "y = cos(x)", color: "#dc2626" });
+      expect(addedRow).toBeTruthy();
+      sync(second, first);
+      expect(Object.keys(graphLayer(first, id).graph.expressions)).toHaveLength(12);
+      expect(graphLayer(first, id).graph.expressions).not.toHaveProperty("curve_a");
+      first.undo();
+      const restored = graphLayer(first, id);
+      expect(Object.keys(restored.graph.expressions)).toHaveLength(13);
+      expect(restored.graph.expressions).toMatchObject(input.graph.expressions);
+      expect(restored.graph.expressions[addedRow!]).toMatchObject({ formula: "y = cos(x)", color: "#dc2626" });
+      sync(first, second);
+      expect(graphLayer(second, id)).toEqual(restored);
+      first.redo();
+      expect(Object.keys(graphLayer(first, id).graph.expressions)).toHaveLength(12);
+      expect(graphLayer(first, id).graph.expressions).not.toHaveProperty("curve_a");
+      expect(graphLayer(first, id).graph.expressions[addedRow!].formula).toBe("y = cos(x)");
+      sync(first, second);
+      expect(graphLayer(second, id)).toEqual(graphLayer(first, id));
+    }, input);
+  });
+
   it("merges simultaneous changes to different expression rows", () => {
     withPeers((first, second, id) => {
       first.updateGraphExpression(id, "curve_a", { formula: "y = 2x + 1" });
