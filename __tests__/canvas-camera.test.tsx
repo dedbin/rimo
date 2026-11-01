@@ -26,7 +26,10 @@ beforeEach(() => {
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
-function setup() { const ref = { current: svg }; return renderHook(() => useCanvasCamera(ref)); }
+function setup(onManualNavigation?: () => void) {
+  const ref = { current: svg };
+  return renderHook(() => useCanvasCamera(ref, onManualNavigation));
+}
 
 function advanceFrame(milliseconds: number): void {
   now = milliseconds;
@@ -36,6 +39,30 @@ function advanceFrame(milliseconds: number): void {
 }
 
 describe("manual navigation and camera animations", () => {
+  it("applies a followed camera without reporting manual navigation", () => {
+    const manual = vi.fn();
+    const { result } = setup(manual);
+    act(() => result.current.animateCameraTo({ x: 100, y: 200, scale: 3 }));
+    expect(manual).toHaveBeenCalledTimes(1);
+    act(() => result.current.applyRemoteCamera({ x: 20, y: 30, scale: 2 }));
+    expect(manual).toHaveBeenCalledTimes(1);
+    expect(frames.size).toBe(0);
+    expect(result.current.cameraRef.current).toEqual({ x: 20, y: 30, scale: 2 });
+    act(() => result.current.updateCamera({ x: 30, y: 40, scale: 2 }));
+    expect(manual).toHaveBeenCalledTimes(2);
+  });
+
+  it("notifies a follower for wheel, fit and toolbar zoom before moving", () => {
+    const manual = vi.fn();
+    const { result } = setup(manual);
+    act(() => svg.dispatchEvent(new WheelEvent("wheel", { deltaY: 40, cancelable: true })));
+    expect(manual).toHaveBeenCalledTimes(1);
+    act(() => result.current.fitToScreen());
+    expect(manual).toHaveBeenCalledTimes(2);
+    act(() => result.current.animateCameraTo({ x: 0, y: 0, scale: 2 }));
+    expect(manual).toHaveBeenCalledTimes(3);
+  });
+
   it("cancels an in-flight animation when a manual pan or pinch updates the camera", () => {
     const { result } = setup();
     act(() => result.current.animateCameraTo({ x: 100, y: 200, scale: 3 }));

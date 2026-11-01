@@ -229,6 +229,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
   });
 
   const onResizeHandlePointerDown = useEvent((corner: side, initial: XYWH, event: PointerEvent) => {
+    if (state.current.mode === BoardCanvasMode.Laser) return;
     if (runtime.board.canEdit) begin(event, [...runtime.getSelf().presence.selection], BoardCanvasMode.Resizing, initial, corner);
   });
 

@@ -1,6 +1,7 @@
 import { Buffer } from "node:buffer";
 
 import { isColor } from "../lib/board/model";
+import { parseLaserPresence, parsePresentationCamera } from "../lib/collaboration/presentation";
 
 import { CollaborationRejection } from "./types";
 import type { CollaborationContext } from "./types";
@@ -60,6 +61,8 @@ export class AwarenessGuard {
           eraserDraft: Array.isArray(input.eraserDraft) && input.eraserDraft.length <= 20_000
             ? input.eraserDraft.filter(point) : null,
           drag: point(drag.delta) ? { ids: dragIds, delta: drag.delta } : null,
+          ...("camera" in input ? { camera: parsePresentationCamera(input.camera) } : {}),
+          ...("laser" in input ? { laser: parseLaserPresence(input.laser) } : {}),
         },
       });
     }

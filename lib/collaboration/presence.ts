@@ -1,5 +1,7 @@
 import { Color, Point } from "@/types/board-canvas";
 import { safeAvatarSrc } from "@/lib/safe-avatar";
+import { parseLaserPresence, parsePresentationCamera } from "./presentation";
+import type { LaserPresence, PresentationCamera } from "./presentation";
 
 export interface BoardPresence {
   cursor: Point | null;
@@ -9,6 +11,8 @@ export interface BoardPresence {
   penSize: number;
   eraserDraft: Point[] | null;
   drag: { ids: string[]; delta: Point } | null;
+  camera?: PresentationCamera | null;
+  laser?: LaserPresence | null;
 }
 
 export interface BoardParticipant {
@@ -47,8 +51,10 @@ export function parseParticipant(connectionId: number, state: Record<string, unk
   }
   if (typeof raw.penColor === "object" && raw.penColor !== null) {
     const color = raw.penColor as Record<string, unknown>;
-    if ([color.r, color.g, color.b].every((n) => typeof n === "number" && n >= 0 && n <= 255)) {
-      presence.penColor = { r: color.r as number, g: color.g as number, b: color.b as number };
+    if ([color.r, color.g, color.b].every((n) => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= 255) &&
+      (color.a === undefined || (typeof color.a === "number" && Number.isFinite(color.a) && color.a >= 0 && color.a <= 1))) {
+      presence.penColor = { r: color.r as number, g: color.g as number, b: color.b as number,
+        ...(color.a !== undefined ? { a: color.a as number } : {}) };
     }
   }
   if (typeof raw.drag === "object" && raw.drag !== null && "ids" in raw.drag && "delta" in raw.drag) {
@@ -56,6 +62,8 @@ export function parseParticipant(connectionId: number, state: Record<string, unk
     const ids = Array.isArray(raw.drag.ids) ? raw.drag.ids.filter((id): id is string => typeof id === "string").slice(0, 10_000) : [];
     if (delta) presence.drag = { ids, delta };
   }
+  if ("camera" in raw) presence.camera = parsePresentationCamera(raw.camera);
+  if ("laser" in raw) presence.laser = parseLaserPresence(raw.laser);
   const picture = "picture" in user ? safeAvatarSrc(user.picture) : undefined;
   return { connectionId, info: {
     id: "id" in user && typeof user.id === "string" ? user.id : String(connectionId),
