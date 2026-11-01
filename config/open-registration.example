@@ -1,0 +1,15 @@
+# Candidate v0.2 admission profile for 20 lessons / 40 editor connections.
+# Merge selected values into the existing private configuration after acceptance.
+# These numbers are safeguards, not a capacity claim. No credentials belong here.
+# NOT ACCEPTED: Nov 1 local hour run stopped after 36m52s at the receive queue limit.
+# Keep the existing deployment settings until capacity is accepted and release approved.
+REGISTRATION_MODE=open
+MAX_OWNERS=100
+COLLABORATION_MAX_CONNECTIONS=50
+COLLABORATION_MAX_ROOM_CONNECTIONS=10
+COLLABORATION_MAX_EDITORS=40
+COLLABORATION_MAX_OPEN_DOCUMENTS=20
+
+# Preserve board, image, document, message and queue quotas from the base config.
+# Every owner/editor tab occupies one editor slot, even while idle.
+# A hundred registered owners does not mean a hundred simultaneous editors.

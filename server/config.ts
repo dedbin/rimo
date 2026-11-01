@@ -1,5 +1,15 @@
 import path from "node:path";
 
+export type RegistrationMode = "open" | "closed";
+
+export function getRegistrationMode(): RegistrationMode {
+  const mode = process.env.REGISTRATION_MODE ?? "open";
+  if (mode !== "open" && mode !== "closed") {
+    throw new Error("REGISTRATION_MODE must be open or closed");
+  }
+  return mode;
+}
+
 export interface QuotaLimits {
   readonly maxOwners: number;
   readonly maxBoardsPerOwner: number;
@@ -10,6 +20,7 @@ export interface QuotaLimits {
 }
 
 export interface ServerConfig extends QuotaLimits {
+  readonly registrationMode: RegistrationMode;
   readonly databaseUrl: string;
   readonly authSecret: string;
   readonly authUrl: string;
@@ -83,6 +94,7 @@ export function getServerConfig(): ServerConfig {
   }
   return Object.freeze({
     ...getQuotaLimits(),
+    registrationMode: getRegistrationMode(),
     databaseUrl,
     authSecret,
     authUrl: authUrl.origin,

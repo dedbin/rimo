@@ -3,7 +3,7 @@
 import { randomUUID } from "node:crypto";
 
 import { createAuthClient } from "better-auth/client";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   authGet, authPost, cookie, credentials, deliveredCode, getPool, login, mail, origin,
@@ -24,6 +24,27 @@ async function accountCounts(): Promise<{ active: string; pending: string; guest
 
 describe.skipIf(!testDatabaseUrl)("public registration with mandatory email confirmation", () => {
   useVerificationDatabase("rimo_registration_test");
+  beforeEach(() => { vi.stubEnv("REGISTRATION_MODE", "open"); });
+
+  it("keeps session reads available for a shared classroom while enforcing a finite trusted-IP budget", async () => {
+    const owner = await register();
+    expect((await sendCode(owner.email)).status).toBe(200);
+    expect((await verifyCode(owner.email, deliveredCode(owner.email))).status).toBe(200);
+    const sessionCookie = cookie(await login(owner.email));
+    for (let index = 0; index < 240; index += 1) {
+      const forwarded = `${index % 2 ? "192.0.2.1" : "192.0.2.2"}, 203.0.113.223`;
+      const response = await authGet(request("/api/auth/get-session", undefined, sessionCookie, origin, forwarded));
+      expect(response.status).toBe(200);
+      const data = await response.json() as { user?: { id?: string } };
+      expect(data.user?.id === owner.id).toBe(true);
+    }
+    const limited = await authGet(request("/api/auth/get-session", undefined, sessionCookie, origin, "192.0.2.3, 203.0.113.223"));
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get("Retry-After"))).toBeGreaterThan(0);
+    expect(limited.headers.get("Cache-Control")).toBe("no-store");
+    const otherAddress = await authGet(request("/api/auth/get-session", undefined, sessionCookie, origin, "203.0.113.224"));
+    expect(otherAddress.status).toBe(200);
+  });
 
   it("requires a code before password login, keeps workspaces private and creates no code-only session", async () => {
     const existing = await seedLegacy(true);
@@ -131,5 +152,63 @@ describe.skipIf(!testDatabaseUrl)("public registration with mandatory email conf
     expect(guest.status).toBe(200);
     expect((await guest.json()).user.isAnonymous).toBe(true);
     expect(await accountCounts()).toMatchObject({ active: "6", pending: "1" });
+  });
+
+  it("closes only new sign-ups, keeping pending confirmation, existing login and guests available", async () => {
+    const pending = await register();
+    const existing = await register();
+    expect((await sendCode(existing.email)).status).toBe(200);
+    expect((await verifyCode(existing.email, deliveredCode(existing.email))).status).toBe(200);
+    vi.stubEnv("REGISTRATION_MODE", "closed");
+    const rejected = await authPost(request("/api/auth/sign-up/email", credentials()));
+    expect(rejected.status).toBe(403);
+    expect(await rejected.json()).toMatchObject({ code: "REGISTRATION_CLOSED" });
+    expect(rejected.headers.get("Cache-Control")).toBe("no-store");
+    expect(await accountCounts()).toMatchObject({ active: "1", pending: "1" });
+    expect((await login(existing.email)).status).toBe(200);
+    expect((await sendCode(pending.email)).status).toBe(200);
+    expect((await verifyCode(pending.email, deliveredCode(pending.email))).status).toBe(200);
+    expect((await login(pending.email)).status).toBe(200);
+    expect((await authPost(request("/api/auth/sign-in/anonymous", {}))).status).toBe(200);
+    expect(await accountCounts()).toMatchObject({ active: "2", pending: "0", guests: "1" });
+  });
+
+  it("accepts owners above the six-account pilot only under an explicit finite cap", async () => {
+    vi.stubEnv("MAX_OWNERS", "8");
+    try {
+      for (let index = 0; index < 6; index += 1) await seedLegacy();
+      const accounts = await Promise.all([register(), register()]);
+      for (const account of accounts) expect((await sendCode(account.email)).status).toBe(200);
+      const confirmations = await Promise.all(accounts.map(account => verifyCode(account.email, deliveredCode(account.email))));
+      expect(confirmations.map(response => response.status)).toEqual([200, 200]);
+      expect(await accountCounts()).toMatchObject({ active: "8", pending: "0" });
+      const rejected = await authPost(request("/api/auth/sign-up/email", credentials()));
+      expect(rejected.status).toBe(409);
+      expect(await rejected.json()).toMatchObject({ code: "OWNER_LIMIT_REACHED" });
+      expect((await login(accounts[0].email)).status).toBe(200);
+    } finally { vi.stubEnv("MAX_OWNERS", "6"); }
+  });
+
+  it("keeps a shared NAT sign-up budget despite changing spoofed forwarded prefixes", async () => {
+    const statuses: number[] = [];
+    for (let index = 0; index < 4; index += 1) {
+      const response = await authPost(request("/api/auth/sign-up/email", { ...credentials(), password: "short" },
+        undefined, origin, `192.0.2.${index + 1}, 198.51.100.241`));
+      statuses.push(response.status);
+      if (index === 3) expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(0);
+    }
+    expect(statuses).toEqual([400, 400, 400, 429]);
+    expect(await accountCounts()).toMatchObject({ active: "0", pending: "0" });
+    expect(mail.send).not.toHaveBeenCalled();
+  });
+
+  it("shares the OTP budget across a NAT and does not trust client-controlled leftmost addresses", async () => {
+    const accounts = await Promise.all(Array.from({ length: 6 }, () => register()));
+    for (const [index, account] of accounts.entries()) {
+      const response = await sendCode(account.email, `192.0.2.${index + 1}, 198.51.100.242`);
+      expect(response.status).toBe(index < 5 ? 200 : 429);
+      if (index === 5) expect(Number(response.headers.get("Retry-After"))).toBeGreaterThan(500);
+    }
+    expect(mail.send).toHaveBeenCalledTimes(5);
   });
 });

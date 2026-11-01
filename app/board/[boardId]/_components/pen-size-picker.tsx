@@ -1,6 +1,7 @@
 "use client";
 
-import { Hint } from "@/components/hint";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { PEN_SIZES } from "@/lib/board/pen-preferences";
 
 interface PenSizePickerProps {
   onChange: (size: number) => void;
@@ -8,35 +9,17 @@ interface PenSizePickerProps {
 }
 
 export const PenSizePicker = ({ onChange, currentSize }: PenSizePickerProps) => {
-  const sizes = [4, 8, 12, 16, 24, 32];
-
   return (
-    <div className="flex items-center bg-white border border-neutral-200 rounded-lg shadow-sm p-2">
-      {sizes.map((size) => {
+    <div role="group" aria-label="Толщина маркера" className="grid grid-cols-3 gap-2 p-1">
+      {PEN_SIZES.map((size) => {
         const isActive = size === currentSize;
         return (
-          <Hint key={size} label={`${size}px`} side="top" sideOffset={6}>
-            <button
-              onClick={() => onChange(size)}
-              className={`
-                relative flex items-center justify-center mx-1
-                w-8 h-8
-                focus:outline-none
-                ${isActive 
-                  ? "ring-2 ring-blue-500" 
-                  : "hover:bg-neutral-100"}
-                rounded-full
-              `}
-            >
-              <div
-                className="rounded-full bg-black"
-                style={{ width: size, height: size }}
-              />
-              {isActive && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full" />
-              )}
-            </button>
-          </Hint>
+          <DropdownMenuItem key={size} role="menuitemradio" aria-label={`Толщина маркера: ${size} пкс`} aria-checked={isActive}
+            onSelect={(event) => { event.preventDefault(); onChange(size); }}
+            className={`flex min-h-11 cursor-pointer flex-col justify-center gap-1 rounded-md border px-1 py-2 focus:bg-emerald-50 ${isActive ? "border-emerald-500 bg-emerald-50" : "border-neutral-200"}`}>
+            <span aria-hidden="true" className="rounded-full bg-neutral-800" style={{ width: Math.max(3, size / 2), height: Math.max(3, size / 2) }} />
+            <span className="text-xs tabular-nums">{size}</span>
+          </DropdownMenuItem>
         );
       })}
     </div>

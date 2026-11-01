@@ -7,6 +7,7 @@ import { api, createBoard, dockerEnvironment, environment, fail, installLoadInte
 import { imageAsset, seedScene } from "./performance/fixture.mjs";
 import { MAX_HISTORY_TARGET, prepareHistoryFixture } from "./performance/history-fixture.mjs";
 import { runLoad } from "./performance/load-runner.mjs";
+import { loadOptions } from "./performance/load-options.mjs";
 
 const { values } = parseArgs({ options: {
   help: { type: "boolean" }, "base-url": { type: "string", default: "http://localhost:3000" },
@@ -25,7 +26,7 @@ const { values } = parseArgs({ options: {
 } });
 
 if (values.help) {
-  process.stdout.write("node --import=tsx scripts/load-collaboration.mjs [--base-url URL] [--storage-state FILE] [--viewer-storage-state FILE] [--seconds 30] [--rooms 1] [--connections 10] [--editors 2] [--objects 3000] [--compose-project NAME] [--output FILE] [--label LABEL] [--history-bytes BYTES]\nFor >300 seconds set RIMO_RUN_LONG_LOAD=1 explicitly. Plan A: --seconds 3600 --rooms 5 --connections 50 --editors 10.\n");
+  process.stdout.write("node --import=tsx scripts/load-collaboration.mjs [--base-url URL] [--storage-state FILE] [--viewer-storage-state FILE] [--seconds 30] [--rooms 1] [--connections 10] [--editors 2] [--objects 3000] [--compose-project NAME] [--output FILE] [--label LABEL] [--history-bytes BYTES]\nFor >300 seconds set RIMO_RUN_LONG_LOAD=1 explicitly. Plan A: --seconds 3600 --rooms 5 --connections 50 --editors 10. v0.2 target: --seconds 3600 --rooms 20 --connections 40 --editors 40.\n");
 } else {
   await main().catch((error) => { process.stderr.write(`${safeError(error)}\n`); process.exitCode = 1; });
 }
@@ -33,22 +34,12 @@ if (values.help) {
 function allocate(total, rooms, index) { return Math.floor(total / rooms) + Number(index < total % rooms); }
 
 async function main() {
-  const options = {
-    seconds: positiveInteger(values.seconds, "seconds", 14_400), rooms: positiveInteger(values.rooms, "rooms", 10),
-    connections: positiveInteger(values.connections, "connections", 50), editors: positiveInteger(values.editors, "editors", 10),
-    objects: positiveInteger(values.objects, "objects", 3_000), editHz: positiveInteger(values["edit-hz"], "edit-hz", 20),
-    presenceHz: positiveInteger(values["presence-hz"], "presence-hz", 30), batchSize: positiveInteger(values["batch-size"], "batch-size", 500),
-    batchEverySeconds: positiveInteger(values["batch-every-seconds"], "batch-every-seconds", 3_600),
-    sampleSeconds: positiveInteger(values["sample-seconds"], "sample-seconds", 60), composeProject: values["compose-project"],
-  };
+  const options = loadOptions(values);
   if (values["history-bytes"] !== undefined) options.historyBytes = positiveInteger(values["history-bytes"], "history-bytes", MAX_HISTORY_TARGET);
   if (options.seconds > 300 && process.env.RIMO_RUN_LONG_LOAD !== "1") throw fail("Long load runs require explicit RIMO_RUN_LONG_LOAD=1");
   const startSignal = values["start-signal"] ? path.resolve(values["start-signal"]) : null;
   if (startSignal && (!startSignal.startsWith(path.resolve("temp/performance") + path.sep) || existsSync(startSignal))) {
     throw fail("A profiling start signal must be a new file inside temp/performance");
-  }
-  if (options.editors < options.rooms || options.editors > options.connections || options.connections > options.rooms * 10) {
-    throw fail("Use at least one editor per room, editors <=connections and no more than10 connections per room");
   }
   const viewers = options.connections - options.editors;
   const report = { kind: "collaboration-load", version: 1, status: "running", targetOrigin: new URL(values["base-url"]).origin, environment: await environment(values.label), options,

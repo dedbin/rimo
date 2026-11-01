@@ -9,10 +9,15 @@ export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>) {
   const cameraRef = useRef(camera);
   const animation = useRef<number | null>(null);
   const bounds = useBoardBounds();
-  const updateCamera = useCallback((next: Camera) => {
+  const applyCamera = useCallback((next: Camera) => {
     cameraRef.current = next;
     setCamera(next);
   }, []);
+  const updateCamera = useCallback((next: Camera) => {
+    if (animation.current !== null) cancelAnimationFrame(animation.current);
+    animation.current = null;
+    applyCamera(next);
+  }, [applyCamera]);
   const animateCameraTo = useCallback((target: Camera, duration = 250) => {
     if (animation.current !== null) cancelAnimationFrame(animation.current);
     const initial = cameraRef.current;
@@ -20,7 +25,7 @@ export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>) {
     const frame = () => {
       const progress = Math.min((performance.now() - start) / duration, 1);
       const eased = 1 - (1 - progress) ** 3;
-      updateCamera({
+      applyCamera({
         x: initial.x + (target.x - initial.x) * eased,
         y: initial.y + (target.y - initial.y) * eased,
         scale: initial.scale + (target.scale - initial.scale) * eased,
@@ -28,7 +33,7 @@ export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>) {
       animation.current = progress < 1 ? requestAnimationFrame(frame) : null;
     };
     animation.current = requestAnimationFrame(frame);
-  }, [updateCamera]);
+  }, [applyCamera]);
   const fitToScreen = useCallback(() => {
     const svg = svgRef.current;
     if (!bounds || !svg) return;

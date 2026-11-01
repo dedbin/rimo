@@ -1,0 +1,143 @@
+{
+  "revision": "7757408f87d3517cfea297aab553bf179764e741",
+  "tag": "server-7757408f87d3",
+  "release": "/srv/rimo/releases/7757408f87d3",
+  "previous": "/srv/rimo/releases/c121cbad5597",
+  "builtAt": "2026-11-01T16:01:57.337106+00:00",
+  "appImage": "sha256:b1e18405039cea04c0958feee6d23932247eca3f57cbd483579eff7ab932be7a",
+  "pdfImage": "sha256:c7b9090c541826d0b996c10bf539f890bf2d3ff68210d43278d7056171810571",
+  "activatedAt": "2026-11-01T16:06:08.827844+00:00",
+  "backupBeforeUpdate": "success",
+  "namedVolumesPreserved": true,
+  "databaseFingerprintsMatch": true,
+  "publicHealth": 200,
+  "mailConnectionVerified": true,
+  "acceptanceCompletedAt": "2026-11-01T16:13:08.495879+00:00",
+  "temporaryDataCleanup": {
+    "temporaryAccountDeleted": true,
+    "temporaryBoardsDeleted": true,
+    "temporaryGuestsDeleted": 7
+  },
+  "originalDataAfterAcceptanceMatch": true,
+  "liveChangedTablesDuringAcceptance": [],
+  "originalCounts": {
+    "user": 13,
+    "account": 3,
+    "boards": 3,
+    "board_documents": 3,
+    "assets": 3,
+    "board_invites": 3,
+    "board_members": 2,
+    "board_favorites": 0,
+    "schema_migrations": 2
+  },
+  "backup": {
+    "snapshotID": "3fd3d7e8ab909ac93d06e210692c082bd7eec68e95d243039b79c2ab6a5faa4c",
+    "createdAt": "2026-11-01T16:02:55.472Z",
+    "sourceCreatedAt": "2026-11-01T16:02:49.159Z",
+    "encrypted": true,
+    "dataVerified": true,
+    "offsiteVerified": false
+  },
+  "version": "0.2.0",
+  "publicUrl": "https://rimo-whiteboard.ru",
+  "ci": {
+    "sourceRevision": "7757408f87d3517cfea297aab553bf179764e741",
+    "result": "success",
+    "run": "https://github.com/dedbin/rimo/actions/runs/41323535724",
+    "jobs": [
+      "verify",
+      "mail-relay"
+    ]
+  },
+  "pullRequest": "https://github.com/dedbin/rimo/pull/14",
+  "reportPhase": "Production acceptance complete; final documentation CI and PR merge follow this report",
+  "admission": {
+    "maxOwners": 6,
+    "registrationMode": "open",
+    "maxConnections": 50,
+    "maxRoomConnections": 10,
+    "maxEditors": 10,
+    "maxOpenDocuments": 10,
+    "existingLimitsPreserved": true,
+    "fortyEditorProfileEnabled": false
+  },
+  "migrationFilesUnchanged": true,
+  "baseComposeChanges": "Only five reviewed environment forwards",
+  "browserAcceptance": {
+    "target": "Public production HTTPS with an isolated temporary owner; Chromium",
+    "uniqueScenariosPassed": 15,
+    "firstRun": {
+      "passed": 14,
+      "failed": 1,
+      "reason": "Anonymous sign-in HTTP 429",
+      "retryAfterSeconds": 4
+    },
+    "targetedRetry": {
+      "scenario": "Live editor/viewer role changes",
+      "passed": 1,
+      "failed": 0,
+      "durationSeconds": 24.9,
+      "serverLimitsChanged": false
+    },
+    "coverage": [
+      "help contacts",
+      "image clipboard independence",
+      "owner/editor/viewer and revocation",
+      "PDF preview and archive restore",
+      "lines and arrows",
+      "personal marker and reload",
+      "narrow marker menu",
+      "rich text and formulas",
+      "live roles",
+      "selection and shapes",
+      "native CDP multitouch, including partial release"
+    ],
+    "originalSpecSha256": {
+      "types/board-canvas.ts": "a80086d2460c5d6ccd6dc76e355dbbf230e03e7750ac4d569c25cd75ea259256",
+      "auth-help.spec.ts": "015a5824c91dea148c349f03337d2978f1e8b49e73ff07b40e98d54771a2d34b",
+      "clipboard.spec.ts": "2928a8731250d62868a3f53a4533b8d9c4213cbb3bbc84ec0b9f4c8e54918814",
+      "collaboration.spec.ts": "c56f50d3c68a382515114aa10da0412f68cc98008f9180f5d67c62327b505039",
+      "exports.spec.ts": "0e4fe555f1527175f0feaf8ff2b6cc3913c083c33ee5f1f1eb75c11305236a5e",
+      "line-tools.spec.ts": "1a7d3921fcedecfd321237ad81fdc4263630502bc9958e5f7c0f702325ed32be",
+      "marker-preferences.spec.ts": "cf0831d082768ddea16909f9fe978a97ddfd574671efafc58ecc0c659f50d4f0",
+      "rich-text.spec.ts": "8ed4de7743e0171bbf83e65376e9c45aae074233999db3d095f7be80a0e410f4",
+      "role-change.spec.ts": "e233289d0a3e454f43a5fe3992ede2320a3f3a45d583b04e005e85cd830c35e8",
+      "selection-hitbox.spec.ts": "c0ea55a12854f3ed4fc8a062381727fd35b1c016acbe08fa78a8af6b93ed380a",
+      "shape-style.spec.ts": "8e1487569f12233fbada71b51ec0f73074c02ea336d362bed4b79c464d3fa39f",
+      "tablet-gestures.spec.ts": "646cb6344fe1d37b5fb84ffc5b98c54aea0ec912119d0410af04860c1d90a7b6",
+      "board-ui.ts": "9c5fb6e8544cd7b83c02f40d5bd4afc10ca10730444bfb96ff53e2128faef6b3",
+      "fixtures.ts": "4999555c04fb1f87526115e7a6f6837ad1c1f24a9378a67731d55c02193bd39e"
+    },
+    "fixtureAudit": "Only records exact anonymous identity after proving its joined board belongs to the temporary owner",
+    "realRecipientEmailDeliveryTested": false,
+    "physicalTabletOrSafariTested": false
+  },
+  "reconnectAcceptance": {
+    "forcedReconnect": true,
+    "newConnectionObserved": true,
+    "secureWebSocket": true,
+    "documentPreserved": true,
+    "writesAfterReconnectPersisted": true,
+    "secureSessionCookie": true
+  },
+  "operatorRecoveryCliPackaged": true,
+  "originalFingerprintTables": [
+    "user",
+    "account",
+    "boards",
+    "board_documents",
+    "assets",
+    "board_invites",
+    "board_members",
+    "board_favorites",
+    "schema_migrations"
+  ],
+  "evidenceSha256": {
+    "initialBrowserLog": "ddcb57e4dd9ba6ae8614de1577453e95a26c7f49a92294bf64effccfa2caee04",
+    "targetedRetryLog": "eebac4fb1d24aa2270e2deec5de0437146fec046ac1adb9216bd7f02e71e0f27"
+  },
+  "s3Configured": false,
+  "externalIndependentBackupVerified": false,
+  "oldImagesAndReleaseRetained": true
+}

@@ -1,11 +1,11 @@
-import { isIP } from "node:net";
-
 import { toNextJsHandler } from "better-auth/next-js";
 import { z } from "zod";
 
 import { canUseAccount } from "@/lib/verified-user";
 import { getAuth, registerOwnerAccount } from "@/server/auth";
+import { authClientIp, authRequestHeaders } from "@/server/auth-client-ip";
 import { getPool } from "@/server/db";
+import { CredentialOperationBusyError, withCredentialLock } from "@/server/credential-lock";
 import {
   clearVerificationChallenge, issueVerificationChallenge, mayConfirmEmail,
 } from "@/server/email-verification-challenge";
@@ -18,9 +18,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request): Promise<Response> {
-  const blocked = await beforeVerification(request);
+  const normalized = new Request(request, { headers: authRequestHeaders(request.headers) });
+  const blocked = await beforeVerification(normalized);
   if (blocked) return blocked;
-  return toNextJsHandler(getAuth()).GET(request);
+  return withRetryAfter(await toNextJsHandler(getAuth()).GET(normalized));
 }
 
 function authFailure(status: number, code: string, message: string, retryAfter?: number): Response {
@@ -32,6 +33,16 @@ function authFailure(status: number, code: string, message: string, retryAfter?:
 
 function authPath(request: Request): string {
   return new URL(request.url).pathname.replace(/\/+$/, "");
+}
+
+async function passwordOperation(email: string, operation: () => Promise<Response>): Promise<Response> {
+  try { return await withCredentialLock(email, operation); }
+  catch (error) {
+    if (error instanceof CredentialOperationBusyError) {
+      return authFailure(error.status, error.code, error.message, error.retryAfter);
+    }
+    throw error;
+  }
 }
 
 function nonCanonicalPath(request: Request): boolean {
@@ -52,12 +63,12 @@ async function beforeVerification(request: Request): Promise<Response | null> {
 }
 
 export async function POST(request: Request): Promise<Response> {
-  return handleApi(async () => {
+  const response = await handleApi(async () => {
     assertSameOrigin(request);
     const bytes = await readRequestBuffer(request, 16_384);
     const bounded = new Request(request.url, {
       method: request.method,
-      headers: request.headers,
+      headers: authRequestHeaders(request.headers),
       body: new Uint8Array(bytes),
       signal: request.signal,
     });
@@ -86,8 +97,7 @@ export async function POST(request: Request): Promise<Response> {
         }
       }
       // Caddy supplies this header; the app has no public published port.
-      const candidate = request.headers.get("x-forwarded-for")?.split(",").at(-1)?.trim() ?? "";
-      const ip = isIP(candidate) ? candidate : "unknown";
+      const ip = authClientIp(bounded.headers);
       let otp: string;
       try {
         otp = await withVerificationCodeLock(email, async () => {
@@ -117,7 +127,17 @@ export async function POST(request: Request): Promise<Response> {
         ? issueVerificationChallenge(response, data.user.email.toLowerCase(), data.user.id)
         : clearVerificationChallenge(response);
     }
-    const response = await toNextJsHandler(getAuth()).POST(bounded);
+    const dispatch = () => toNextJsHandler(getAuth()).POST(bounded);
+    let response: Response;
+    if (path === "/api/auth/sign-in/email") {
+      const input = await readJsonObject(bounded.clone());
+      const email = typeof input.email === "string" ? input.email.trim().toLowerCase() : "";
+      response = z.email().safeParse(email).success ? await passwordOperation(email, dispatch) : await dispatch();
+    } else if (path === "/api/auth/change-password") {
+      const session = await getAuth().api.getSession({ headers: bounded.headers, query: { disableCookieCache: true } });
+      // The handler checks the session again after the lock has been acquired.
+      response = session ? await passwordOperation(session.user.email, dispatch) : await dispatch();
+    } else response = await dispatch();
     if (path === "/api/auth/sign-in/email" && response.status === 403) {
       const data = await response.clone().json() as { code?: string };
       if (data.code === "EMAIL_NOT_VERIFIED") {
@@ -127,4 +147,17 @@ export async function POST(request: Request): Promise<Response> {
     }
     return path === "/api/auth/sign-out" ? clearVerificationChallenge(response) : response;
   });
+  return withRetryAfter(response);
+}
+
+function withRetryAfter(response: Response): Response {
+  if (response.status !== 429) return response;
+  const headers = new Headers(response.headers);
+  // Better Auth uses X-Retry-After. Expose the standard header to every client.
+  const seconds = Number(headers.get("Retry-After") ?? headers.get("X-Retry-After"));
+  if (Number.isFinite(seconds) && seconds > 0) {
+    headers.set("Retry-After", String(Math.min(86_400, Math.ceil(seconds))));
+  }
+  headers.set("Cache-Control", "no-store");
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
 }

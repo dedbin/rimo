@@ -8,6 +8,7 @@ import { BoardCanvasMode, Color, LayerType } from "@/types/board-canvas";
 import { useCanvasCamera } from "../_hooks/use-canvas-camera";
 import { useCanvasClipboard } from "../_hooks/use-canvas-clipboard";
 import { useCanvasGestures } from "../_hooks/use-canvas-gestures";
+import { usePenPreferences } from "../_hooks/use-pen-preferences";
 import { BoardInfo } from "./info";
 import { BoardParticipants } from "./participants";
 import { BoardToolbar } from "./toolbar";
@@ -42,10 +43,11 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
   const history = useBoardHistory();
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [lastUsedColor, setLastUsedColor] = useState<Color>({ r: 0, g: 0, b: 0 });
-  const [lastUsedSize, setLastUsedSize] = useState(16);
+  const pen = usePenPreferences(runtime.session.user.id);
   const [viewport, setViewport] = useState({ width: 1920, height: 1080 });
   const { camera, cameraRef, updateCamera, animateCameraTo, fitToScreen } = useCanvasCamera(svgRef);
-  const gestures = useCanvasGestures({ svgRef, cameraRef, updateCamera, color: lastUsedColor, penSize: lastUsedSize });
+  const gestures = useCanvasGestures({ svgRef, cameraRef, updateCamera,
+    color: lastUsedColor, penColor: pen.color, penSize: pen.size });
   const { insertImage } = useCanvasClipboard({ color: lastUsedColor, cancel: gestures.cancel, setCanvasState: gestures.setCanvasState });
   const { canvasState, preview } = gestures;
   const canEdit = runtime.board.canEdit && connection.synced && !connection.error;
@@ -104,13 +106,15 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     </div>
     {canEdit && <BoardToolbar canvasState={canvasState} setCanvasState={gestures.setCanvasState}
       undo={history.undo} redo={history.redo} canUndo={history.canUndo} canRedo={history.canRedo}
-      selectedPenSize={lastUsedSize} onImageUpload={insertImage} onPenSizeChange={(size) => {
-        setLastUsedSize(size); gestures.setCanvasState({ mode: BoardCanvasMode.Pencil });
+      selectedPenColor={pen.color} onPenColorChange={pen.setColor}
+      selectedPenSize={pen.size} onImageUpload={insertImage} onPenSizeChange={(size) => {
+        pen.setSize(size); gestures.setCanvasState({ mode: BoardCanvasMode.Pencil });
       }} camera={camera} animateCameraTo={animateCameraTo} />}
     {canEdit && preview.ids.length === 0 && !preview.line && (selectedLayer?.type === LayerType.Text || selectedLayer?.type === LayerType.Sticker
       ? <TextSelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />
       : <SelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />)}
     <svg ref={svgRef} className="h-[100vh] w-[100vw]" aria-label="Холст доски"
+      onPointerDownCapture={gestures.onPointerDownCapture}
       onPointerMove={gestures.onPointerMove} onPointerLeave={gestures.onPointerLeave}
       onPointerDown={gestures.onPointerDown} onPointerUp={gestures.onPointerUp}
       onPointerCancel={gestures.onPointerCancel} onLostPointerCapture={gestures.onLostPointerCapture}
@@ -138,7 +142,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
           width={Math.abs(canvasState.origin.x - canvasState.current.x)} height={Math.abs(canvasState.origin.y - canvasState.current.y)} />}
         <CursorsPresence />
         {pencilDraft && pencilDraft.length > 0 && <Path points={pencilDraft} x={0} y={0}
-          fill={rgbToCss(lastUsedColor)} size={lastUsedSize} />}
+          fill={rgbToCss(gestures.pencilStyle.color)} size={gestures.pencilStyle.size} />}
       </g>
     </svg>
     <ZoomControls scale={camera.scale} onFitToScreen={fitToScreen} />

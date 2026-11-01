@@ -91,6 +91,7 @@ describe("AuthButton", () => {
 
   it.each([
     [{ code: "OWNER_LIMIT_REACHED", status: 409 }, "Свободных аккаунтов пока нет. Обратитесь к владельцу сервиса."],
+    [{ code: "REGISTRATION_CLOSED", status: 403 }, "Регистрация временно закрыта. В существующий аккаунт можно войти."],
     [{ status: 429 }, "Слишком много попыток. Попробуйте через минуту."],
   ])("explains a registration rejection and lets the user retry: %j", async (error, message) => {
     calls.signUp.mockResolvedValueOnce({ error });
@@ -100,6 +101,17 @@ describe("AuthButton", () => {
     expect(screen.getByRole("button", { name: "Создать аккаунт" })).toBeEnabled();
     expect(screen.getByLabelText("Почта", { exact: true })).toHaveValue("teacher@example.test");
     expect(screen.getByRole("dialog")).toBeVisible();
+  });
+
+  it("shows a real support contact for registration and lost account access", () => {
+    open("sign-in");
+    expect(screen.getByRole("link", { name: "Забыли пароль? Написать в поддержку" }))
+      .toHaveAttribute("href", "https://t.me/argtg_not_arctg");
+    fireEvent.click(screen.getByRole("button", { name: "Нет аккаунта? Зарегистрироваться" }));
+    expect(screen.getByRole("link", { name: "Помощь с регистрацией и входом" }))
+      .toHaveAttribute("href", "https://t.me/argtg_not_arctg");
+    expect(calls.signIn).not.toHaveBeenCalled();
+    expect(calls.signUp).not.toHaveBeenCalled();
   });
 
   it("blocks repeat submission and mode changes until the pending request finishes", async () => {

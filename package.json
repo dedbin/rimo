@@ -1,6 +1,6 @@
 {
   "name": "rimo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
@@ -12,6 +12,7 @@
     "check": "npm run lint && npm run typecheck && npm test",
     "db:migrate": "tsx scripts/migrate.ts",
     "owner:create": "tsx scripts/create-owner.ts",
+    "owner:recover": "tsx scripts/recover-owner.ts",
     "mail:check": "tsx scripts/check-mail.ts",
     "collaboration": "node --enable-source-maps --env-file-if-exists=.env.local dist/collaboration/index.mjs",
     "collaboration:dev": "node --env-file-if-exists=.env.local --import=tsx collaboration-server/index.ts",

@@ -2,6 +2,7 @@ import { getServerConfig } from "../server/config";
 import { getPool } from "../server/db";
 
 import { createCollaborationDependencies } from "./dependencies";
+import { getCollaborationAdmissionLimits } from "./config";
 import { createCollaborationServer } from "./server";
 import { acquireWriterLock, WriterAlreadyRunningError } from "./writer-lock";
 
@@ -15,6 +16,7 @@ function portFromEnvironment(): number {
 
 async function main(): Promise<void> {
   const config = getServerConfig();
+  const limits = getCollaborationAdmissionLimits();
   const port = portFromEnvironment();
   const pool = getPool();
   let releaseWriter: () => Promise<void>;
@@ -31,6 +33,7 @@ async function main(): Promise<void> {
     origins: config.trustedOrigins,
     address: process.env.COLLABORATION_HOST ?? "127.0.0.1",
     port,
+    limits,
   }, createCollaborationDependencies());
   try {
     await server.listen();
@@ -39,7 +42,7 @@ async function main(): Promise<void> {
     await pool.end();
     throw error;
   }
-  console.info(JSON.stringify({ event: "collaboration_started", port: server.address.port }));
+  console.info(JSON.stringify({ event: "collaboration_started", port: server.address.port, admissionLimits: limits }));
 
   let stopping = false;
   const shutdown = async (): Promise<void> => {

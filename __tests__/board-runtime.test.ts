@@ -17,6 +17,7 @@ vi.mock("@hocuspocus/provider", async (importOriginal) => ({
       setLocalState: vi.fn(), setLocalStateField: vi.fn() };
     sendStateless = vi.fn();
     disconnect = vi.fn();
+    connect = vi.fn();
     destroy = vi.fn();
     constructor(options: HocuspocusProviderConfiguration) { mocked.options = options; }
   },
@@ -47,6 +48,36 @@ beforeEach(() => {
 afterEach(() => runtime.destroy());
 
 describe("board connection lifecycle", () => {
+  it.each(["Server connection limit reached", "Board connection limit reached", "Server editor limit reached", "Server open board limit reached"])(
+    "keeps capacity denial separate from ACL and retries without destroying a draft: %s", (reason) => {
+      runtime.board.insert([createLayer(LayerType.Rectangle, { x: 10, y: 20 }, { r: 0, g: 0, b: 0 })]);
+      const draft = Y.encodeStateAsUpdate(runtime.board.doc);
+      options().onAuthenticationFailed?.({ reason });
+      expect(runtime.getState().capacityRejection).toBeTruthy();
+      expect(runtime.getState().error).not.toContain("Доступ к доске прекращён");
+      expect(runtime.board.canEdit).toBe(false);
+      acknowledge(); role("owner"); options().onSynced?.({ state: true });
+      expect(runtime.board.canEdit).toBe(false);
+      runtime.retryConnection();
+      expect(runtime.provider.connect).toHaveBeenCalledTimes(1);
+      expect(runtime.getState()).toMatchObject({ error: null, capacityRejection: null, synced: false });
+      expect(Y.encodeStateAsUpdate(runtime.board.doc)).toEqual(draft);
+      options().onStatus?.({ status: WebSocketStatus.Connected }); role("owner"); options().onSynced?.({ state: true });
+      expect(runtime.board.canEdit).toBe(true);
+      acknowledge();
+      expect(runtime.getState()).toMatchObject({ saved: true, pending: false });
+    });
+
+  it("does not let a capacity callback or retry reopen revoked access", () => {
+    options().onAuthenticationFailed?.({ reason: "Access denied" });
+    options().onClose?.({ event: { code: 1008, reason: "Server editor limit reached" } });
+    runtime.retryConnection();
+    expect(runtime.provider.connect).not.toHaveBeenCalled();
+    expect(runtime.getState()).toMatchObject({ capacityRejection: null });
+    expect(runtime.getState().error).toContain("Доступ");
+    expect(runtime.board.canEdit).toBe(false);
+  });
+
   it.each([
     ["Board storage limit reached", "storage-limit", "предел размера"],
     ["Board object limit reached", "object-limit", "предел количества объектов"],

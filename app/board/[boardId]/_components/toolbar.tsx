@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import {
   Circle,
   MousePointer2,
-  Pencil,
   Redo2,
   Square,
   StickyNote,
@@ -16,18 +14,13 @@ import {
   EraserIcon
 } from "lucide-react";
 import { ToolButton } from "./tool-button";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-} from "@/components/ui/dropdown-menu";
-import { PenSizePicker } from "./pen-size-picker";
+import { PenTool } from "./pen-tool";
 import { LineTool } from "./line-tool";
 import {
   BoardCanvasMode,
   BoardCanvasState,
   Camera,
+  Color,
   LayerType
 } from "@/types/board-canvas";
 import { useTranslation } from "@/hooks/use-translation";
@@ -40,6 +33,8 @@ interface BoardToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   selectedPenSize: number;
+  selectedPenColor: Color;
+  onPenColorChange: (color: Color) => void;
   onPenSizeChange: (size: number) => void;
   onImageUpload: (file: File) => Promise<void>;
   camera: Camera;
@@ -55,11 +50,12 @@ export const BoardToolbar = ({
   canRedo,
   onPenSizeChange,
   selectedPenSize,
+  selectedPenColor,
+  onPenColorChange,
   onImageUpload,
   camera,
   animateCameraTo
 }: BoardToolbarProps) => {
-  const [penOpen, setPenOpen] = useState(false);
   const { t } = useTranslation();
 
   return (
@@ -96,42 +92,9 @@ export const BoardToolbar = ({
           }
         />
 
-        <DropdownMenu open={penOpen} onOpenChange={setPenOpen}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant={
-                canvasState.mode === BoardCanvasMode.Pencil
-                  ? "boardActive"
-                  : "board"
-              }
-              size="icon"
-              onClick={() => {
-                setCanvasState({ mode: BoardCanvasMode.Pencil });
-                setPenOpen(true);
-              }}
-            >
-              <Pencil />
-            </Button>
-          </DropdownMenuTrigger>
-
-          <DropdownMenuContent
-            side="right"
-            align="center"
-            sideOffset={8}
-            className="bg-white p-2 shadow rounded-md"
-            onPointerDown={(e) => e.stopPropagation()}
-            onPointerUp={(e) => e.stopPropagation()}
-          >
-            <PenSizePicker
-              currentSize={selectedPenSize}
-              onChange={(size) => {
-                onPenSizeChange(size);
-                setPenOpen(false);
-                setCanvasState({ mode: BoardCanvasMode.Pencil });
-              }}
-            />
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <PenTool active={canvasState.mode === BoardCanvasMode.Pencil} color={selectedPenColor} size={selectedPenSize}
+          onActivate={() => setCanvasState({ mode: BoardCanvasMode.Pencil })}
+          onColorChange={onPenColorChange} onSizeChange={onPenSizeChange} />
 
         <ToolButton
           label={`${t("toolbar.eraser")} (Ctrl+E)`}

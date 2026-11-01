@@ -16,6 +16,33 @@ const session: BoardSession = { role: "owner", user: { id: "owner", name: "Вл�
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe("quota rejection with the installed Hocuspocus SDK", () => {
+  it("retains a requested capacity retry until the old SDK transport has closed", async () => {
+    vi.useFakeTimers();
+    const suppressStartup = vi.spyOn(HocuspocusProviderWebsocket.prototype, "connect").mockResolvedValue(undefined);
+    const runtime = new BoardRuntime(session);
+    suppressStartup.mockRestore();
+    const transport = runtime.provider.configuration.websocketProvider;
+    // Suppress only creation of a native network connection, keeping connect()
+    // and its Connected/shouldConnect guards from the installed SDK intact.
+    vi.spyOn(transport, "createWebSocketConnection").mockResolvedValue(undefined);
+    const socket = { identifier: 1, readyState: 3, close: vi.fn(), send: vi.fn(),
+      addEventListener: vi.fn(), removeEventListener: vi.fn() } as unknown as NonNullable<typeof transport.webSocket>;
+    transport.webSocket = socket;
+    transport.attachWebSocketListeners(socket, vi.fn());
+    transport.status = WebSocketStatus.Connected;
+    try {
+      runtime.provider.configuration.onAuthenticationFailed({ reason: "Server editor limit reached" });
+      expect(transport.shouldConnect).toBe(false);
+      runtime.retryConnection();
+      expect(runtime.getState().capacityRejection).toBe("server-editors");
+      expect(transport.shouldConnect).toBe(false);
+      transport.onClose({ event: { code: 1000, reason: "" } });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(transport.shouldConnect).toBe(true);
+      expect(runtime.getState()).toMatchObject({ capacityRejection: null, error: null, synced: false });
+    } finally { runtime.destroy(); }
+  });
+
   it.each(["Board storage limit reached", "Board object limit reached"])("uses public disconnect to stop transport retries while preserving Y.Doc: %s", async (reason) => {
     vi.useFakeTimers();
     // Suppress only network creation; the SDK provider, disconnect, close, and retry logic remain real.

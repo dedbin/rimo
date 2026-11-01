@@ -1,6 +1,10 @@
 import type { Pool } from "pg";
 
+import { getCollaborationAdmissionLimits } from "../../collaboration-server/config";
+import type { CollaborationAdmissionLimits } from "../../collaboration-server/config";
 import { storageSpaceHealth } from "../../lib/storage-space.mjs";
+import { getRegistrationMode } from "../config";
+import type { RegistrationMode } from "../config";
 import type { QuotaLimits } from "../config";
 import { inspectStorage, OperationsError, safeNumber } from "./storage";
 import type { StorageMetrics } from "./storage";
@@ -9,7 +13,7 @@ export { storageSpaceHealth };
 
 export type ServiceHealth = "healthy" | "warning" | "critical";
 export interface ServiceUsage {
-  readonly owners: number; readonly boards: number; readonly documents: number; readonly documentBytes: number;
+  readonly owners: number; readonly pendingOwners: number; readonly boards: number; readonly documents: number; readonly documentBytes: number;
   readonly assets: number; readonly assetBytes: number;
   readonly maxBoardsPerOwner: number; readonly maxOwnerAssetBytes: number; readonly maxBoardAssetBytes: number;
 }
@@ -17,11 +21,14 @@ export interface ServiceStatus {
   readonly version: 1; readonly checkedAt: string; readonly status: ServiceHealth; readonly reasonCodes: readonly string[];
   readonly database: { readonly reachable: boolean }; readonly usage: ServiceUsage | null;
   readonly quotas: QuotaLimits; readonly storage: StorageMetrics | null;
+  readonly registration: { readonly mode: RegistrationMode };
+  readonly collaborationAdmission: CollaborationAdmissionLimits;
 }
 
 async function databaseUsage(database: Pool): Promise<ServiceUsage> {
   const result = await database.query<Record<keyof ServiceUsage, string>>(`SELECT
     (SELECT count(*) FROM "user" WHERE "isAnonymous" = false AND "registrationPending" = false) AS owners,
+    (SELECT count(*) FROM "user" WHERE "isAnonymous" = false AND "registrationPending" = true) AS "pendingOwners",
     (SELECT count(*) FROM boards) AS boards,
     (SELECT count(*) FROM board_documents) AS documents,
     (SELECT COALESCE(sum(octet_length(state)),0) FROM board_documents) AS "documentBytes",
@@ -31,7 +38,7 @@ async function databaseUsage(database: Pool): Promise<ServiceUsage> {
     (SELECT COALESCE(max(n),0) FROM (SELECT sum(a.byte_size) AS n FROM assets a JOIN boards b ON b.id=a.board_id GROUP BY b.owner_id) usage) AS "maxOwnerAssetBytes",
     (SELECT COALESCE(max(n),0) FROM (SELECT sum(byte_size) AS n FROM assets GROUP BY board_id) usage) AS "maxBoardAssetBytes"`);
   const row = result.rows[0];
-  return { owners: safeNumber(row.owners), boards: safeNumber(row.boards), documents: safeNumber(row.documents),
+  return { owners: safeNumber(row.owners), pendingOwners: safeNumber(row.pendingOwners), boards: safeNumber(row.boards), documents: safeNumber(row.documents),
     documentBytes: safeNumber(row.documentBytes), assets: safeNumber(row.assets), assetBytes: safeNumber(row.assetBytes),
     maxBoardsPerOwner: safeNumber(row.maxBoardsPerOwner), maxOwnerAssetBytes: safeNumber(row.maxOwnerAssetBytes), maxBoardAssetBytes: safeNumber(row.maxBoardAssetBytes) };
 }
@@ -40,6 +47,8 @@ export async function collectServiceStatus(options: {
   readonly database: Pool; readonly uploadDir: string; readonly quotas: QuotaLimits;
 }): Promise<ServiceStatus> {
   const checkedAt = new Date().toISOString();
+  const registration = Object.freeze({ mode: getRegistrationMode() });
+  const collaborationAdmission = getCollaborationAdmissionLimits();
   const checks = await Promise.allSettled([databaseUsage(options.database), inspectStorage(options.uploadDir)]);
   const usage = checks[0].status === "fulfilled" ? checks[0].value : null;
   const storage = checks[1].status === "fulfilled" ? checks[1].value : null;
@@ -72,7 +81,7 @@ export async function collectServiceStatus(options: {
     }
   }
   return { version: 1, checkedAt, status, reasonCodes: reasons, database: { reachable: usage !== null }, usage,
-    quotas: { ...options.quotas }, storage };
+    quotas: { ...options.quotas }, storage, registration, collaborationAdmission };
 }
 
 export function serviceStatusExitCode(status: ServiceHealth): number { return status === "healthy" ? 0 : status === "warning" ? 1 : 2; }

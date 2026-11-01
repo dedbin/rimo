@@ -82,3 +82,18 @@ export async function verifyMailTransport(): Promise<void> {
     throw mailFailure();
   }
 }
+
+export async function sendOwnerRecoveryCode(email: string, code: string): Promise<void> {
+  try {
+    if (!z.email().safeParse(email).success || !/^\d{6}$/.test(code)) throw mailFailure();
+    const config = getMailConfig();
+    await createMailTransport(config).sendMail({
+      from: { name: "Rimo", address: config.from }, to: email,
+      subject: "Восстановление доступа к Rimo через поддержку",
+      text: `Код восстановления доступа к Rimo: ${code}\n\nКод действует 10 минут и разрешает поддержке сменить пароль и завершить все сеансы вашего аккаунта. Это отдельный код восстановления, не код входа или подтверждения почты.\nПередайте его оператору только в обращении за восстановлением, которое вы сами начали. Если вы не обращались в поддержку, не сообщайте код: пароль останется прежним.`,
+    });
+  } catch {
+    // Keep SMTP commands, account details and the recovery code out of errors.
+    throw mailFailure();
+  }
+}

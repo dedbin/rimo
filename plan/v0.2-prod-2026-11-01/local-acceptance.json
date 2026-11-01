@@ -1,0 +1,275 @@
+{
+  "version": 1,
+  "recordedAt": "2026-11-01T12:03:10.051Z",
+  "branch": "codex/v0.2-prod",
+  "productVersion": "0.2.0",
+  "productSourceCommit": "cc8bfdae9dcf08183a338f836cc8b86f29874f5b",
+  "buildId": "D30C6qP74g3YgvhWwDLLB",
+  "readiness": {
+    "mandatoryFunctionsLocallyVerified": true,
+    "targetFortyEditorsAccepted": false,
+    "productionDeploymentApproved": false,
+    "githubPublished": false,
+    "s3Connected": false
+  },
+  "checks": {
+    "productionBuild": "passed",
+    "lintAndTypes": "passed",
+    "integration": {
+      "passed": 1035,
+      "skipped": 3,
+      "filesPassed": 129,
+      "filesSkipped": 3,
+      "seconds": 174.98,
+      "actualPostgresAndChromium": true,
+      "skippedReason": "Docker backup, resource and disk-full compose suites; engine unavailable"
+    },
+    "e2e": {
+      "passed": 16,
+      "failed": 0,
+      "minutes": 1.4
+    },
+    "standalone": {
+      "status": "passed",
+      "resourceChecks": 2,
+      "runtimeEndpointConfigurations": 3
+    },
+    "productionDependencyVulnerabilities": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 0,
+      "critical": 0,
+      "total": 0
+    },
+    "composeConfiguration": "passed; base + ops + mail, config --quiet; no engine started",
+    "interactiveOperatorRecovery": {
+      "oldSessionRevoked": true,
+      "oldPasswordRejected": true,
+      "newPasswordAccepted": true,
+      "boardPreserved": true,
+      "fixtureCleaned": true
+    },
+    "detachedLocalPreview": {
+      "guestInvitationAccepted": true,
+      "editorMarkerVisible": true,
+      "readyAfterDetachedRestart": true
+    }
+  },
+  "workload": {
+    "platform": "native Windows",
+    "network": "loopback, no artificial RTT",
+    "accountCount": 1,
+    "uniqueHumansClaim": false,
+    "containerMemoryCeilingTested": false,
+    "serverV8OldSpaceMiB": 512,
+    "browserRenderingMeasured": false
+  },
+  "loadRuns": {
+    "smoke500Objects": {
+      "status": "complete",
+      "sourceCommit": "cc8bfdae9dcf08183a338f836cc8b86f29874f5b",
+      "evidenceSha256": "80e7ed1d66b0ba72b326df0a3d47bbc4b272b2f70a0f20bff0eb07334aca734d",
+      "options": {
+        "seconds": 60,
+        "rooms": 20,
+        "connections": 40,
+        "editors": 40,
+        "objects": 500,
+        "editHz": 2,
+        "presenceHz": 10,
+        "batchSize": 500,
+        "batchEverySeconds": 30,
+        "sampleSeconds": 10
+      },
+      "environmentLabel": "v02-native-20-paired-rooms-500-objects",
+      "actualDurationSeconds": 60.519436000000006,
+      "steadyDurationSeconds": 60.0083409,
+      "actualEditsPerWriterHz": 1.983057658572927,
+      "sentChanges": 4760,
+      "propagationMs": {
+        "count": 4760,
+        "p50": 113.115135,
+        "p95": 140.640255,
+        "max": 174.587903
+      },
+      "pendingAtEnd": 0,
+      "missingDeliveries": 0,
+      "error": null,
+      "failedClientCount": 0,
+      "cleanupFailureCount": 0,
+      "closeErrorCount": 0
+    },
+    "hour500Objects": {
+      "status": "failed",
+      "sourceCommit": "cc8bfdae9dcf08183a338f836cc8b86f29874f5b",
+      "evidenceSha256": "7c283a0eadd6174fedc190ed5a9a74bff73385223474db6a9255568080911f45",
+      "options": {
+        "seconds": 3600,
+        "rooms": 20,
+        "connections": 40,
+        "editors": 40,
+        "objects": 500,
+        "editHz": 2,
+        "presenceHz": 10,
+        "batchSize": 500,
+        "batchEverySeconds": 30,
+        "sampleSeconds": 10
+      },
+      "environmentLabel": "v02-native-20-paired-rooms-hour-500-objects",
+      "actualDurationSeconds": 2212.6241037,
+      "steadyDurationSeconds": 2212.6240756,
+      "actualEditsPerWriterHz": 1.974126580366131,
+      "sentChanges": 174720,
+      "propagationMs": {
+        "count": 174576,
+        "p50": 212.336639,
+        "p95": 434.634751,
+        "max": 5540.675583
+      },
+      "pendingAtEnd": 144,
+      "missingDeliveries": 0,
+      "error": "Connection closed (1000/receive-limit)",
+      "failedClientCount": 1,
+      "cleanupFailureCount": 0,
+      "closeErrorCount": 0
+    },
+    "stress3000Objects": {
+      "status": "failed",
+      "sourceCommit": "cc8bfdae9dcf08183a338f836cc8b86f29874f5b",
+      "evidenceSha256": "469d200fa58ce1e122791200abc6ca92e4a19dff461d965909d6b158416d6b6a",
+      "options": {
+        "seconds": 60,
+        "rooms": 20,
+        "connections": 40,
+        "editors": 40,
+        "objects": 3000,
+        "editHz": 2,
+        "presenceHz": 10,
+        "batchSize": 500,
+        "batchEverySeconds": 30,
+        "sampleSeconds": 10
+      },
+      "environmentLabel": "v02-native-20-paired-rooms-smoke",
+      "actualDurationSeconds": 6.492295900000001,
+      "steadyDurationSeconds": 6.492275300000001,
+      "actualEditsPerWriterHz": 2.0023796587923495,
+      "sentChanges": 520,
+      "propagationMs": {
+        "count": 206,
+        "p50": 1826.619391,
+        "p95": 2831.155199,
+        "max": 3210.739711
+      },
+      "pendingAtEnd": 314,
+      "missingDeliveries": 0,
+      "error": "Connection closed (1000/access-unavailable)",
+      "failedClientCount": 5,
+      "cleanupFailureCount": 0,
+      "closeErrorCount": 0
+    }
+  },
+  "hourFailure": {
+    "protection": "queued-messages",
+    "queuedFrames": 64,
+    "queuedBytes": 17476,
+    "totalQueuedBytes": 173411,
+    "incomingBytes": 319,
+    "queueOrAclLimitsRaised": false,
+    "completeRootCauseEstablished": false
+  },
+  "isolatedHistoryDiagnostic": {
+    "objects": 500,
+    "writers": 2,
+    "perWriterEditHz": 2,
+    "batchPerWriter": 250,
+    "batchEverySeconds": 30,
+    "fullNativeEsmValidation": true,
+    "notAServerOrCapacityBenchmark": true,
+    "results": [
+      {
+        "agedSeconds": 0,
+        "encodedBytes": 80782,
+        "structs": 4002,
+        "deletedStructs": 0,
+        "p50Ms": 1.7361999999999966,
+        "p95Ms": 2.813299999999998,
+        "maxMs": 16.019299999999987,
+        "validationMsPerSecondAt80Updates": 138.89599999999973,
+        "cache": {
+          "size": 1,
+          "created": 1,
+          "reused": 99,
+          "rejected": 0
+        }
+      },
+      {
+        "agedSeconds": 1200,
+        "encodedBytes": 201647,
+        "structs": 24004,
+        "deletedStructs": 20002,
+        "p50Ms": 2.9075000000000273,
+        "p95Ms": 3.400700000000029,
+        "maxMs": 11.359399999999937,
+        "validationMsPerSecondAt80Updates": 232.60000000000218,
+        "cache": {
+          "size": 1,
+          "created": 1,
+          "reused": 99,
+          "rejected": 0
+        }
+      },
+      {
+        "agedSeconds": 2220,
+        "encodedBytes": 313653,
+        "structs": 41004,
+        "deletedStructs": 37002,
+        "p50Ms": 4.611599999999953,
+        "p95Ms": 5.37090000000012,
+        "maxMs": 20.569499999999948,
+        "validationMsPerSecondAt80Updates": 368.92799999999625,
+        "cache": {
+          "size": 1,
+          "created": 1,
+          "reused": 99,
+          "rejected": 0
+        }
+      },
+      {
+        "agedSeconds": 3600,
+        "encodedBytes": 474653,
+        "structs": 64004,
+        "deletedStructs": 60002,
+        "p50Ms": 6.3977000000002135,
+        "p95Ms": 7.09030000000007,
+        "maxMs": 32.07330000000002,
+        "validationMsPerSecondAt80Updates": 511.8160000000171,
+        "cache": {
+          "size": 1,
+          "created": 1,
+          "reused": 99,
+          "rejected": 0
+        }
+      }
+    ]
+  },
+  "runtimeObserver": {
+    "samples": 236,
+    "health200": 236,
+    "errors": 0,
+    "maximumRssMiB": 694.3046875,
+    "maximumHeapUsedMiB": 422.6235656738281,
+    "maximumSampledEventLoopMs": 314.834943,
+    "maximumSampledGcPauseMs": 40.38660001754761,
+    "uptimeMonotonic": true
+  },
+  "notVerified": [
+    "physical tablet and Safari",
+    "VPS capacity",
+    "external backup restore",
+    "scheduled external alerts",
+    "delivery to audience email services",
+    "public service documents"
+  ],
+  "evidence": "Raw private logs, auth state and generated test secrets remain under ignored temp/v02-local; never commit them."
+}
