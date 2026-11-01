@@ -9,6 +9,8 @@ import { useCanvasCamera } from "../_hooks/use-canvas-camera";
 import { useCanvasClipboard } from "../_hooks/use-canvas-clipboard";
 import { useCanvasGestures } from "../_hooks/use-canvas-gestures";
 import { usePenPreferences } from "../_hooks/use-pen-preferences";
+import { useCanvasFollow } from "../_hooks/use-canvas-follow";
+import { useCanvasLaser } from "../_hooks/use-canvas-laser";
 import { BoardInfo } from "./info";
 import { BoardParticipants } from "./participants";
 import { BoardToolbar } from "./toolbar";
@@ -25,6 +27,7 @@ import { CanvasLoading } from "./canvas-loading";
 import { SaveStatus } from "./save-status";
 import { BoardTextProvider } from "@/components/board-text/provider";
 import { Line } from "./line";
+import { LaserPresence } from "./laser-presence";
 
 export { createLayer } from "@/lib/board/model";
 
@@ -45,11 +48,17 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
   const [lastUsedColor, setLastUsedColor] = useState<Color>({ r: 0, g: 0, b: 0 });
   const pen = usePenPreferences(runtime.session.user.id);
   const [viewport, setViewport] = useState({ width: 1920, height: 1080 });
-  const { camera, cameraRef, updateCamera, animateCameraTo, fitToScreen } = useCanvasCamera(svgRef);
+  const stopFollowingRef = useRef<() => void>(() => undefined);
+  const { camera, cameraRef, updateCamera, animateCameraTo, applyRemoteCamera, fitToScreen } = useCanvasCamera(svgRef,
+    () => stopFollowingRef.current());
+  const follow = useCanvasFollow({ camera, viewport, applyRemoteCamera });
+  stopFollowingRef.current = follow.stopFollowing;
   const gestures = useCanvasGestures({ svgRef, cameraRef, updateCamera,
     color: lastUsedColor, penColor: pen.color, penSize: pen.size });
   const { insertImage } = useCanvasClipboard({ color: lastUsedColor, cancel: gestures.cancel, setCanvasState: gestures.setCanvasState });
   const { canvasState, preview } = gestures;
+  const laserMode = canvasState.mode === BoardCanvasMode.Laser;
+  const laser = useCanvasLaser({ active: laserMode, svgRef, cameraRef });
   const canEdit = runtime.board.canEdit && connection.synced && !connection.error;
   const visibleBounds = useMemo(() => ({ x: -camera.x / camera.scale, y: -camera.y / camera.scale,
     width: viewport.width / camera.scale, height: viewport.height / camera.scale }), [camera, viewport]);
@@ -102,23 +111,35 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
   return <main className="h-full w-full relative bg-neutral touch-none" data-board-id={boardId}>
     <BoardInfo boardId={boardId} />
     <div className="absolute top-2 right-2 flex flex-row-reverse items-center gap-2">
-      <BoardParticipants /><SessionTimer />
+      <BoardParticipants followingId={follow.followingId} onFollow={(id) => {
+        gestures.cancel(); laser.clear(); follow.toggleFollow(id);
+      }} /><SessionTimer />
     </div>
-    {canEdit && <BoardToolbar canvasState={canvasState} setCanvasState={gestures.setCanvasState}
+    {connection.synced && !connection.error && <BoardToolbar readOnly={!canEdit}
+      canvasState={canvasState} setCanvasState={gestures.setCanvasState}
       undo={history.undo} redo={history.redo} canUndo={history.canUndo} canRedo={history.canRedo}
       selectedPenColor={pen.color} onPenColorChange={pen.setColor}
       selectedPenSize={pen.size} onImageUpload={insertImage} onPenSizeChange={(size) => {
         pen.setSize(size); gestures.setCanvasState({ mode: BoardCanvasMode.Pencil });
       }} camera={camera} animateCameraTo={animateCameraTo} />}
-    {canEdit && preview.ids.length === 0 && !preview.line && (selectedLayer?.type === LayerType.Text || selectedLayer?.type === LayerType.Sticker
+    {canEdit && !laserMode && preview.ids.length === 0 && !preview.line && (selectedLayer?.type === LayerType.Text || selectedLayer?.type === LayerType.Sticker
       ? <TextSelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />
       : <SelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />)}
     <svg ref={svgRef} className="h-[100vh] w-[100vw]" aria-label="Холст доски"
-      onPointerDownCapture={gestures.onPointerDownCapture}
-      onPointerMove={gestures.onPointerMove} onPointerLeave={gestures.onPointerLeave}
-      onPointerDown={gestures.onPointerDown} onPointerUp={gestures.onPointerUp}
-      onPointerCancel={gestures.onPointerCancel} onLostPointerCapture={gestures.onLostPointerCapture}
-      style={{ cursor: canvasState.mode === BoardCanvasMode.Pencil ? 'url("/cursors/pencil.svg") 2 14, auto'
+      onPointerDownCapture={(event) => {
+        laser.onPointerDown(event);
+        gestures.onPointerDownCapture(event);
+      }}
+      onPointerMove={(event) => { gestures.onPointerMove(event); laser.onPointerMove(event); }}
+      onPointerLeave={(event) => { gestures.onPointerLeave(event); laser.onPointerLeave(event); }}
+      onPointerDown={gestures.onPointerDown}
+      onPointerUp={(event) => { gestures.onPointerUp(event); laser.onPointerUp(event); }}
+      onPointerCancel={(event) => { gestures.onPointerCancel(event); laser.onPointerCancel(event); }}
+      onLostPointerCapture={(event) => {
+        gestures.onLostPointerCapture(event);
+        if (!svgRef.current?.hasPointerCapture(event.pointerId)) laser.onPointerCancel(event);
+      }}
+      style={{ cursor: laserMode ? "crosshair" : canvasState.mode === BoardCanvasMode.Pencil ? 'url("/cursors/pencil.svg") 2 14, auto'
         : canvasState.mode === BoardCanvasMode.Eraser ? 'url("/cursors/eraser.svg") 4 4, auto'
           : canvasState.mode === BoardCanvasMode.Inserting ? "crosshair"
             : canvasState.mode === BoardCanvasMode.Panning ? "grabbing" : "default" }}>
@@ -133,19 +154,23 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
             remoteTransforms={remoteTransforms} selectionColors={selectionColors} onLayerPointerDown={gestures.onLayerPointerDown} />
         </g>
         {preview.line && !preview.ids.length && <Line id="line-draft" layer={preview.line} viewport={visibleBounds} />}
-        <SelectionBox onResizeHandlePointerDown={gestures.onResizeHandlePointerDown} boundsOverride={selectionBounds}
-          showLineHandles={![BoardCanvasMode.Inserting, BoardCanvasMode.Pencil, BoardCanvasMode.Eraser].includes(canvasState.mode)}
-          onLineEndpointPointerDown={gestures.onLineEndpointPointerDown} lineOverride={preview.ids.length ? preview.line : null} scale={camera.scale} />
+        {!laserMode && <SelectionBox onResizeHandlePointerDown={gestures.onResizeHandlePointerDown} boundsOverride={selectionBounds}
+          showLineHandles={![BoardCanvasMode.Inserting, BoardCanvasMode.Pencil, BoardCanvasMode.Eraser, BoardCanvasMode.Laser].includes(canvasState.mode)}
+          onLineEndpointPointerDown={gestures.onLineEndpointPointerDown} lineOverride={preview.ids.length ? preview.line : null} scale={camera.scale} />}
         {canvasState.mode === BoardCanvasMode.SelectionNet && canvasState.current && <rect
           className="fill-blue-500/5 stroke-blue-500 stroke-1"
           x={Math.min(canvasState.origin.x, canvasState.current.x)} y={Math.min(canvasState.origin.y, canvasState.current.y)}
           width={Math.abs(canvasState.origin.x - canvasState.current.x)} height={Math.abs(canvasState.origin.y - canvasState.current.y)} />}
         <CursorsPresence />
+        <LaserPresence scale={camera.scale} />
         {pencilDraft && pencilDraft.length > 0 && <Path points={pencilDraft} x={0} y={0}
           fill={rgbToCss(gestures.pencilStyle.color)} size={gestures.pencilStyle.size} />}
       </g>
     </svg>
     <ZoomControls scale={camera.scale} onFitToScreen={fitToScreen} />
+    {laserMode && <div role="status" className="pointer-events-none absolute bottom-14 left-1/2 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-lg bg-white/95 px-3 py-2 text-center text-xs text-neutral-600 shadow-sm">
+      Удерживайте нажатие, чтобы показать указку
+    </div>}
     <SaveStatus />
     {!connection.synced && !connection.error && <div className="absolute inset-0 z-20"><CanvasLoading /></div>}
   </main>;

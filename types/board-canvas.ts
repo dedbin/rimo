@@ -42,6 +42,7 @@ export enum LayerType {
 }
 
 export type LineKind = "segment" | "line";
+export type LineStrokeStyle = "solid" | "dashed";
 
 export type LineLayer = XYWH & {
     type: LayerType.Line;
@@ -50,6 +51,7 @@ export type LineLayer = XYWH & {
     start: Point;
     end: Point;
     lineKind: LineKind;
+    strokeStyle?: LineStrokeStyle;
     startArrow: boolean;
     endArrow: boolean;
     value?: string;
@@ -155,6 +157,7 @@ export enum BoardCanvasMode {
     Panning,
     Eraser,
     EditingLine,
+    Laser,
 }
 
 type BaseCanvasState = { previousState?: BoardCanvasState  };
@@ -164,11 +167,12 @@ export type BoardCanvasState =
   | ({ mode: BoardCanvasMode.Pressing; origin: Point } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.SelectionNet; origin: Point; current?: Point } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Translating; current: Point } & BaseCanvasState)
-  | ({ mode: BoardCanvasMode.Inserting; layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview | LayerType.Line; lineKind?: LineKind } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Inserting; layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview | LayerType.Line; lineKind?: LineKind; strokeStyle?: LineStrokeStyle } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Resizing; initial: XYWH; corner: side } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Pencil } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Panning; origin: Point; current: Point; screenX: number; screenY: number } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Eraser } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Laser } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.EditingLine; id: string; endpoint: "start" | "end" } & BaseCanvasState)
 
 

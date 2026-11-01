@@ -3,22 +3,29 @@
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { Camera } from "@/types/board-canvas";
 import { useBoardBounds } from "@/hooks/use-board-bounds";
+import { useEvent } from "@/lib/collaboration/use-event";
 
-export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>) {
+export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>, onManualNavigation?: () => void) {
   const [camera, setCamera] = useState<Camera>({ x: 0, y: 0, scale: 1 });
   const cameraRef = useRef(camera);
   const animation = useRef<number | null>(null);
   const bounds = useBoardBounds();
+  const notifyManualNavigation = useEvent(() => onManualNavigation?.());
   const applyCamera = useCallback((next: Camera) => {
     cameraRef.current = next;
     setCamera(next);
   }, []);
-  const updateCamera = useCallback((next: Camera) => {
+  const applyRemoteCamera = useCallback((next: Camera) => {
     if (animation.current !== null) cancelAnimationFrame(animation.current);
     animation.current = null;
     applyCamera(next);
   }, [applyCamera]);
+  const updateCamera = useCallback((next: Camera) => {
+    notifyManualNavigation();
+    applyRemoteCamera(next);
+  }, [applyRemoteCamera, notifyManualNavigation]);
   const animateCameraTo = useCallback((target: Camera, duration = 250) => {
+    notifyManualNavigation();
     if (animation.current !== null) cancelAnimationFrame(animation.current);
     const initial = cameraRef.current;
     const start = performance.now();
@@ -33,7 +40,7 @@ export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>) {
       animation.current = progress < 1 ? requestAnimationFrame(frame) : null;
     };
     animation.current = requestAnimationFrame(frame);
-  }, [applyCamera]);
+  }, [applyCamera, notifyManualNavigation]);
   const fitToScreen = useCallback(() => {
     const svg = svgRef.current;
     if (!bounds || !svg) return;
@@ -68,5 +75,5 @@ export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>) {
   useEffect(() => () => {
     if (animation.current !== null) cancelAnimationFrame(animation.current);
   }, []);
-  return { camera, cameraRef, updateCamera, animateCameraTo, fitToScreen };
+  return { camera, cameraRef, updateCamera, animateCameraTo, applyRemoteCamera, fitToScreen };
 }

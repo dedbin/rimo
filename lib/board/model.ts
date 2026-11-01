@@ -39,9 +39,11 @@ export function parseLayer(value: unknown): Layer | null {
       if (value.lineKind !== "segment" && value.lineKind !== "line") return null;
       if (typeof value.startArrow !== "boolean" || typeof value.endArrow !== "boolean") return null;
       if (!finite(value.strokeWidth) || value.strokeWidth < 1 || value.strokeWidth > 20) return null;
+      if (value.strokeStyle !== undefined && value.strokeStyle !== "solid" && value.strokeStyle !== "dashed") return null;
       const layer: LineLayer = { ...base, ...text, type: LayerType.Line, fill, strokeWidth: value.strokeWidth,
         start: { ...value.start }, end: { ...value.end }, lineKind: value.lineKind,
-        startArrow: value.startArrow, endArrow: value.endArrow };
+        startArrow: value.startArrow, endArrow: value.endArrow,
+        ...(value.strokeStyle !== undefined ? { strokeStyle: value.strokeStyle } : {}) };
       const [start, end] = lineEndpoints(layer);
       return Math.hypot(end.x - start.x, end.y - start.y) >= 0.001 ? layer : null;
     }

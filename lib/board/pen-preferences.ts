@@ -1,6 +1,7 @@
 import type { Color } from "@/types/board-canvas";
 
 export const PEN_SIZES: readonly number[] = Object.freeze([4, 8, 12, 16, 24, 32]);
+export const PEN_OPACITIES: readonly number[] = Object.freeze([1, 0.5, 0.25]);
 
 export interface PenPreferences {
   readonly color: Color;

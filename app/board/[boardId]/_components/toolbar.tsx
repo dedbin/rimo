@@ -11,7 +11,8 @@ import {
   Image as ImageIcon,
   ZoomIn, 
   ZoomOut,
-  EraserIcon
+  EraserIcon,
+  Crosshair
 } from "lucide-react";
 import { ToolButton } from "./tool-button";
 import { PenTool } from "./pen-tool";
@@ -39,6 +40,7 @@ interface BoardToolbarProps {
   onImageUpload: (file: File) => Promise<void>;
   camera: Camera;
   animateCameraTo: (camera: Camera) => void;
+  readOnly?: boolean;
 }
 
 export const BoardToolbar = ({
@@ -54,9 +56,20 @@ export const BoardToolbar = ({
   onPenColorChange,
   onImageUpload,
   camera,
-  animateCameraTo
+  animateCameraTo,
+  readOnly = false
 }: BoardToolbarProps) => {
   const { t } = useTranslation();
+  const laser = <ToolButton label="Лазерная указка" icon={Crosshair}
+    isActive={canvasState.mode === BoardCanvasMode.Laser}
+    onClick={() => setCanvasState({ mode: BoardCanvasMode.Laser })} />;
+
+  if (readOnly) return <div className="absolute top-1/2 left-2 z-10 -translate-y-1/2 rounded-md bg-white p-1.5 shadow-md">
+    <ToolButton label={t("toolbar.select")} icon={MousePointer2}
+      isActive={canvasState.mode === BoardCanvasMode.None}
+      onClick={() => setCanvasState({ mode: BoardCanvasMode.None })} />
+    {laser}
+  </div>;
 
   return (
     <div className="absolute top-1/2 left-2 transform -translate-y-1/2 flex flex-col gap-4 z-10">
@@ -95,6 +108,8 @@ export const BoardToolbar = ({
         <PenTool active={canvasState.mode === BoardCanvasMode.Pencil} color={selectedPenColor} size={selectedPenSize}
           onActivate={() => setCanvasState({ mode: BoardCanvasMode.Pencil })}
           onColorChange={onPenColorChange} onSizeChange={onPenSizeChange} />
+
+        {laser}
 
         <ToolButton
           label={`${t("toolbar.eraser")} (Ctrl+E)`}

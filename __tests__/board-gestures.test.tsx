@@ -8,7 +8,7 @@ import { emptyPresence } from "@/lib/collaboration/presence";
 import type { BoardPresence } from "@/lib/collaboration/presence";
 import { createLayer } from "@/lib/board/model";
 import { createLine, lineEndpoints } from "@/lib/board/line";
-import { BoardCanvasMode, LayerType } from "@/types/board-canvas";
+import { BoardCanvasMode, LayerType, side } from "@/types/board-canvas";
 import type { LineLayer } from "@/types/board-canvas";
 import { useCanvasGestures } from "@/app/board/[boardId]/_hooks/use-canvas-gestures";
 
@@ -52,6 +52,40 @@ beforeEach(() => {
 afterEach(() => { cleanup(); board.destroy(); vi.unstubAllGlobals(); });
 
 describe("canvas gesture lifecycle", () => {
+  it("keeps laser gestures away from selected objects, endpoints and resize handles", () => {
+    const shape = createLayer(LayerType.Rectangle, { x: 20, y: 30 }, { r: 0, g: 0, b: 0 });
+    const line = createLine({ x: 30, y: 40 }, { x: 130, y: 40 }, { r: 0, g: 0, b: 0 });
+    const [shapeId, lineId] = board.insert([shape, line]);
+    presence.selection = [shapeId];
+    const history = board.undoManager.undoStack.length;
+    const updates = vi.fn(); board.doc.on("update", updates);
+    const { result } = setup();
+    act(() => result.current.setCanvasState({ mode: BoardCanvasMode.Laser }));
+    act(() => result.current.onLayerPointerDown(pointer(20, 30), shapeId));
+    act(() => result.current.onResizeHandlePointerDown(side.bottom | side.right, shape, pointer(120, 130)));
+    act(() => result.current.onLineEndpointPointerDown(lineId, "start", pointer(30, 40)));
+    act(() => result.current.onPointerDown(pointer(20, 30)));
+    act(() => result.current.onPointerUp(pointer(300, 400)));
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.Laser);
+    expect(presence.selection).toEqual([shapeId]);
+    expect(board.getLayer(shapeId)).toEqual(shape);
+    expect(board.getLayer(lineId)).toEqual(line);
+    expect(board.undoManager.undoStack).toHaveLength(history);
+    expect(updates).not.toHaveBeenCalled();
+  });
+
+  it("allows middle-button navigation and returns to the laser without a document edit", () => {
+    const { result } = setup();
+    const updates = vi.fn(); board.doc.on("update", updates);
+    act(() => result.current.setCanvasState({ mode: BoardCanvasMode.Laser }));
+    act(() => result.current.onPointerDown({ ...pointer(30, 40), button: 1 }));
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.Panning);
+    act(() => result.current.onPointerUp(pointer(100, 120)));
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.Laser);
+    expect(updates).not.toHaveBeenCalled();
+    expect(board.undoManager.undoStack).toHaveLength(0);
+  });
+
   it("draws the final Shift-constrained segment once and keeps the tool for a polygon", () => {
     const { result } = setup();
     const updates = vi.fn(); board.doc.on("update", updates);

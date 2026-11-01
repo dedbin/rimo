@@ -1,0 +1,167 @@
+{
+  "revision": "d501d85522540b941303b15535a502a05f3c6431",
+  "tag": "server-d501d8552254",
+  "release": "/srv/rimo/releases/d501d8552254",
+  "previous": "/srv/rimo/releases/7757408f87d3",
+  "archiveSha256": "4e6073819c755a09f601c8d46ea3a1ef5baeeaac92f7ebd5a50867469b1a772e",
+  "builtAt": "2026-11-01T17:39:12.350504+00:00",
+  "appImage": "sha256:e4cc297792fe2f5b7be1f083d3be6fa8c2153cf11d318057f1169d337cd0d505",
+  "pdfImage": "sha256:e246ad55b93e62a75ff7ed29274eb65c6238eaa6b19811e67fe36438275867a4",
+  "previousAppImage": "sha256:b1e18405039cea04c0958feee6d23932247eca3f57cbd483579eff7ab932be7a",
+  "previousPdfImage": "sha256:c7b9090c541826d0b996c10bf539f890bf2d3ff68210d43278d7056171810571",
+  "activatedAt": "2026-11-01T17:45:20.796635+00:00",
+  "backupBeforeUpdate": "success",
+  "namedVolumesPreserved": true,
+  "databaseFingerprintsMatch": true,
+  "publicHealth": 200,
+  "mailConnectionVerified": true,
+  "migrationFilesUnchanged": true,
+  "composeUnchanged": true,
+  "newDurableWritesRequireForwardRepair": true,
+  "version": "0.3.0",
+  "acceptanceCompletedAt": "2026-11-01T18:07:13.368763+00:00",
+  "temporaryDataCleanup": {
+    "temporaryAccountDeleted": true,
+    "temporaryBoardsDeleted": true,
+    "temporaryGuestsDeleted": 12,
+    "manifestBoards": 35
+  },
+  "originalDataAfterAcceptanceMatch": true,
+  "liveChangedTablesDuringAcceptance": [],
+  "originalCounts": {
+    "user": 13,
+    "account": 3,
+    "boards": 3,
+    "board_documents": 3,
+    "assets": 3,
+    "board_invites": 3,
+    "board_members": 2,
+    "board_favorites": 0,
+    "schema_migrations": 2
+  },
+  "backup": {
+    "snapshotID": "d9f543430dd28448dae99e00bafaafc2d2b940a0760739b3bc1f348ea54aa57f",
+    "createdAt": "2026-11-01T17:40:59.131Z",
+    "sourceCreatedAt": "2026-11-01T17:40:53.140Z",
+    "encrypted": true,
+    "dataVerified": true,
+    "offsiteVerified": false
+  },
+  "publicUrl": "https://rimo-whiteboard.ru",
+  "ci": {
+    "sourceRevision": "d501d85522540b941303b15535a502a05f3c6431",
+    "result": "success",
+    "jobs": [
+      "verify",
+      "mail-relay"
+    ],
+    "run": "https://github.com/dedbin/rimo/actions/runs/41331432745"
+  },
+  "pullRequest": "https://github.com/dedbin/rimo/pull/15",
+  "reportPhase": "Production acceptance complete; final documentation CI and PR merge follow this report",
+  "admission": {
+    "maxOwners": 6,
+    "registrationMode": "open",
+    "maxConnections": 50,
+    "maxRoomConnections": 10,
+    "maxEditors": 10,
+    "maxOpenDocuments": 10,
+    "existingLimitsPreserved": true,
+    "fortyEditorProfileEnabled": false
+  },
+  "browserAcceptance": {
+    "target": "Public production HTTPS/WSS with an isolated temporary owner; Chromium",
+    "uniqueScenariosPassed": 21,
+    "originalSpecFiles": 13,
+    "initialRun": {
+      "passed": 18,
+      "failed": 3,
+      "skipped": 0,
+      "durationMilliseconds": 100160.98300000001,
+      "reasons": [
+        "One anonymous sign-in HTTP 429 with Retry-After 4 seconds",
+        "Two local ownership audit captures lost Chromium response bodies after archive import; UI assertions passed"
+      ]
+    },
+    "targetedRetries": [
+      {
+        "passed": 1,
+        "failed": 2,
+        "skipped": 0,
+        "durationMilliseconds": 70110.132,
+        "reason": "Role change passed; the two archive audit callbacks still relied on unreliable navigation event ordering"
+      },
+      {
+        "passed": 2,
+        "failed": 0,
+        "skipped": 0,
+        "durationMilliseconds": 15084.623,
+        "reason": "Final route is inspected after UI completion, then exact temporary-owner GET proof is required"
+      }
+    ],
+    "originalAssertionsUnchanged": true,
+    "ownershipProofRequired": true,
+    "serverLimitsChanged": false,
+    "harnessFixes": [
+      "Private test package uses a consistent ESM boundary",
+      "Only unavailable browser bodies may use the final approved board route after UI completion, followed by a fresh exact owner check"
+    ],
+    "initialFailuresRetained": true,
+    "noForwardedClientHeaders": true,
+    "retryAfterRespected": true,
+    "coverage": [
+      "participant follow and manual navigation",
+      "editor/viewer laser and expiry",
+      "native pinch arbitration",
+      "personal marker opacity including remote drafts",
+      "dashed segments and solid arrows",
+      "clipboard and durable reload",
+      "PDF and portable archive import",
+      "roles/revocation",
+      "text and formulas",
+      "selection and shapes"
+    ],
+    "originalSpecSha256": {
+      "e2e/auth-help.spec.ts": "015a5824c91dea148c349f03337d2978f1e8b49e73ff07b40e98d54771a2d34b",
+      "e2e/clipboard.spec.ts": "2928a8731250d62868a3f53a4533b8d9c4213cbb3bbc84ec0b9f4c8e54918814",
+      "e2e/collaboration.spec.ts": "c56f50d3c68a382515114aa10da0412f68cc98008f9180f5d67c62327b505039",
+      "e2e/exports.spec.ts": "0e4fe555f1527175f0feaf8ff2b6cc3913c083c33ee5f1f1eb75c11305236a5e",
+      "e2e/line-tools.spec.ts": "1a7d3921fcedecfd321237ad81fdc4263630502bc9958e5f7c0f702325ed32be",
+      "e2e/marker-preferences.spec.ts": "cf0831d082768ddea16909f9fe978a97ddfd574671efafc58ecc0c659f50d4f0",
+      "e2e/rich-text.spec.ts": "8ed4de7743e0171bbf83e65376e9c45aae074233999db3d095f7be80a0e410f4",
+      "e2e/role-change.spec.ts": "e233289d0a3e454f43a5fe3992ede2320a3f3a45d583b04e005e85cd830c35e8",
+      "e2e/selection-hitbox.spec.ts": "c0ea55a12854f3ed4fc8a062381727fd35b1c016acbe08fa78a8af6b93ed380a",
+      "e2e/shape-style.spec.ts": "8e1487569f12233fbada71b51ec0f73074c02ea336d362bed4b79c464d3fa39f",
+      "e2e/tablet-gestures.spec.ts": "646cb6344fe1d37b5fb84ffc5b98c54aea0ec912119d0410af04860c1d90a7b6",
+      "e2e/v03-drawing.spec.ts": "357e2c641f2af5ef586984c2d7092ef17c265a826ea88c71ddf30c21e9aa741a",
+      "e2e/v03-presentation.spec.ts": "79566e2f59cf3e61500fee104074524ff4098b9f2fb126f3df61f9c0532f2591",
+      "e2e/board-ui.ts": "9c5fb6e8544cd7b83c02f40d5bd4afc10ca10730444bfb96ff53e2128faef6b3",
+      "types/board-canvas.ts": "5fceb484e0715ada2a5a6f82d87b46e8378e28dcc59388f1c37a2e520b8a0bb7",
+      "e2e/fixtures.ts": "4999555c04fb1f87526115e7a6f6837ad1c1f24a9378a67731d55c02193bd39e"
+    },
+    "realRecipientEmailDeliveryTested": false,
+    "physicalTabletOrSafariTested": false
+  },
+  "reconnectAcceptance": {
+    "sourceCommit": "d501d85522540b941303b15535a502a05f3c6431",
+    "forcedReconnect": true,
+    "newConnectionObserved": true,
+    "secureWebSocket": true,
+    "documentPreserved": true,
+    "writesAfterReconnectPersisted": true,
+    "secureSessionCookie": true,
+    "noForwardedClientHeaders": true,
+    "serverRateLimitsUnchanged": true,
+    "ownedBoardCleaned": true
+  },
+  "evidenceSha256": {
+    "initialBrowserReport": "bd7860b357b039a2c66a02e8e3386c0a39796f9112668d9236b408956b3c3545",
+    "roleRetryReport": "fc02d7ebb5cc6b13482d6338b1ebd319607e8da2fd2b3eaeea238ea26478658a",
+    "archiveRetryReport": "1ebf985f519259103d7581ebafa5fcaee5620bac6ad9ba504317e8b1aa7b27e1",
+    "fixture": "4fc5d6490fdc2eb2f3604bf99b100545a475f21891eda232e9452fc2c6ee4669",
+    "ownershipAuditHelper": "4a413301e553c879926a35023864fe95fc11124a2b31686c095edee05590fb8c"
+  },
+  "s3Configured": false,
+  "externalIndependentBackupVerified": false,
+  "oldImagesAndReleaseRetained": true
+}

@@ -120,6 +120,9 @@
     "widthValue": "{{width}} px",
     "mixed": "Mixed values",
     "type": "Line type",
+    "strokeStyle": "Line style",
+    "solid": "Solid",
+    "dashed": "Dashed",
     "startArrow": "Arrow at start",
     "endArrow": "Arrow at end",
     "arrowsHint": "Arrows are available for segments"

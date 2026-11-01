@@ -75,9 +75,10 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
     const point = toPoint(sample);
     const gesture = active.current;
     const mode = state.current.mode;
+    if (mode === BoardCanvasMode.Laser) return;
     if (gesture && state.current.mode === BoardCanvasMode.Inserting && state.current.layerType === LayerType.Line) {
       const end = sample.shiftKey ? snapLineEnd(gesture.origin, point) : point;
-      gesture.line = createLine(gesture.origin, end, color, state.current.lineKind);
+      gesture.line = createLine(gesture.origin, end, color, state.current.lineKind, state.current.strokeStyle);
       publishPreview(gesture);
     } else if (gesture && state.current.mode === BoardCanvasMode.EditingLine && gesture.initialLine) {
       const [start, end] = lineEndpoints(gesture.initialLine);
@@ -147,7 +148,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
   const touch = useCanvasTouch({ svgRef, cameraRef, updateCamera, onNavigate: () => {
     const initial = active.current?.initialState ?? state.current;
     clearGesture(false);
-    setCanvasState(initial.mode === BoardCanvasMode.Pencil || initial.mode === BoardCanvasMode.Eraser ||
+    setCanvasState(initial.mode === BoardCanvasMode.Pencil || initial.mode === BoardCanvasMode.Eraser || initial.mode === BoardCanvasMode.Laser ||
       initial.mode === BoardCanvasMode.Inserting ? initial : { mode: BoardCanvasMode.None });
   } });
   const cancel = useEvent(() => {
@@ -171,6 +172,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
     if (active.current || touch.blocks(event) || (event.button !== 0 && event.button !== 1)) return false;
     const svg = svgRef.current;
     if (!svg) return false;
+    if (mode === BoardCanvasMode.Panning) updateCamera({ ...cameraRef.current! });
     // Capturing a click on SVG retargets its later dblclick away from text content.
     // A translating gesture captures only after movement crosses the drag threshold.
     if (mode !== BoardCanvasMode.Translating) svg.setPointerCapture(event.pointerId);
@@ -196,6 +198,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
     if (event.button === 1) { begin(event, [], BoardCanvasMode.Panning); return; }
     if (event.button !== 0) return;
     const mode = state.current.mode;
+    if (mode === BoardCanvasMode.Laser) return;
     if (mode === BoardCanvasMode.Inserting || mode === BoardCanvasMode.Pencil || mode === BoardCanvasMode.Eraser) {
       if (runtime.board.canEdit) begin(event, [], mode);
       return;
@@ -215,7 +218,8 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
   const onLayerPointerDown = useEvent((event: PointerEvent, id: string) => {
     if (active.current || touch.blocks(event)) return;
     if (event.button === 1 || state.current.mode === BoardCanvasMode.Inserting ||
-      state.current.mode === BoardCanvasMode.Pencil || state.current.mode === BoardCanvasMode.Eraser) return;
+      state.current.mode === BoardCanvasMode.Pencil || state.current.mode === BoardCanvasMode.Eraser ||
+      state.current.mode === BoardCanvasMode.Laser) return;
     if (event.button !== 0) return;
     event.stopPropagation();
     let selection = runtime.getSelf().presence.selection;
@@ -225,12 +229,13 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
   });
 
   const onResizeHandlePointerDown = useEvent((corner: side, initial: XYWH, event: PointerEvent) => {
+    if (state.current.mode === BoardCanvasMode.Laser) return;
     if (runtime.board.canEdit) begin(event, [...runtime.getSelf().presence.selection], BoardCanvasMode.Resizing, initial, corner);
   });
 
   const onLineEndpointPointerDown = useEvent((id: string, endpoint: "start" | "end", event: PointerEvent) => {
     if (state.current.mode === BoardCanvasMode.Inserting || state.current.mode === BoardCanvasMode.Pencil ||
-      state.current.mode === BoardCanvasMode.Eraser) return;
+      state.current.mode === BoardCanvasMode.Eraser || state.current.mode === BoardCanvasMode.Laser) return;
     const layer = runtime.board.getLayer(id);
     if (!runtime.board.canEdit || layer?.type !== LayerType.Line || event.button !== 0) return;
     if (!begin(event, [id], BoardCanvasMode.EditingLine) || !active.current) return;
