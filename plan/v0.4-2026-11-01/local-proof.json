@@ -1,0 +1,42 @@
+{
+  "version": "0.4.0",
+  "branch": "codex/v0.4",
+  "candidateCommit": "7cee4e3181ecbbf789eaf9bff6a23cf91c6a91f2",
+  "checkedAt": "2026-11-01T19:25:28.595Z",
+  "build": "passed",
+  "typecheck": "passed",
+  "lint": "passed",
+  "postgresTests": {
+    "passed": 1229,
+    "skippedOptIn": 17,
+    "filesPassed": 142
+  },
+  "browserTests": {
+    "passedUnique": 25,
+    "skippedRegistrationOnExistingServer": 1,
+    "finalGraphSuitePassed": 4
+  },
+  "productionVulnerabilities": 0,
+  "independentReview": "no remaining actionable findings",
+  "health": [
+    {
+      "service": "app",
+      "status": 200
+    },
+    {
+      "service": "collaboration",
+      "status": 200
+    },
+    {
+      "service": "pdf",
+      "status": 200
+    },
+    {
+      "service": "licenses",
+      "status": 200
+    }
+  ],
+  "previewBoardId": "68e0328e-006c-4676-bb02-598b4add7828",
+  "published": false,
+  "productionChanged": false
+}
