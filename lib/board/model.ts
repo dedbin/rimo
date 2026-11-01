@@ -1,6 +1,7 @@
 import { Color, Layer, LayerType, Point } from "@/types/board-canvas";
 import type { LineLayer } from "@/types/board-canvas";
 import { lineEndpoints } from "./line";
+import { createGraphSettings, parseGraphSettings } from "./graph/model";
 
 export const BOARD_SCHEMA_VERSION = 2;
 export const MAX_LAYERS = 10_000;
@@ -32,6 +33,10 @@ export function parseLayer(value: unknown): Layer | null {
   const text = typeof value.value === "string" ? { value: value.value } : {};
   const fill = isColor(value.fill) ? { ...value.fill } : { r: 0, g: 0, b: 0 };
   switch (type) {
+    case LayerType.Graph: {
+      const graph = parseGraphSettings(value.graph);
+      return graph ? { ...base, type, graph } : null;
+    }
     case LayerType.Line: {
       const anchor = (point: unknown): point is Point => isRecord(point) &&
         [point.x, point.y].every((coordinate) => typeof coordinate === "number" && coordinate >= 0 && coordinate <= 1);
@@ -89,6 +94,8 @@ export function parseLayer(value: unknown): Layer | null {
 export function createLayer(type: LayerType, position: Point, fill: Color): Layer {
   const bounds = { x: position.x, y: position.y, width: 100, height: 100 };
   switch (type) {
+    case LayerType.Graph:
+      return { ...bounds, type, width: 640, height: 440, graph: createGraphSettings() };
     case LayerType.Rectangle:
     case LayerType.Ellipse:
       return { ...bounds, type, fill: { ...fill, a: 0 }, stroke: { ...fill, a: 1 }, strokeWidth: 2 };

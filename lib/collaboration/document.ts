@@ -7,6 +7,8 @@ import { getRichTextJson, textFragmentName, writeRichTextFragment } from "@/lib/
 import { plainTextDocument, validateRichTextDocument } from "@/lib/board/rich-text/validation";
 import { RichTextDocument } from "@/lib/board/rich-text/types";
 import { BoardFrame, FRAME_ORDER_ROOT, FRAME_ROOT, MAX_FRAMES, normalizeFrameOrder, parseFrame } from "@/lib/board/frames";
+import type { GraphExpression, GraphSettings, XYWH } from "@/types/board-canvas";
+import * as graphOperations from "./graph";
 
 export interface BoardSnapshot {
   readonly layers: ReadonlyMap<string, Layer>;
@@ -147,7 +149,9 @@ export class BoardDocument {
     const ids = checked.map(() => nanoid());
     this.transact(() => {
       checked.forEach((layer, index) => {
-        const properties = Object.entries(layer!).filter(([key]) => !(content[index] && key === "value"));
+        const properties = Object.entries(layer!).filter(([key]) => !(content[index] && key === "value"))
+          .map(([key, value]) => [key, key === "graph" && layer?.type === LayerType.Graph
+            ? graphOperations.graphToYMap(layer.graph) : value] as [string, unknown]);
         this.layers.set(ids[index], new Y.Map(properties));
         if (content[index]) writeRichTextFragment(this.getTextFragment(ids[index]), content[index]);
       });
@@ -162,12 +166,29 @@ export class BoardDocument {
     });
   }
 
+  addGraphExpression(id: string, input: Partial<GraphExpression> = {}): string | null {
+    return graphOperations.addGraphExpression(this, id, input);
+  }
+  updateGraphExpression(id: string, expressionId: string, patch: Partial<GraphExpression>): void {
+    graphOperations.updateGraphExpression(this, id, expressionId, patch);
+  }
+  removeGraphExpression(id: string, expressionId: string): void {
+    graphOperations.removeGraphExpression(this, id, expressionId);
+  }
+  updateGraphSettings(id: string, patch: Partial<Pick<GraphSettings, "viewport" | "showGrid">>): void {
+    graphOperations.updateGraphSettings(this, id, patch);
+  }
+  resizeGraph(id: string, bounds: XYWH): void {
+    graphOperations.resizeGraph(this, id, bounds);
+  }
+
   private updateInTransaction(id: string, patch: Readonly<Record<string, unknown>>): void {
     const layer = this.layers.get(id);
     if (!(layer instanceof Y.Map)) return;
     const next = parseLayer({ ...layer.toJSON(), ...patch });
     if (!next) return;
     for (const [key, value] of Object.entries(patch)) {
+      if (key === "graph" && next.type === LayerType.Graph) continue;
       if (key === "value" && (next.type === LayerType.Text || next.type === LayerType.Sticker)) continue;
       if (value !== undefined && Object.hasOwn(next, key)) {
         layer.set(key, (next as unknown as Record<string, unknown>)[key]);
