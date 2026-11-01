@@ -101,7 +101,6 @@ export function GraphEditor() {
           </label>
         </div>
       </details>
-      <p className="border-t border-neutral-100 pt-3 text-xs leading-relaxed text-neutral-400">Угол блока сохраняет пропорции. Боковая ручка меняет ширину или высоту.</p>
     </div>
   </aside>;
 }

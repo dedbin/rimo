@@ -316,3 +316,36 @@ test("phone and tablet keep long-title actions and the whole graph visible while
   await page.screenshot({ path: info.outputPath("v04-tablet-editor.png") });
   await saved(page);
 });
+
+test("repeated graph zoom has compact decimal fields and preserves deliberate coordinate precision", async ({ page, scenario }) => {
+  const boardId = await scenario.createBoard("E2E v0.4: точные границы графика");
+  await openBoard(page, boardId);
+  await insertGraph(page);
+  await expect(editor(page)).not.toContainText("Угол блока сохраняет пропорции.");
+  const zoomIn = page.getByRole("button", { name: "Приблизить график", exact: true });
+  const zoomOut = page.getByRole("button", { name: "Отдалить график", exact: true });
+  await zoomIn.scrollIntoViewIfNeeded();
+  await zoomIn.click(); await zoomIn.click();
+  await expect(page.getByLabel("Минимум X", { exact: true })).toHaveValue("-5.12");
+  await expect(page.getByLabel("Максимум Y", { exact: true })).toHaveValue("3.52");
+  await zoomOut.click(); await zoomOut.click();
+  for (let index = 0; index < 20; index += 1) { await zoomIn.click(); await zoomOut.click(); }
+  await expect(page.getByLabel("Минимум X", { exact: true })).toHaveValue("-8");
+  await expect(page.getByLabel("Максимум Y", { exact: true })).toHaveValue("5.5");
+
+  await page.getByLabel("Минимум X", { exact: true }).fill("-5.120000000000001");
+  await page.getByRole("button", { name: "Применить границы", exact: true }).click();
+  await expect(page.getByLabel("Минимум X", { exact: true })).toHaveValue("-5.12");
+  await page.getByRole("button", { name: "Применить границы", exact: true }).click();
+  await page.getByLabel("Минимум Y", { exact: true }).fill("-4.123456789012345");
+  await page.getByRole("button", { name: "Применить границы", exact: true }).click();
+  expect((await copiedGraph(page)).graph.viewport).toEqual({
+    xMin: -5.120000000000001, xMax: 8, yMin: -4.123456789012345, yMax: 5.5,
+  });
+  await saved(page);
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await saved(page);
+  await openEditor(page);
+  await expect(page.getByLabel("Минимум X", { exact: true })).toHaveValue("-5.12");
+  await expect(page.getByLabel("Минимум Y", { exact: true })).toHaveValue("-4.123456789012345");
+});

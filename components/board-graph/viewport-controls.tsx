@@ -6,6 +6,7 @@ import { Crosshair, Minus, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createGraphSettings, parseGraphViewport } from "@/lib/board/graph/model";
+import { cleanGraphViewport, stepGraphViewport } from "@/lib/board/graph/viewport-numbers";
 import type { GraphViewport } from "@/types/board-canvas";
 
 interface GraphViewportControlsProps {
@@ -16,44 +17,41 @@ interface GraphViewportControlsProps {
 type RangeDraft = Record<keyof GraphViewport, string>;
 
 function rangeDraft(viewport: GraphViewport): RangeDraft {
-  return { xMin: String(viewport.xMin), xMax: String(viewport.xMax),
-    yMin: String(viewport.yMin), yMax: String(viewport.yMax) };
-}
-
-function zoomViewport(viewport: GraphViewport, factor: number): GraphViewport | null {
-  const centerX = (viewport.xMin + viewport.xMax) / 2;
-  const centerY = (viewport.yMin + viewport.yMax) / 2;
-  const halfX = (viewport.xMax - viewport.xMin) * factor / 2;
-  const halfY = (viewport.yMax - viewport.yMin) * factor / 2;
-  return parseGraphViewport({ xMin: centerX - halfX, xMax: centerX + halfX,
-    yMin: centerY - halfY, yMax: centerY + halfY });
+  const displayed = cleanGraphViewport(viewport) ?? viewport;
+  return { xMin: String(displayed.xMin), xMax: String(displayed.xMax),
+    yMin: String(displayed.yMin), yMax: String(displayed.yMax) };
 }
 
 export function GraphViewportControls({ viewport, onChange }: GraphViewportControlsProps) {
   const [draft, setDraft] = useState(() => rangeDraft(viewport));
+  const [dirty, setDirty] = useState<ReadonlySet<keyof GraphViewport>>(() => new Set());
   const [error, setError] = useState<string | null>(null);
   const prefix = useId();
   const { xMin, xMax, yMin, yMax } = viewport;
   useEffect(() => {
     setDraft(rangeDraft({ xMin, xMax, yMin, yMax }));
+    setDirty(new Set());
     setError(null);
   }, [xMin, xMax, yMin, yMax]);
-  const zoomIn = zoomViewport(viewport, 0.8);
-  const zoomOut = zoomViewport(viewport, 1.25);
+  const zoomIn = stepGraphViewport(viewport, 0.8);
+  const zoomOut = stepGraphViewport(viewport, 1.25);
 
   const apply = () => {
     if (Object.values(draft).some((value) => !value.trim())) {
       setError("Заполните все четыре границы области.");
       return;
     }
-    const next = parseGraphViewport({ xMin: Number(draft.xMin), xMax: Number(draft.xMax),
-      yMin: Number(draft.yMin), yMax: Number(draft.yMax) });
+    const number = (key: keyof GraphViewport): number => dirty.has(key) ? Number(draft[key]) : viewport[key];
+    const next = parseGraphViewport({ xMin: number("xMin"), xMax: number("xMax"),
+      yMin: number("yMin"), yMax: number("yMax") });
     if (!next) {
       setError("Укажите возрастающие границы от −1 000 000 до 1 000 000. Диапазон каждой оси — от 0,0001 до 1 000 000.");
       return;
     }
     setError(null);
-    onChange(next);
+    if (dirty.size) onChange(next);
+    setDraft(rangeDraft(next));
+    setDirty(new Set());
   };
 
   return <div className="space-y-3">
@@ -80,6 +78,7 @@ export function GraphViewportControls({ viewport, onChange }: GraphViewportContr
               aria-invalid={!!error} aria-describedby={error ? `${prefix}-error` : undefined} value={draft[key]}
               className="h-9 bg-white font-mono text-sm" onChange={(event) => {
                 setDraft((current) => ({ ...current, [key]: event.target.value }));
+                setDirty((current) => new Set([...current, key]));
                 setError(null);
               }} />
           </label>)}

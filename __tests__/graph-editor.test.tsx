@@ -38,6 +38,28 @@ beforeEach(() => {
 afterEach(() => { cleanup(); board.destroy(); });
 
 describe("graph editor", () => {
+  it("keeps repeated zoom steps compact and reversible without changing untouched precision", () => {
+    setup();
+    expect(screen.queryByText("Угол блока сохраняет пропорции. Боковая ручка меняет ширину или высоту.")).toBeNull();
+    const zoomIn = screen.getByRole("button", { name: "Приблизить график" });
+    const zoomOut = screen.getByRole("button", { name: "Отдалить график" });
+    fireEvent.click(zoomIn); fireEvent.click(zoomIn);
+    expect((screen.getByLabelText("Минимум X") as HTMLInputElement).value).toBe("-5.12");
+    expect((screen.getByLabelText("Максимум Y") as HTMLInputElement).value).toBe("3.52");
+    expect(graph().graph.viewport).toEqual({ xMin: -5.12, xMax: 5.12, yMin: -3.52, yMax: 3.52 });
+    fireEvent.click(zoomOut); fireEvent.click(zoomOut);
+    expect(graph().graph.viewport).toEqual({ xMin: -8, xMax: 8, yMin: -5.5, yMax: 5.5 });
+
+    const precise = { xMin: -5.120000000000001, xMax: Math.PI, yMin: -3.5200000000000005, yMax: 9.123456789012345 };
+    act(() => board.updateGraphSettings(graphId, { viewport: precise }));
+    expect((screen.getByLabelText("Минимум X") as HTMLInputElement).value).toBe("-5.12");
+    fireEvent.click(screen.getByRole("button", { name: "Применить границы" }));
+    expect(graph().graph.viewport).toEqual(precise);
+    fireEvent.change(screen.getByLabelText("Минимум Y"), { target: { value: "-4.123456789012345" } });
+    fireEvent.click(screen.getByRole("button", { name: "Применить границы" }));
+    expect(graph().graph.viewport).toEqual({ ...precise, yMin: -4.123456789012345 });
+  });
+
   it("keeps incomplete formulas editable without changing another row and edits visibility and color independently", () => {
     setup();
     const second = { ...graph().graph.expressions.line };
