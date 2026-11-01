@@ -42,10 +42,13 @@ export function usePenPreferences(userId: string): PersonalPenPreferences {
   const setColor = useCallback((color: Color): void => {
     const next = validPenColor(color);
     if (!next) return;
-    setState((previous) => ({
-      ...(previous.userId === userId ? previous : defaultPenPreferences()),
-      userId, loaded: true, color: next,
-    }));
+    setState((previous) => {
+      const preferences = previous.userId === userId ? previous : defaultPenPreferences();
+      return {
+        ...preferences, userId, loaded: true,
+        color: { ...next, ...(next.a === undefined && preferences.color.a !== undefined ? { a: preferences.color.a } : {}) },
+      };
+    });
   }, [userId]);
 
   const setSize = useCallback((size: number): void => {

@@ -77,6 +77,27 @@ describe("personal marker preferences", () => {
     expect(JSON.parse(localStorage.getItem(penPreferencesKey("pupil"))!)).toMatchObject({ color: BLUE, size: 32 });
   });
 
+  it("preserves opacity across RGB and width changes, reload and account changes", () => {
+    store("teacher", { ...BLUE, a: 0.25 }, 24);
+    store("pupil", { ...RED, a: 0.5 }, 8);
+    const hook = renderHook(({ userId }) => usePenPreferences(userId), { initialProps: { userId: "teacher" } });
+    act(() => { hook.result.current.setColor(RED); hook.result.current.setSize(32); });
+    expect(hook.result.current.color).toEqual({ ...RED, a: 0.25 });
+    hook.rerender({ userId: "pupil" });
+    expect(hook.result.current.color).toEqual({ ...RED, a: 0.5 });
+    expect(hook.result.current.size).toBe(8);
+    hook.unmount();
+
+    const reloaded = renderHook(() => usePenPreferences("teacher"));
+    expect(reloaded.result.current.color).toEqual({ ...RED, a: 0.25 });
+    expect(reloaded.result.current.size).toBe(32);
+    expect(JSON.parse(localStorage.getItem(penPreferencesKey("teacher"))!)).toEqual({
+      version: 1, color: { ...RED, a: 0.25 }, size: 32,
+    });
+    act(() => reloaded.result.current.setColor({ ...BLUE, a: 1 }));
+    expect(reloaded.result.current.color).toEqual({ ...BLUE, a: 1 });
+  });
+
   it.each([
     "not-json", "null", "[]", JSON.stringify({ version: 2, color: BLUE, size: 24 }),
     JSON.stringify({ version: 1, color: { r: -1, g: 130, b: 246 }, size: 24 }),
