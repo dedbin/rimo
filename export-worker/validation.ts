@@ -3,7 +3,7 @@ import { parseLayer } from "../lib/board/model";
 import { validateRichTextDocument } from "../lib/board/rich-text/validation";
 import { LayerType } from "../types/board-canvas";
 
-import { MAX_PDF_ASSET_BYTES, MAX_PDF_IMAGE_PIXELS, MAX_PDF_LAYERS, MAX_PDF_PAGES, MAX_PDF_RENDERED_OBJECTS, MAX_PDF_RENDERED_POINTS, MAX_PDF_RENDER_SOURCE_BYTES, PDF_FORMATS, PdfJobError } from "./contract";
+import { MAX_PDF_ASSET_BYTES, MAX_PDF_GRAPH_EXPRESSIONS, MAX_PDF_IMAGE_PIXELS, MAX_PDF_LAYERS, MAX_PDF_PAGES, MAX_PDF_RENDERED_OBJECTS, MAX_PDF_RENDERED_POINTS, MAX_PDF_RENDER_SOURCE_BYTES, PDF_FORMATS, PdfJobError } from "./contract";
 import type { PdfAsset, PdfJob, PdfLayer, PdfPage, PdfPageRequest, PdfRequest } from "./contract";
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -80,10 +80,16 @@ export function parsePdfJob(value: unknown): PdfJob {
     if (layerIds.some((id) => !available.has(id))) invalid();
     return { ...pageSettings(page), name: bounds.name, bounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }, layerIds };
   });
-  const costs = new Map(layers.map((item) => [item.id, { bytes: Buffer.byteLength(JSON.stringify(item)), points: item.layer.type === LayerType.Path ? item.layer.points.length : 0 }]));
+  const costs = new Map(layers.map((item) => [item.id, {
+    bytes: Buffer.byteLength(JSON.stringify(item)),
+    points: item.layer.type === LayerType.Path ? item.layer.points.length : 0,
+    expressions: item.layer.type === LayerType.Graph ? Object.values(item.layer.graph.expressions)
+      .filter((expression) => expression.visible && expression.formula.trim().length > 0).length : 0,
+  }]));
   const rendered = pages.flatMap((page) => [...page.layerIds]);
   if (rendered.length > MAX_PDF_RENDERED_OBJECTS || rendered.reduce((sum, id) => sum + costs.get(id)!.bytes, 0) > MAX_PDF_RENDER_SOURCE_BYTES ||
-      rendered.reduce((sum, id) => sum + costs.get(id)!.points, 0) > MAX_PDF_RENDERED_POINTS) {
+      rendered.reduce((sum, id) => sum + costs.get(id)!.points, 0) > MAX_PDF_RENDERED_POINTS ||
+      rendered.reduce((sum, id) => sum + costs.get(id)!.expressions, 0) > MAX_PDF_GRAPH_EXPRESSIONS) {
     throw new PdfJobError(413, "PDF_TOO_COMPLEX", "Слишком много сложных объектов на страницах PDF. Уменьшите число страниц или разделите экспорт.");
   }
   return { version: 1, title: value.title, revision: value.revision as number, savedAt: value.savedAt, layers, assets, pages };
