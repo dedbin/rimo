@@ -3,7 +3,7 @@
 import type { PointerEvent } from "react";
 
 import { rgbToCss } from "@/lib/board/colors";
-import { clipLineToBounds, lineArrowPoints, lineEndpoints } from "@/lib/board/line";
+import { clipLineToBounds, lineArrowPoints, lineDashPattern, lineEndpoints } from "@/lib/board/line";
 import type { LineLayer, XYWH } from "@/types/board-canvas";
 
 interface LineProps {
@@ -20,6 +20,7 @@ export function Line({ id, layer, onPointerDown, selectionColor, viewport }: Lin
     : lineEndpoints(layer);
   if (!points) return null;
   const [start, end] = points;
+  const dash = lineDashPattern(layer, start);
   const stroke = rgbToCss(layer.fill);
   const arrows = layer.lineKind === "segment" ? [
     ...(layer.startArrow ? [{ name: "start", points: lineArrowPoints(start, end, layer.strokeWidth) }] : []),
@@ -30,9 +31,10 @@ export function Line({ id, layer, onPointerDown, selectionColor, viewport }: Lin
     pointerEvents={onPointerDown ? undefined : "none"}>
     {selectionColor && <line x1={start.x} y1={start.y} x2={end.x} y2={end.y}
       stroke={selectionColor} strokeWidth={layer.strokeWidth + 4} strokeLinecap="round" pointerEvents="none" />}
-    <line data-line-body="true" data-line-kind={layer.lineKind}
+    <line data-line-body="true" data-line-kind={layer.lineKind} data-line-style={layer.strokeStyle ?? "solid"}
       x1={start.x} y1={start.y} x2={end.x} y2={end.y}
-      stroke={stroke} strokeWidth={layer.strokeWidth} strokeLinecap="round" pointerEvents={onPointerDown ? "stroke" : "none"} />
+      stroke={stroke} strokeWidth={layer.strokeWidth} strokeLinecap="round"
+      strokeDasharray={dash?.array} strokeDashoffset={dash?.offset} pointerEvents={onPointerDown ? "stroke" : "none"} />
     {onPointerDown && <line data-line-hit="true" x1={start.x} y1={start.y} x2={end.x} y2={end.y}
       stroke="transparent" strokeWidth={Math.max(16, layer.strokeWidth + 8)} strokeLinecap="round"
       vectorEffect="non-scaling-stroke" pointerEvents="stroke" />}

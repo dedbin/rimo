@@ -1,5 +1,5 @@
 import { LayerType } from "../../types/board-canvas";
-import type { Color, LineKind, LineLayer, Point, XYWH } from "../../types/board-canvas";
+import type { Color, LineKind, LineLayer, LineStrokeStyle, Point, XYWH } from "../../types/board-canvas";
 
 export function lineEndpoints(layer: LineLayer): readonly [Point, Point] {
   return [layer.start, layer.end].map((point) => ({
@@ -16,9 +16,22 @@ export function lineBounds(start: Point, end: Point): Pick<LineLayer, "x" | "y" 
   return { x, y, width, height, start: relative(start), end: relative(end) };
 }
 
-export function createLine(start: Point, end: Point, color: Color, lineKind: LineKind = "segment"): LineLayer {
+export function createLine(start: Point, end: Point, color: Color, lineKind: LineKind = "segment", strokeStyle: LineStrokeStyle = "solid"): LineLayer {
   return { type: LayerType.Line, ...lineBounds(start, end), fill: { ...color, a: 1 },
-    strokeWidth: 2, lineKind, startArrow: false, endArrow: false };
+    strokeWidth: 2, lineKind, strokeStyle, startArrow: false, endArrow: false };
+}
+
+export function lineDashPattern(layer: LineLayer, renderedStart: Point): { readonly array: string; readonly offset: number } | null {
+  if (layer.strokeStyle !== "dashed") return null;
+  const [start, end] = lineEndpoints(layer);
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.hypot(dx, dy);
+  const period = layer.strokeWidth * 7;
+  // Anchor an infinite line's pattern to its original endpoint, not the clipped viewport.
+  const distance = length ? ((renderedStart.x - start.x) * dx + (renderedStart.y - start.y) * dy) / length : 0;
+  const offset = ((distance % period) + period) % period;
+  return { array: `${layer.strokeWidth * 4} ${layer.strokeWidth * 3}`, offset };
 }
 
 export function snapLineEnd(origin: Point, point: Point): Point {

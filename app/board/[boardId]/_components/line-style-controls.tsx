@@ -9,12 +9,13 @@ import { useTranslation } from "@/hooks/use-translation";
 import { samePaint } from "@/lib/board/shape-style";
 import { useBoardRuntime, useBoardSnapshot, useSelection } from "@/lib/collaboration/react";
 import { LayerType } from "@/types/board-canvas";
-import type { Color, LineKind, LineLayer } from "@/types/board-canvas";
+import type { Color, LineKind, LineLayer, LineStrokeStyle } from "@/types/board-canvas";
 
 import { PaintPicker } from "./paint-picker";
 
 const WIDTHS = [1, 2, 4, 6, 8] as const;
 const KINDS: readonly LineKind[] = ["segment", "line"];
+const STYLES: readonly LineStrokeStyle[] = ["solid", "dashed"];
 
 export function LineStyleControls({ setLastUsedColor }: { setLastUsedColor: (color: Color) => void }) {
   const runtime = useBoardRuntime();
@@ -23,6 +24,7 @@ export function LineStyleControls({ setLastUsedColor }: { setLastUsedColor: (col
   const { t } = useTranslation();
   const widthTrigger = useRef<HTMLButtonElement>(null);
   const kindTrigger = useRef<HTMLButtonElement>(null);
+  const styleTrigger = useRef<HTMLButtonElement>(null);
   const lineIds = selection.filter((id) => snapshot.layers.get(id)?.type === LayerType.Line);
   const lines = lineIds.map((id) => snapshot.layers.get(id) as LineLayer);
   if (!lines.length) return null;
@@ -32,8 +34,11 @@ export function LineStyleControls({ setLastUsedColor }: { setLastUsedColor: (col
   const first = lines[0];
   const widthsMixed = lines.some((layer) => layer.strokeWidth !== first.strokeWidth);
   const kindsMixed = lines.some((layer) => layer.lineKind !== first.lineKind);
+  const strokeStyle = first.strokeStyle ?? "solid";
+  const stylesMixed = lines.some((layer) => (layer.strokeStyle ?? "solid") !== strokeStyle);
   const widthLabel = `${t("lineTools.thickness")}: ${widthsMixed ? t("lineTools.mixed") : t("lineTools.widthValue", { width: first.strokeWidth })}`;
   const kindLabel = `${t("lineTools.type")}: ${kindsMixed ? t("lineTools.mixed") : t(`lineTools.${first.lineKind}`)}`;
+  const styleLabel = `${t("lineTools.strokeStyle")}: ${stylesMixed ? t("lineTools.mixed") : t(`lineTools.${strokeStyle}`)}`;
 
   return <div className="flex max-w-full flex-wrap items-center gap-1">
     <PaintPicker label={t("lineTools.color")} value={first.fill}
@@ -90,6 +95,35 @@ export function LineStyleControls({ setLastUsedColor }: { setLastUsedColor: (col
           className="min-h-10 cursor-pointer rounded-md focus:bg-emerald-50">
           <span className="flex-1">{t(`lineTools.${kind}`)}</span>
           {!kindsMixed && first.lineKind === kind && <Check aria-hidden="true" className="text-emerald-600" />}
+        </DropdownMenuItem>)}
+      </DropdownMenuContent>
+    </DropdownMenu>
+    <DropdownMenu modal={false}>
+      <DropdownMenuTrigger asChild>
+        <button ref={styleTrigger} type="button" title={styleLabel} aria-label={styleLabel}
+          className={buttonVariants({ variant: "ghost", className: "h-10 gap-1.5 px-2.5 text-neutral-700" })}>
+          <svg aria-hidden="true" className="h-5 w-9" viewBox="0 0 36 20">
+            <line x1="2" y1="10" x2="34" y2="10" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeDasharray={!stylesMixed && strokeStyle === "dashed" ? "8 6" : undefined} />
+          </svg>
+          <span className="text-xs">{stylesMixed ? t("lineTools.mixed") : t(`lineTools.${strokeStyle}`)}</span>
+          <ChevronDown aria-hidden="true" className="size-3 text-neutral-400" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" sideOffset={8} collisionPadding={12} aria-label={t("lineTools.strokeStyle")}
+        className="w-48 rounded-xl border-neutral-200 bg-white p-2 shadow-lg data-[state=closed]:animate-none data-[state=closed]:hidden"
+        onKeyDown={(event) => event.stopPropagation()} onEscapeKeyDown={(event) => event.stopPropagation()}
+        onInteractOutside={(event) => { if (event.target instanceof Node && styleTrigger.current?.contains(event.target)) event.preventDefault(); }}>
+        <DropdownMenuLabel className="text-xs font-medium text-neutral-500">{t("lineTools.strokeStyle")}</DropdownMenuLabel>
+        {STYLES.map((style) => <DropdownMenuItem key={style} role="menuitemradio" aria-label={t(`lineTools.${style}`)}
+          aria-checked={!stylesMixed && strokeStyle === style} onSelect={() => runtime.board.update(lineIds, { strokeStyle: style })}
+          className="min-h-10 cursor-pointer rounded-md focus:bg-emerald-50">
+          <svg aria-hidden="true" className="h-5 w-9" viewBox="0 0 36 20">
+            <line x1="2" y1="10" x2="34" y2="10" stroke="currentColor" strokeWidth="2"
+              strokeLinecap="round" strokeDasharray={style === "dashed" ? "8 6" : undefined} />
+          </svg>
+          <span className="flex-1">{t(`lineTools.${style}`)}</span>
+          {!stylesMixed && strokeStyle === style && <Check aria-hidden="true" className="text-emerald-600" />}
         </DropdownMenuItem>)}
       </DropdownMenuContent>
     </DropdownMenu>
