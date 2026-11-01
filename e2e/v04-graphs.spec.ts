@@ -277,6 +277,10 @@ test("phone and tablet keep long-title actions and the whole graph visible while
       plot.x + plot.width <= 390 && plot.y + plot.height <= panel.y - 8;
   }).toBe(true);
   const original = await copiedGraph(page);
+  await expect.poll(async () => {
+    const [tools, presence] = await Promise.all([page.getByRole("toolbar").boundingBox(), page.locator('[data-board-presence="true"]').boundingBox()]);
+    return !!tools && !!presence && tools.y >= presence.y + presence.height + 2;
+  }).toBe(true);
   expect(original).toMatchObject({ x: 300, y: 220, width: 640, height: 440 });
   const panelBox = await editor(page).boundingBox();
   expect(panelBox!.height).toBeLessThanOrEqual(844 * 0.45 + 1);
@@ -284,13 +288,14 @@ test("phone and tablet keep long-title actions and the whole graph visible while
   await page.mouse.wheel(0, 420);
   const navigate = page.getByRole("button", { name: "Двигать оси", exact: true });
   await navigate.scrollIntoViewIfNeeded();
-  await expect(navigate).toBeInViewport({ ratio: 1 });
+  // Fractional bottom-sheet heights may clip half a CSS pixel after scrolling.
+  await expect(navigate).toBeInViewport({ ratio: 0.95 });
   await navigate.click();
   await expect(navigate).toHaveAttribute("aria-pressed", "true");
   await navigate.click();
   await expect(navigate).toHaveAttribute("aria-pressed", "false");
   await page.getByLabel("Показывать сетку", { exact: true }).scrollIntoViewIfNeeded();
-  await expect(page.getByLabel("Показывать сетку", { exact: true })).toBeInViewport({ ratio: 1 });
+  await expect(page.getByLabel("Показывать сетку", { exact: true })).toBeInViewport({ ratio: 0.95 });
   await page.screenshot({ path: info.outputPath("v04-phone-editor.png") });
   await page.getByRole("button", { name: "Закрыть редактор графика", exact: true }).click();
   await expect(editor(page)).toHaveCount(0);

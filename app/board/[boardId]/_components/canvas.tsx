@@ -75,7 +75,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     if (layer?.type !== LayerType.Graph) return;
     // Opening the editor keeps the entire plot beside/above its panel.
     const mobile = viewport.width < 640;
-    const area = { left: 76, top: mobile ? 120 : 86,
+    const area = { left: 76, top: mobile ? 184 : 86,
       right: mobile ? viewport.width - 16 : viewport.width - 376,
       bottom: mobile ? viewport.height * 0.55 - 80 : viewport.height - 64 };
     const current = cameraRef.current;
@@ -162,7 +162,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
 
   return <main className="h-full w-full relative bg-neutral touch-none" data-board-id={boardId}>
     <BoardInfo boardId={boardId} />
-    <div className="absolute top-16 right-2 flex flex-row-reverse items-center gap-2 sm:top-2">
+    <div data-board-presence="true" className="absolute top-16 right-2 z-20 flex flex-row-reverse items-center gap-2 sm:top-2">
       <BoardParticipants followingId={follow.followingId} onFollow={(id) => {
         gestures.cancel(); laser.clear(); follow.toggleFollow(id);
       }} /><SessionTimer />
