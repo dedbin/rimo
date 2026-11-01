@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 1,
+  "version": "0.4.0",
+  "sourceCommit": "3bb573572d06cd60d3f08eda7948cc61e93eeaba",
+  "publicUrl": "https://rimo-whiteboard.ru",
+  "pullRequest": "https://github.com/dedbin/rimo/pull/16",
+  "collectedAt": "2026-11-01T20:15:21.333Z",
+  "fixes": {
+    "compactAutomaticZoomCoordinates": true,
+    "intentionalInputPrecisionPreserved": true,
+    "narrowRangesPreserved": true,
+    "resizeHintRemoved": true
+  },
+  "localValidation": {
+    "typecheck": "passed",
+    "lint": "passed",
+    "productionBuild": "passed",
+    "focusedGraphTestsPassed": 165,
+    "currentGraphBrowserScenariosPassed": 5,
+    "earlierFullSuitePassed": 1229,
+    "earlierOptInSkipped": 17,
+    "independentReview": "no remaining findings"
+  },
+  "candidateCI": {
+    "sourceCommit": "3bb573572d06cd60d3f08eda7948cc61e93eeaba",
+    "conclusion": "success",
+    "url": "https://github.com/dedbin/rimo/actions/runs/41343207396",
+    "jobs": [
+      "verify",
+      "mail-relay"
+    ]
+  },
+  "serverProofSha256": "04d99d6430f6407facbe5d175f4521f3d8900be62dc4e149ce6a0aa4153bf9ce",
+  "server": {
+    "acceptanceFinalization": {
+      "completedAt": "2026-11-01T20:10:22.411039+00:00",
+      "coreFingerprintTablesCompared": 9,
+      "coreTablesWithLiveChanges": 0,
+      "countsAfterAcceptance": {
+        "accounts": 3,
+        "assets": 3,
+        "boards": 3,
+        "documents": 3,
+        "favorites": 0,
+        "invites": 3,
+        "memberships": 2,
+        "schemaMigrations": 2,
+        "users": 13
+      },
+      "originalAssetBytesVerified": true,
+      "originalCoreFingerprintsMatch": true,
+      "originalResourcesRetained": {
+        "assets": 3,
+        "boards": 3,
+        "documents": 3,
+        "documentsWithLiveWrites": 0
+      },
+      "privateTestManifestsRemoved": true,
+      "protectedInfrastructureChecked": true,
+      "temporaryAccountDeleted": true,
+      "temporaryBoardManifestCount": 34,
+      "temporaryBoardsDeleted": true,
+      "temporaryGuestsDeleted": 14
+    },
+    "activation": {
+      "activatedAt": "2026-11-01T20:03:08.367602+00:00",
+      "backupBeforeUpdate": "success",
+      "effectiveComposePreserved": true,
+      "mailConnectionVerified": true,
+      "migrationFilesUnchanged": true,
+      "migrationFingerprintTables": 12,
+      "migrationFingerprintsMatch": true,
+      "namedVolumesPreserved": true,
+      "newDurableWritesRequireForwardRepair": true,
+      "protectedInfrastructureUnchanged": true,
+      "publicHealth": 200
+    },
+    "archive": {
+      "actualArchiveVerified": true,
+      "bytes": 9646080,
+      "createdAt": "2026-11-01T19:50:55.843000+00:00",
+      "gitTree": "42f12b9ff448b2e2afd32ba56a2fdbc00dfe8587",
+      "sha256": "31e2a29c9c83a38eb7e8c4d9e803b3e717d1f292d0e6a5864cac64ddb335cc9a",
+      "trackedFiles": 755
+    },
+    "backup": {
+      "createdAt": "2026-11-01T20:01:04.723000+00:00",
+      "dataVerified": true,
+      "encrypted": true,
+      "freshAtActivation": true,
+      "offsiteVerified": false,
+      "sourceCreatedAt": "2026-11-01T20:00:53.700000+00:00"
+    },
+    "build": {
+      "appImage": "sha256:2e335d56da69677f85ddaa3da2ef965e8a4bd6b96e19b5577883ffed2aee03ce",
+      "builtAt": "2026-11-01T19:56:13.659696+00:00",
+      "imageSourcesCleanArchive": true,
+      "operationalOverlayFiles": 5,
+      "operationalOverlayVerified": true,
+      "pdfImage": "sha256:397fcaf5e33d919afa20fa8398a24393cce2ca5f87d23ea141b577261a939eba",
+      "reviewedGuardUpgradeVerified": true,
+      "rollbackFingerprintTables": 12,
+      "runtimeHelperSha256": "99e893013caafaef0eb05cf13067f83f2affacc20c175390897b67c1316cf448",
+      "runtimeOverlayHostOnly": true
+    },
+    "collectedAt": "2026-11-01T20:14:32.248553+00:00",
+    "evidenceSha256": {
+      "activation": "aa8c7177dfcd737e9f6d72b162e512bd7bab5201df4f17fc4e234ba129058649",
+      "archiveManifest": "84fc39124ba6ae7fdd186257e0772006e6f41750357731558939b051a624779c",
+      "backup": "79b325c6a3c8ec4e23b93942efe1a813fa33996b36d210827e701dbdb98c8a4a",
+      "build": "0574d336f1b64ee21f5d0c1e6f04b4137cf462c375a468e7126677d8896bc7e3",
+      "cleanup": "db4461484267830a97fb693191e565d0d980209a0fd5fa7e78c53d6789b856cc",
+      "final": "878838bac18df30831d32f3bd9ed02907ab8d455c785d307fc7c7d0c13a86af6",
+      "guardUpgrade": "99f42e0c892686e7e2b6556d0afee4e540addb6d06e490ec1677b9d2b400317a",
+      "migrationAfter": "9e82fc0cd7a847e81584ab0f3c545be601f1c1098b0a24485d0025935b175741",
+      "migrationBefore": "9e82fc0cd7a847e81584ab0f3c545be601f1c1098b0a24485d0025935b175741"
+    },
+    "liveReadOnlyChecks": {
+      "backupServiceSuccessful": true,
+      "migratorExitSuccessful": true,
+      "operationalTimersActive": true,
+      "publicHttpsHealth": 200,
+      "services": {
+        "app": {
+          "healthy": true,
+          "reviewedImage": true,
+          "running": true
+        },
+        "collaboration": {
+          "healthy": true,
+          "reviewedImage": true,
+          "running": true
+        },
+        "pdf": {
+          "healthy": true,
+          "reviewedImage": true,
+          "running": true
+        }
+      }
+    },
+    "previousRevision": "d501d85522540b941303b15535a502a05f3c6431",
+    "publicUrl": "https://rimo-whiteboard.ru",
+    "revision": "3bb573572d06cd60d3f08eda7948cc61e93eeaba",
+    "schemaVersion": 1,
+    "tag": "server-3bb573572d06",
+    "version": "0.4.0"
+  },
+  "browserAcceptance": {
+    "uniqueScenariosPassed": 26,
+    "specFiles": 14,
+    "unchangedSpecFilesVerified": true,
+    "sourceSpecSha256": {
+      "e2e/auth-help.spec.ts": "015a5824c91dea148c349f03337d2978f1e8b49e73ff07b40e98d54771a2d34b",
+      "e2e/clipboard.spec.ts": "2928a8731250d62868a3f53a4533b8d9c4213cbb3bbc84ec0b9f4c8e54918814",
+      "e2e/collaboration.spec.ts": "c56f50d3c68a382515114aa10da0412f68cc98008f9180f5d67c62327b505039",
+      "e2e/exports.spec.ts": "0e4fe555f1527175f0feaf8ff2b6cc3913c083c33ee5f1f1eb75c11305236a5e",
+      "e2e/line-tools.spec.ts": "1a7d3921fcedecfd321237ad81fdc4263630502bc9958e5f7c0f702325ed32be",
+      "e2e/marker-preferences.spec.ts": "cf0831d082768ddea16909f9fe978a97ddfd574671efafc58ecc0c659f50d4f0",
+      "e2e/rich-text.spec.ts": "8ed4de7743e0171bbf83e65376e9c45aae074233999db3d095f7be80a0e410f4",
+      "e2e/role-change.spec.ts": "e233289d0a3e454f43a5fe3992ede2320a3f3a45d583b04e005e85cd830c35e8",
+      "e2e/selection-hitbox.spec.ts": "c0ea55a12854f3ed4fc8a062381727fd35b1c016acbe08fa78a8af6b93ed380a",
+      "e2e/shape-style.spec.ts": "8e1487569f12233fbada71b51ec0f73074c02ea336d362bed4b79c464d3fa39f",
+      "e2e/tablet-gestures.spec.ts": "646cb6344fe1d37b5fb84ffc5b98c54aea0ec912119d0410af04860c1d90a7b6",
+      "e2e/v03-drawing.spec.ts": "357e2c641f2af5ef586984c2d7092ef17c265a826ea88c71ddf30c21e9aa741a",
+      "e2e/v03-presentation.spec.ts": "79566e2f59cf3e61500fee104074524ff4098b9f2fb126f3df61f9c0532f2591",
+      "e2e/v04-graphs.spec.ts": "a3561c6214ce863b668ba65ec0dd584bac0bc86efb4ad5388b2f4fdba13d117b",
+      "e2e/board-ui.ts": "9c5fb6e8544cd7b83c02f40d5bd4afc10ca10730444bfb96ff53e2128faef6b3",
+      "types/board-canvas.ts": "c220bc461bbe43939163c8255d906ee0dc5c1bdcc767dba32bdab48b04b72425",
+      "e2e/fixtures.ts": "4999555c04fb1f87526115e7a6f6837ad1c1f24a9378a67731d55c02193bd39e"
+    },
+    "passedScenarios": [
+      "auth-help.spec.ts:3 sign-in and registration expose the existing support contact",
+      "clipboard.spec.ts:6 copying an image to another board preserves it after the source board is deleted",
+      "collaboration.spec.ts:4 owner creates a board, guests collaborate, local undo preserves the peer and access is revoked",
+      "exports.spec.ts:8 named frame PDF preview/download and portable archive restore work through the UI",
+      "line-tools.spec.ts:36 segments keep Shift alignment and endpoint arrows across collaboration, undo and reload",
+      "line-tools.spec.ts:109 straight lines remain visible and selectable beyond their anchors after panning",
+      "line-tools.spec.ts:139 Escape exits the sticky line tool and a zoomed thick stroke is selectable at its visible edge",
+      "marker-preferences.spec.ts:26 marker choices are personal, precede drawing and survive tool changes and reload",
+      "marker-preferences.spec.ts:78 marker settings stay inside a narrow viewport",
+      "rich-text.spec.ts:4 rich text, math and Markdown survive two editors, local undo and reload",
+      "role-change.spec.ts:4 active editor becomes viewer and editor again without reload, cancelling text and a pending gesture",
+      "selection-hitbox.spec.ts:37 selection boxes pick touched hitboxes in either direction and exclude separated objects",
+      "shape-style.spec.ts:4 shapes start unfilled and keep outline and fill independent across undo and reload",
+      "tablet-gestures.spec.ts:26 native two-finger pinch cancels a pencil draft, suppresses the remaining finger and preserves undo",
+      "tablet-gestures.spec.ts:62 pinch over a selected layer and its resize handle changes only the camera, including for a viewer",
+      "v03-drawing.spec.ts:37 marker opacity matches live remote drafts and survives undo, reload and clipboard while staying personal",
+      "v03-drawing.spec.ts:83 dashed segments preserve solid arrowheads, shared style changes, undo, reload and clipboard",
+      "v03-drawing.spec.ts:125 mixed marker and dashed line styles survive real PDF export and portable archive import",
+      "v03-presentation.spec.ts:32 following shares board center and zoom across viewports and stops on manual navigation or departure",
+      "v03-presentation.spec.ts:76 laser expires without pointerup, clears on tool change and lets a viewer point without editing",
+      "v03-presentation.spec.ts:118 laser yields to a native pinch and suppresses the remaining touch",
+      "v04-graphs.spec.ts:71 graph formulas synchronize, isolate errors and survive proportional and side resizing, undo and reload",
+      "v04-graphs.spec.ts:151 graph drag, wheel and native pinch change its axes while board navigation and Escape stay independent",
+      "v04-graphs.spec.ts:199 graphs, inequalities and separate discontinuous branches survive clipboard, real PDF and portable archive",
+      "v04-graphs.spec.ts:260 phone and tablet keep long-title actions and the whole graph visible while its editor stays usable",
+      "v04-graphs.spec.ts:320 repeated graph zoom has compact decimal fields and preserves deliberate coordinate precision"
+    ],
+    "noForwardedClientHeaders": true,
+    "serverRateLimitsUnchanged": true,
+    "rateLimitDuringFirstAttempt": {
+      "endpoint": "/api/auth/sign-in/anonymous",
+      "status": 429,
+      "retryAfterSeconds": 9,
+      "observedAt": "2026-11-01T20:08:26.561Z",
+      "retryAllowedAt": "2026-11-01T20:08:35.811Z",
+      "occurredBeforeGraphCreation": true,
+      "unchangedScenarioPassedAfterPause": true
+    },
+    "collectionOnlyChecksExcludedFromScenarioCount": 2,
+    "runs": [
+      {
+        "runId": "681cf5b1-7733-48ce-8ae7-eaad7e99368d",
+        "reportSha256": "eadb44719d4392d0e686cf040f7c6cfe169d4e960000dff010573a3d3ea3151a",
+        "stats": {
+          "startTime": "2026-11-01T20:06:32.320Z",
+          "duration": 148425.644,
+          "expected": 25,
+          "skipped": 0,
+          "unexpected": 1,
+          "flaky": 0
+        },
+        "initiallyFailedScenarios": [
+          "graph formulas synchronize, isolate errors and survive proportional and side resizing, undo and reload"
+        ]
+      },
+      {
+        "runId": "d4e5a1a1-2ac4-4585-8db0-2be54b095bdd",
+        "reportSha256": "a55bd166d14cc9942c3bc741cf95fcc6897e613423ea25a2027542a8ae45f8a2",
+        "stats": {
+          "startTime": "2026-11-01T20:09:35.866Z",
+          "duration": 7143.1759999999995,
+          "expected": 1,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        },
+        "initiallyFailedScenarios": []
+      }
+    ],
+    "excludedRegistrationScenario": "Needs local test SMTP/database cleanup; external mail delivery is not claimed"
+  },
+  "reconnect": {
+    "sourceCommit": "3bb573572d06cd60d3f08eda7948cc61e93eeaba",
+    "forcedReconnect": true,
+    "newConnectionObserved": true,
+    "secureWebSocket": true,
+    "documentPreserved": true,
+    "writesAfterReconnectPersisted": true,
+    "secureSessionCookie": true,
+    "noForwardedClientHeaders": true,
+    "serverRateLimitsUnchanged": true,
+    "ownedBoardCleaned": true
+  }
+}
