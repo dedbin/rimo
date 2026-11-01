@@ -26,6 +26,7 @@ import {
   LayerType
 } from "@/types/board-canvas";
 import { useTranslation } from "@/hooks/use-translation";
+import styles from "./toolbar.module.css";
 
 interface BoardToolbarProps {
   canvasState: BoardCanvasState;
@@ -65,16 +66,18 @@ export const BoardToolbar = ({
     isActive={canvasState.mode === BoardCanvasMode.Laser}
     onClick={() => setCanvasState({ mode: BoardCanvasMode.Laser })} />;
 
-  if (readOnly) return <div className="absolute top-1/2 left-2 z-10 -translate-y-1/2 rounded-md bg-white p-1.5 shadow-md">
-    <ToolButton label={t("toolbar.select")} icon={MousePointer2}
-      isActive={canvasState.mode === BoardCanvasMode.None}
-      onClick={() => setCanvasState({ mode: BoardCanvasMode.None })} />
-    {laser}
+  if (readOnly) return <div className={styles.toolbar}>
+    <div className={`${styles.tools} rounded-md bg-white shadow-md`}>
+      <ToolButton label={t("toolbar.select")} icon={MousePointer2}
+        isActive={canvasState.mode === BoardCanvasMode.None}
+        onClick={() => setCanvasState({ mode: BoardCanvasMode.None })} />
+      {laser}
+    </div>
   </div>;
 
   return (
-    <div className="absolute top-1/2 left-2 transform -translate-y-1/2 flex flex-col gap-4 z-10">
-      <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col gap-y-1 items-center">
+    <div className={styles.toolbar}>
+      <div className={`${styles.tools} bg-white rounded-md shadow-md`}>
         <ToolButton
           label={t("toolbar.select")}
           icon={MousePointer2}
@@ -106,9 +109,11 @@ export const BoardToolbar = ({
           }
         />
 
-        <PenTool active={canvasState.mode === BoardCanvasMode.Pencil} color={selectedPenColor} size={selectedPenSize}
-          onActivate={() => setCanvasState({ mode: BoardCanvasMode.Pencil })}
-          onColorChange={onPenColorChange} onSizeChange={onPenSizeChange} />
+        <div className={styles.pen}>
+          <PenTool active={canvasState.mode === BoardCanvasMode.Pencil} color={selectedPenColor} size={selectedPenSize}
+            onActivate={() => setCanvasState({ mode: BoardCanvasMode.Pencil })}
+            onColorChange={onPenColorChange} onSizeChange={onPenSizeChange} />
+        </div>
 
         {laser}
 
@@ -194,7 +199,7 @@ export const BoardToolbar = ({
         />
       </div>
 
-      <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col items-center">
+      <div className={`${styles.actions} bg-white rounded-md shadow-md`}>
         <ToolButton
           label={`${t("toolbar.zoomIn")}`}
           icon={ZoomIn}
@@ -240,8 +245,8 @@ export const BoardToolbar = ({
 
 export const BoardToolbarSkeleton = () => {
   return (
-    <div className="absolute top-1/2 left-2 transform -translate-y-1/2 flex flex-col gap-4">
-      <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col gap-y-2 items-center">
+    <div className={styles.toolbar}>
+      <div className={`${styles.tools} bg-white rounded-md shadow-md`}>
         {[...Array(6)].map((_, i) => (
           <div
             key={`tool-skel-${i}`}
@@ -249,7 +254,7 @@ export const BoardToolbarSkeleton = () => {
           />
         ))}
       </div>
-      <div className="bg-white rounded-md shadow-md p-1.5 flex flex-col gap-y-2 items-center">
+      <div className={`${styles.actions} bg-white rounded-md shadow-md`}>
         {[...Array(4)].map((_, i) => (
           <div
             key={`action-skel-${i}`}

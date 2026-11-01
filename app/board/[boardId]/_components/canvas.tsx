@@ -75,7 +75,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     if (layer?.type !== LayerType.Graph) return;
     // Opening the editor keeps the entire plot beside/above its panel.
     const mobile = viewport.width < 640;
-    const area = { left: 76, top: mobile ? 184 : 86,
+    const area = { left: viewport.height < 780 ? 116 : 76, top: mobile ? 184 : 86,
       right: mobile ? viewport.width - 16 : viewport.width - 376,
       bottom: mobile ? viewport.height * 0.55 - 80 : viewport.height - 64 };
     const current = cameraRef.current;
@@ -119,8 +119,13 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     const resize = () => setViewport({ width: svgRef.current?.clientWidth ?? window.innerWidth,
       height: svgRef.current?.clientHeight ?? window.innerHeight });
     resize();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(resize);
+    if (svgRef.current) observer?.observe(svgRef.current);
     window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", resize);
+    };
   }, []);
 
   const selectedSet = useMemo(() => new Set(selection), [selection]);
@@ -160,7 +165,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     return bounds ? { ...bounds, x: bounds.x + preview.delta.x, y: bounds.y + preview.delta.y } : null;
   }, [preview, snapshot]);
 
-  return <main className="h-full w-full relative bg-neutral touch-none" data-board-id={boardId}>
+  return <main className="h-dvh w-full relative bg-neutral overflow-hidden" data-board-id={boardId}>
     <BoardInfo boardId={boardId} />
     <div data-board-presence="true" className="absolute top-16 right-2 z-20 flex flex-row-reverse items-center gap-2 sm:top-2">
       <BoardParticipants followingId={follow.followingId} onFollow={(id) => {
@@ -178,7 +183,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
       ? <TextSelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />
       : <SelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />)}
     {graphEditor.editingId && <GraphEditor />}
-    <svg ref={svgRef} className="h-[100vh] w-[100vw]" aria-label="Холст доски"
+    <svg ref={svgRef} className="h-full w-full touch-none" aria-label="Холст доски"
       onPointerDownCapture={(event) => {
         if (event.target instanceof Element && event.target.closest('[data-graph-interaction="true"]')) return;
         laser.onPointerDown(event);
@@ -222,9 +227,6 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
       </g>
     </svg>
     <ZoomControls scale={camera.scale} onFitToScreen={fitToScreen} />
-    {laserMode && <div role="status" className="pointer-events-none absolute bottom-14 left-1/2 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-lg bg-white/95 px-3 py-2 text-center text-xs text-neutral-600 shadow-sm">
-      Удерживайте нажатие, чтобы показать указку
-    </div>}
     <SaveStatus />
     {!connection.synced && !connection.error && <div className="absolute inset-0 z-20"><CanvasLoading /></div>}
   </main>;

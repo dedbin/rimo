@@ -1,0 +1,52 @@
+.toolbar {
+  --toolbar-columns: 1;
+
+  position: absolute;
+  top: 64px;
+  bottom: 52px;
+  left: 8px;
+  z-index: 10;
+  display: flex;
+  width: max-content;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 16px;
+  pointer-events: none;
+}
+
+.tools,
+.actions {
+  display: grid;
+  grid-template-columns: repeat(var(--toolbar-columns), 2.25rem);
+  justify-items: center;
+  column-gap: 4px;
+  padding: 6px;
+  pointer-events: auto;
+}
+
+.tools {
+  min-height: 0;
+  grid-auto-rows: 2.25rem;
+  row-gap: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+.pen {
+  grid-row: span 2;
+}
+
+.actions {
+  flex-shrink: 0;
+}
+
+/* Keep full-size controls between the header and save status on short screens. */
+@media (max-height: 779px) {
+  .toolbar {
+    --toolbar-columns: 2;
+
+    gap: 8px;
+  }
+}
