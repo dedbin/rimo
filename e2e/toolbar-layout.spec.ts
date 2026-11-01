@@ -112,6 +112,7 @@ test("compact toolbar leaves the graph resize handle accessible beside its edito
     const box = element.getBoundingClientRect();
     return element.parentElement!.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
   })).toBe(true);
+  await handle.locator("xpath=..").hover();
   const before = (await graph.boundingBox())!;
   const box = (await handle.boundingBox())!;
   const x = box.x + box.width / 2;
