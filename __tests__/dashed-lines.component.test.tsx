@@ -50,17 +50,17 @@ describe("line style before construction", () => {
   it("selects dash style before drawing and retains it when switching line kind and tools", () => {
     render(<PersonalLineTool />);
     openTool();
-    expect(screen.getByRole("menuitemradio", { name: "Сплошная", exact: true }).getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Пунктирная", exact: true }));
+    expect(screen.getByRole("menuitemradio", { name: "Сплошная" }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Пунктирная" }));
     expect(JSON.parse(screen.getByTestId("line-state").textContent!)).toMatchObject({
       mode: BoardCanvasMode.Inserting, layerType: LayerType.Line, lineKind: "segment", strokeStyle: "dashed",
     });
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Прямая", exact: true }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Прямая" }));
     expect(JSON.parse(screen.getByTestId("line-state").textContent!)).toMatchObject({ lineKind: "line", strokeStyle: "dashed" });
     fireEvent.click(screen.getByRole("button", { name: "Другой инструмент" }));
     openTool();
-    expect(screen.getByRole("menuitemradio", { name: "Пунктирная", exact: true }).getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Отрезок", exact: true }));
+    expect(screen.getByRole("menuitemradio", { name: "Пунктирная" }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Отрезок" }));
     expect(JSON.parse(screen.getByTestId("line-state").textContent!)).toMatchObject({ lineKind: "segment", strokeStyle: "dashed" });
   });
 
@@ -68,14 +68,14 @@ describe("line style before construction", () => {
     const setCanvasState = vi.fn();
     const view = render(<LineTool canvasState={{ mode: BoardCanvasMode.None }} setCanvasState={setCanvasState} />);
     openTool();
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Пунктирная", exact: true }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Пунктирная" }));
     fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
     view.rerender(<LineTool canvasState={{ mode: BoardCanvasMode.Pencil }} setCanvasState={setCanvasState} />);
     view.rerender(<LineTool canvasState={{ mode: BoardCanvasMode.Inserting, layerType: LayerType.Line, lineKind: "segment" }}
       setCanvasState={setCanvasState} />);
     openTool();
-    expect(screen.getByRole("menuitemradio", { name: "Сплошная", exact: true }).getAttribute("aria-checked")).toBe("true");
-    expect(screen.getByRole("menuitemradio", { name: "Пунктирная", exact: true }).getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("menuitemradio", { name: "Сплошная" }).getAttribute("aria-checked")).toBe("true");
+    expect(screen.getByRole("menuitemradio", { name: "Пунктирная" }).getAttribute("aria-checked")).toBe("false");
   });
 });
 
@@ -96,12 +96,12 @@ describe("selected line style", () => {
       <LineStyleControls setLastUsedColor={vi.fn()} />
     </BoardRuntimeContext.Provider>);
     fireEvent.keyDown(screen.getByRole("button", { name: "Стиль линии: Разные" }), { key: "Enter" });
-    expect(screen.getByRole("menuitemradio", { name: "Сплошная", exact: true }).getAttribute("aria-checked")).toBe("false");
-    expect(screen.getByRole("menuitemradio", { name: "Пунктирная", exact: true }).getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("menuitemradio", { name: "Сплошная" }).getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("menuitemradio", { name: "Пунктирная" }).getAttribute("aria-checked")).toBe("false");
     const history = document.undoManager.undoStack.length;
     let updates = 0;
     document.doc.on("update", () => { updates += 1; });
-    fireEvent.click(screen.getByRole("menuitemradio", { name: "Пунктирная", exact: true }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "Пунктирная" }));
     expect(updates).toBe(1);
     expect(document.undoManager.undoStack).toHaveLength(history + 1);
     expect(document.getLayer(ids[0])).toMatchObject({ strokeStyle: "dashed" });
