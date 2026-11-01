@@ -7,6 +7,7 @@ import { I18nProvider } from "@/providers/i18n-provider";
 import { Suspense } from "react";
 import { Loading } from "@/components/auth/loading";
 import { LanguageAwareHtml } from "@/components/language-aware-html";
+import { GRAPH_CSS } from "@/lib/board/graph/styles";
 
 const geistSans = localFont({
   src: "../node_modules/@fontsource/geist/files/geist-latin-400-normal.woff2",
@@ -33,6 +34,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <style>{GRAPH_CSS}</style>
         <I18nProvider>
           <Suspense fallback={<Loading/>}>
                 <LanguageAwareHtml>

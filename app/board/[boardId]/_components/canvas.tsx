@@ -1,6 +1,7 @@
 "use client";
 
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useBoardHistory, useBoardRuntime, useBoardSnapshot, useConnectionState, useLayer, useOthers, usePencilDraft, useSelection } from "@/lib/collaboration/react";
 import { getBounds, intersectsViewport } from "@/lib/board/geometry";
 import { connectionIdToColor, rgbToCss } from "@/lib/utils";
@@ -28,15 +29,19 @@ import { SaveStatus } from "./save-status";
 import { BoardTextProvider } from "@/components/board-text/provider";
 import { Line } from "./line";
 import { LaserPresence } from "./laser-presence";
+import { GraphEditorProvider, useGraphEditor } from "@/components/board-graph/provider";
 
 export { createLayer } from "@/lib/board/model";
 
+const GraphEditor = dynamic(() => import("@/components/board-graph/editor").then((module) => module.GraphEditor), { ssr: false });
+
 export function BoardCanvas({ boardId }: { boardId: string }) {
-  return <BoardTextProvider><BoardCanvasContent boardId={boardId} /></BoardTextProvider>;
+  return <BoardTextProvider><GraphEditorProvider><BoardCanvasContent boardId={boardId} /></GraphEditorProvider></BoardTextProvider>;
 }
 
 function BoardCanvasContent({ boardId }: { boardId: string }) {
   const runtime = useBoardRuntime();
+  const graphEditor = useGraphEditor();
   const snapshot = useBoardSnapshot();
   const connection = useConnectionState();
   const selection = useSelection();
@@ -60,8 +65,55 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
   const laserMode = canvasState.mode === BoardCanvasMode.Laser;
   const laser = useCanvasLaser({ active: laserMode, svgRef, cameraRef });
   const canEdit = runtime.board.canEdit && connection.synced && !connection.error;
+  const previousGraphIds = useRef(new Set(snapshot.layerIds));
   const visibleBounds = useMemo(() => ({ x: -camera.x / camera.scale, y: -camera.y / camera.scale,
     width: viewport.width / camera.scale, height: viewport.height / camera.scale }), [camera, viewport]);
+
+  useEffect(() => {
+    if (!graphEditor.editingId || !canEdit) return;
+    const layer = runtime.board.getLayer(graphEditor.editingId);
+    if (layer?.type !== LayerType.Graph) return;
+    // Opening the editor keeps the entire plot beside/above its panel.
+    const mobile = viewport.width < 640;
+    const area = { left: 76, top: mobile ? 184 : 86,
+      right: mobile ? viewport.width - 16 : viewport.width - 376,
+      bottom: mobile ? viewport.height * 0.55 - 80 : viewport.height - 64 };
+    const current = cameraRef.current;
+    if (layer.x * current.scale + current.x >= area.left &&
+      layer.y * current.scale + current.y >= area.top &&
+      (layer.x + layer.width) * current.scale + current.x <= area.right &&
+      (layer.y + layer.height) * current.scale + current.y <= area.bottom) return;
+    const scale = Math.max(0.1, Math.min(current.scale,
+      Math.max(80, area.right - area.left) / Math.max(1, layer.width),
+      Math.max(80, area.bottom - area.top) / Math.max(1, layer.height)));
+    animateCameraTo({ scale, x: (area.left + area.right) / 2 - (layer.x + layer.width / 2) * scale,
+      y: (area.top + area.bottom) / 2 - (layer.y + layer.height / 2) * scale });
+  }, [graphEditor.editingId, canEdit, viewport.width, viewport.height, cameraRef, animateCameraTo, runtime]);
+
+  useEffect(() => {
+    const selectedId = selection.length === 1 ? selection[0] : null;
+    if (graphEditor.editingId && (!canEdit || selectedId !== graphEditor.editingId || selectedLayer?.type !== LayerType.Graph ||
+      [BoardCanvasMode.Inserting, BoardCanvasMode.Pencil, BoardCanvasMode.Eraser, BoardCanvasMode.Laser].includes(canvasState.mode))) {
+      graphEditor.close();
+    } else if (canEdit && selectedId && selectedLayer?.type === LayerType.Graph && !previousGraphIds.current.has(selectedId)) {
+      graphEditor.open(selectedId);
+    }
+    previousGraphIds.current = new Set(snapshot.layerIds);
+  }, [canEdit, selection, selectedLayer, snapshot.layerIds, canvasState.mode, graphEditor]);
+
+  useEffect(() => {
+    if (!graphEditor.editingId) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      if (event.target instanceof Element && event.target.closest('[role="dialog"]')) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (graphEditor.navigationId) graphEditor.setNavigation(null);
+      else graphEditor.close();
+    };
+    window.addEventListener("keydown", escape, true);
+    return () => window.removeEventListener("keydown", escape, true);
+  }, [graphEditor]);
 
   useEffect(() => {
     const resize = () => setViewport({ width: svgRef.current?.clientWidth ?? window.innerWidth,
@@ -110,7 +162,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
 
   return <main className="h-full w-full relative bg-neutral touch-none" data-board-id={boardId}>
     <BoardInfo boardId={boardId} />
-    <div className="absolute top-2 right-2 flex flex-row-reverse items-center gap-2">
+    <div data-board-presence="true" className="absolute top-16 right-2 z-20 flex flex-row-reverse items-center gap-2 sm:top-2">
       <BoardParticipants followingId={follow.followingId} onFollow={(id) => {
         gestures.cancel(); laser.clear(); follow.toggleFollow(id);
       }} /><SessionTimer />
@@ -125,8 +177,10 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     {canEdit && !laserMode && preview.ids.length === 0 && !preview.line && (selectedLayer?.type === LayerType.Text || selectedLayer?.type === LayerType.Sticker
       ? <TextSelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />
       : <SelectionTools camera={camera} setLastUsedColor={setLastUsedColor} />)}
+    {graphEditor.editingId && <GraphEditor />}
     <svg ref={svgRef} className="h-[100vh] w-[100vw]" aria-label="Холст доски"
       onPointerDownCapture={(event) => {
+        if (event.target instanceof Element && event.target.closest('[data-graph-interaction="true"]')) return;
         laser.onPointerDown(event);
         gestures.onPointerDownCapture(event);
       }}

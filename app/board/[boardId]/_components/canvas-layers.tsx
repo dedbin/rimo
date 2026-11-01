@@ -36,14 +36,18 @@ export const CanvasLayers = memo(function CanvasLayers({ snapshot, visibleIds, m
     const moving = movingIds.has(id);
     const remote = remoteTransforms.get(id);
     const offset = moving ? lineDelta : remote;
+    const graphResize = moving && resize && stored.type === LayerType.Graph ? resize : null;
     const lineViewport = stored.type === LayerType.Line ? viewport && offset
       ? { ...viewport, x: viewport.x - offset.x, y: viewport.y - offset.y } : viewport : undefined;
+    const content = <LayerPreview id={id} onLayerPointerDown={onLayerPointerDown} selectionColor={selectionColors[id]}
+      viewport={lineViewport}
+      layerOverride={moving && linePreview ? linePreview : moving && resize && !graphResize ? { ...stored, ...resize } : undefined} />;
     return <g key={id} data-layer-id={id} data-preview-layer={moving ? "true" : undefined}
       style={moving && !sharedTranslation ? { transform: "translate(var(--rimo-preview-x), var(--rimo-preview-y))" } : undefined}
       transform={!moving && remote ? `translate(${remote.x} ${remote.y})` : undefined}>
-      <LayerPreview id={id} onLayerPointerDown={onLayerPointerDown} selectionColor={selectionColors[id]}
-        viewport={lineViewport}
-        layerOverride={moving && linePreview ? linePreview : moving && resize ? { ...stored, ...resize } : undefined} />
+      {graphResize ? <g transform={`translate(${graphResize.x} ${graphResize.y}) scale(${graphResize.width / Math.max(1, stored.width)} ${graphResize.height / Math.max(1, stored.height)}) translate(${-stored.x} ${-stored.y})`}>
+        {content}
+      </g> : content}
     </g>;
   })}</>;
 });

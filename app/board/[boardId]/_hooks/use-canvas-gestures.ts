@@ -11,6 +11,7 @@ import { doesPointIntersectPath, isPointNearBoundingBox, makePathLayer, pickLaye
 import { BoardCanvasMode, BoardCanvasState, Camera, Color, LayerType, Point, side, XYWH } from "@/types/board-canvas";
 import { toast } from "sonner";
 import { useCanvasTouch } from "./use-canvas-touch";
+import { resizeGraphBounds } from "@/lib/board/graph/resize";
 
 interface PointerSample { clientX: number; clientY: number; pressure: number; buttons: number; shiftKey?: boolean }
 interface ActiveGesture {
@@ -101,7 +102,9 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
         publishPreview(gesture);
       }
     } else if (gesture && mode === BoardCanvasMode.Resizing && gesture.initialBounds && gesture.corner !== null) {
-      gesture.resize = resizeBounds(gesture.initialBounds, gesture.corner, point);
+      const graph = gesture.ids.length === 1 && runtime.board.getLayer(gesture.ids[0])?.type === LayerType.Graph;
+      gesture.resize = graph ? resizeGraphBounds(gesture.initialBounds, gesture.corner, point)
+        : resizeBounds(gesture.initialBounds, gesture.corner, point);
       publishPreview(gesture);
     } else if (gesture && (mode === BoardCanvasMode.Pressing || mode === BoardCanvasMode.SelectionNet)) {
       if (Math.abs(point.x - gesture.origin.x) + Math.abs(point.y - gesture.origin.y) > 5) {
@@ -280,7 +283,11 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
           const { x, y, width, height, start, end } = gesture.line;
           runtime.board.update([current.id], { x, y, width, height, start, end });
         }
-        else if (current.mode === BoardCanvasMode.Resizing && gesture.resize) runtime.board.update(gesture.ids, { ...gesture.resize });
+        else if (current.mode === BoardCanvasMode.Resizing && gesture.resize) {
+          if (gesture.ids.length === 1 && runtime.board.getLayer(gesture.ids[0])?.type === LayerType.Graph) {
+            runtime.board.resizeGraph(gesture.ids[0], gesture.resize);
+          } else runtime.board.update(gesture.ids, { ...gesture.resize });
+        }
         else if (current.mode === BoardCanvasMode.Eraser) runtime.board.remove([...gesture.erase]);
         else if (current.mode === BoardCanvasMode.Pencil && gesture.draft.length > 1) {
           runtime.board.insert([makePathLayer(gesture.draft, gesture.penColor, gesture.penSize)]);

@@ -85,7 +85,9 @@ export function BoardShareButton({ boardId }: { boardId: string }) {
   return (
     <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) setUrl(""); }}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm"><Link2 className="mr-2 h-4 w-4" />Поделиться</Button>
+        <Button variant="outline" size="sm" aria-label="Поделиться" title="Поделиться">
+          <Link2 className="h-4 w-4 sm:mr-2" /><span className="hidden sm:inline">Поделиться</span>
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>

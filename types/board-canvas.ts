@@ -39,7 +39,35 @@ export enum LayerType {
   Image,
   LinkPreview = "linkPreview",
   Line = 6,
+  Graph = 7,
 }
+
+export type GraphExpression = {
+    formula: string;
+    color: string;
+    visible: boolean;
+    order: number;
+};
+
+export type GraphViewport = {
+    xMin: number;
+    xMax: number;
+    yMin: number;
+    yMax: number;
+};
+
+export type GraphSettings = {
+    expressions: Record<string, GraphExpression>;
+    viewport: GraphViewport;
+    showGrid: boolean;
+};
+
+export type GraphLayer = XYWH & {
+    type: LayerType.Graph;
+    graph: GraphSettings;
+    fill?: Color;
+    value?: string;
+};
 
 export type LineKind = "segment" | "line";
 export type LineStrokeStyle = "solid" | "dashed";
@@ -144,7 +172,7 @@ export type LinkPreviewLayer = {
   fill?: Color;
 };
 
-export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer | LinkPreviewLayer | LineLayer
+export type Layer = RectangleLayer | EllipseLayer | TextLayer | PathLayer | StickerLayer | ImageLayer | LinkPreviewLayer | LineLayer | GraphLayer
 
 export enum BoardCanvasMode {
     None,
@@ -167,7 +195,7 @@ export type BoardCanvasState =
   | ({ mode: BoardCanvasMode.Pressing; origin: Point } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.SelectionNet; origin: Point; current?: Point } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Translating; current: Point } & BaseCanvasState)
-  | ({ mode: BoardCanvasMode.Inserting; layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview | LayerType.Line; lineKind?: LineKind; strokeStyle?: LineStrokeStyle } & BaseCanvasState)
+  | ({ mode: BoardCanvasMode.Inserting; layerType: LayerType.Ellipse | LayerType.Rectangle | LayerType.Sticker | LayerType.Text | LayerType.Image | LayerType.LinkPreview | LayerType.Line | LayerType.Graph; lineKind?: LineKind; strokeStyle?: LineStrokeStyle } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Resizing; initial: XYWH; corner: side } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Pencil } & BaseCanvasState)
   | ({ mode: BoardCanvasMode.Panning; origin: Point; current: Point; screenX: number; screenY: number } & BaseCanvasState)

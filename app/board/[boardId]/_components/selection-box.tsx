@@ -53,14 +53,23 @@ export const SelectionBox = memo(({ onResizeHandlePointerDown, boundsOverride, l
   return <>
     <rect className="fill-transparent stroke-green-500 stroke-3 pointer-events-none"
       x={bounds.x} y={bounds.y} width={bounds.width} height={bounds.height} />
-    {showHandles && handles.map((handle) => <rect key={handle.corner}
-      className="fill-white stroke-1 stroke-blue-500" width={HANDLE_SIZE} height={HANDLE_SIZE}
-      x={bounds.x + bounds.width * handle.x - HANDLE_SIZE / 2}
-      y={bounds.y + bounds.height * handle.y - HANDLE_SIZE / 2}
-      style={{ cursor: handle.cursor }} onPointerDown={(event) => {
+    {showHandles && handles.map((handle) => <g key={handle.corner} style={{ cursor: handle.cursor }}
+      onPointerDown={(event) => {
         event.stopPropagation();
         onResizeHandlePointerDown(handle.corner, storedBounds ?? bounds, event);
-      }} />)}
+      }}>
+      {layer?.type === LayerType.Graph && <rect width={24 / scale} height={24 / scale}
+        x={bounds.x + bounds.width * handle.x - 12 / scale}
+        y={bounds.y + bounds.height * handle.y - 12 / scale} fill="transparent" />}
+      <rect
+      data-resize-handle={handle.corner}
+      aria-label={`Изменить размер: ${handle.cursor}`}
+      className="fill-white stroke-1 stroke-blue-500" width={HANDLE_SIZE / scale} height={HANDLE_SIZE / scale}
+      strokeWidth={1 / scale}
+      x={bounds.x + bounds.width * handle.x - HANDLE_SIZE / scale / 2}
+      y={bounds.y + bounds.height * handle.y - HANDLE_SIZE / scale / 2}
+      pointerEvents={layer?.type === LayerType.Graph ? "none" : undefined} />
+    </g>)}
   </>;
 });
 SelectionBox.displayName = "SelectionBox";

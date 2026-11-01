@@ -3,13 +3,15 @@ import getStroke from "perfect-freehand";
 import { resolveBoardFont } from "../lib/board/fonts";
 import { getContrastingTextColor, rgbToCss } from "../lib/board/colors";
 import { clipLineToBounds, lineArrowPoints, lineDashPattern, lineEndpoints } from "../lib/board/line";
+import { GRAPH_CSS } from "../lib/board/graph/styles";
 import { LayerType } from "../types/board-canvas";
 import type { Layer, LineLayer } from "../types/board-canvas";
 import { MAX_PDF_HTML_BYTES, pageMetrics, PDF_CONTENT_POLICY, PDF_FORMATS, PdfJobError } from "./contract";
 import type { PdfJob, PdfLayer, PdfPage } from "./contract";
 import { escapeHtml, renderPdfRichText } from "./rich-text";
+import { renderPdfGraph } from "./graph";
 
-interface Placement { readonly bounds: PdfPage["bounds"]; readonly scale: number }
+interface Placement { readonly bounds: PdfPage["bounds"]; readonly scale: number; readonly graphPrefix: string }
 function position(layer: Layer, placement: Placement): string {
   const { bounds, scale } = placement;
   return `left:${(layer.x - bounds.x) * scale}px;top:${(layer.y - bounds.y) * scale}px;width:${Math.max(1, layer.width) * scale}px;height:${Math.max(1, layer.height) * scale}px;`;
@@ -59,6 +61,9 @@ function shape(layer: Layer, placement: Placement): string {
 function renderLayer(item: PdfLayer, assets: ReadonlyMap<string, { key: string; width: number; height: number }>, placement: Placement): string {
   const { layer } = item;
   const { scale } = placement;
+  if (layer.type === LayerType.Graph) return renderPdfGraph(layer, {
+    id: item.id, identifierPrefix: `${placement.graphPrefix}-${item.id}-`, position: position(layer, placement), scale,
+  });
   if (layer.type === LayerType.Text || layer.type === LayerType.Sticker) {
     const sticker = layer.type === LayerType.Sticker;
     const foreground = sticker ? getContrastingTextColor(layer.fill) : rgbToCss(layer.fill);
@@ -79,7 +84,7 @@ function pageMarkup(job: PdfJob, page: PdfPage, index: number): string {
   const metrics = pageMetrics(page);
   const selected = new Set(page.layerIds);
   const assets = new Map(job.assets.map((asset, assetIndex) => [asset.id, { key: `pdf-asset-${assetIndex}`, width: asset.width, height: asset.height }]));
-  const placement = { bounds: page.bounds, scale: metrics.scale };
+  const placement = { bounds: page.bounds, scale: metrics.scale, graphPrefix: `pdf-page-${index}-graph` };
   const contents: string[] = [];
   let bytes = 0;
   for (const item of job.layers) {
@@ -110,7 +115,8 @@ header span{font-weight:700;overflow:hidden;text-overflow:ellipsis}header small{
 
 export function renderPdfHtml(job: PdfJob, resourceCss: string, onlyPage?: number): string {
   const definitions = `<svg aria-hidden="true" style="position:absolute;width:0;height:0"><defs>${job.assets.map((asset, index) => `<image data-asset id="pdf-asset-${index}" width="${asset.width}" height="${asset.height}" href="data:image/webp;base64,${asset.data}"/>`).join("")}</defs></svg>`;
-  const prefix = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${PDF_CONTENT_POLICY}"><title>${escapeHtml(job.title)}</title><style>${resourceCss}\n${STYLES}</style></head><body>${definitions}`;
+  const graphCss = job.layers.some(({ layer }) => layer.type === LayerType.Graph) ? GRAPH_CSS : "";
+  const prefix = `<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="${PDF_CONTENT_POLICY}"><title>${escapeHtml(job.title)}</title><style>${resourceCss}\n${STYLES}\n${graphCss}</style></head><body>${definitions}`;
   const pages: string[] = [];
   let bytes = Buffer.byteLength(prefix);
   for (let index = 0; index < job.pages.length; index += 1) {
