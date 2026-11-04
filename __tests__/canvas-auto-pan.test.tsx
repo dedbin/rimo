@@ -204,6 +204,47 @@ describe("canvas edge auto-pan lifecycle", () => {
     expect(fixture.updateCamera).toHaveBeenCalled();
   });
 
+  it("keeps a clicked object still for a second click, then resumes stationary hover", () => {
+    fixture.setup();
+    fixture.pointer();
+    fixture.runFrames();
+    fixture.canPan.mockReturnValue(false);
+    fixture.pointer("pointerdown", { buttons: 1 });
+    fixture.runFrames();
+    fixture.pointer("pointerup", { buttons: 0 });
+    fixture.canPan.mockReturnValue(true);
+    const stoppedAt = fixture.cameraRef.current.x;
+    fixture.advance(180);
+    expect(fixture.cameraRef.current.x).toBe(stoppedAt);
+    fixture.advance(400);
+    fixture.advance();
+    expect(fixture.cameraRef.current.x).toBeLessThan(stoppedAt);
+  });
+
+  it("removes the click pause when the mouse physically moves", () => {
+    fixture.setup();
+    fixture.pointer();
+    fixture.canPan.mockReturnValue(false);
+    fixture.pointer("pointerdown", { buttons: 1 });
+    fixture.pointer("pointerup", { buttons: 0 });
+    fixture.canPan.mockReturnValue(true);
+    fixture.pointer("pointermove", { clientX: 1011 });
+    fixture.runFrames();
+    expect(fixture.updateCamera).toHaveBeenCalled();
+  });
+
+  it("refreshes Shift alignment while the mouse stays parked at an edge", () => {
+    fixture.setup();
+    fixture.pointer();
+    fixture.runFrames();
+    act(() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "Shift", shiftKey: true })));
+    fixture.advance();
+    expect(fixture.onCameraMoved.mock.lastCall?.[0].shiftKey).toBe(true);
+    act(() => document.dispatchEvent(new KeyboardEvent("keyup", { key: "Shift", shiftKey: false })));
+    fixture.advance();
+    expect(fixture.onCameraMoved.mock.lastCall?.[0].shiftKey).toBe(false);
+  });
+
   it("stops when a text input gains focus without moving a parked mouse", () => {
     fixture.setup();
     fixture.pointer();

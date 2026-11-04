@@ -21,6 +21,7 @@ interface Options {
 const TEXT_INPUT = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]';
 const INTERACTIVE = `${TEXT_INPUT}, a[href], button, [role="button"], [data-graph-interaction="true"]`;
 const MODAL = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [role="menu"][data-state="open"], dialog[open]';
+const CLICK_PAUSE_MS = 500;
 
 function snapshot(event: PointerEvent): CanvasPointerSample {
   return { pointerId: event.pointerId, pointerType: event.pointerType, clientX: event.clientX,
@@ -32,13 +33,14 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
   const frame = useRef<number | null>(null);
   const lastTime = useRef<number | null>(null);
   const spacePressed = useRef(false);
+  const clickPauseUntil = useRef(0);
 
   const pause = useEvent(() => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
     lastTime.current = null;
   });
-  const reset = useEvent(() => { pause(); pointer.current = null; });
+  const reset = useEvent(() => { pause(); pointer.current = null; clickPauseUntil.current = 0; });
   const available = useEvent((sample: CanvasPointerSample): boolean => {
     const svg = svgRef.current;
     if (!enabled || blocked || spacePressed.current || document.hidden || !svg || (sample.buttons & ~1) !== 0) return false;
@@ -53,6 +55,11 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
     const svg = svgRef.current;
     if (!sample || !svg || !available(sample)) { reset(); return; }
     if (!canPan(sample)) { pause(); return; }
+    if (time < clickPauseUntil.current) {
+      lastTime.current = null;
+      frame.current = requestAnimationFrame(tick);
+      return;
+    }
     const velocity = edgePanVelocity({ x: sample.clientX, y: sample.clientY }, svg.getBoundingClientRect());
     if (!velocity.x && !velocity.y) { pause(); return; }
     const elapsed = lastTime.current === null ? 0 : time - lastTime.current;
@@ -74,6 +81,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
       const sample = snapshot(event);
       if (!available(sample)) { reset(); return; }
       pointer.current = sample;
+      clickPauseUntil.current = 0;
       schedule();
     };
     const button = (event: PointerEvent) => {
@@ -82,6 +90,9 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
       const sample = snapshot(event);
       if (!available(sample)) { reset(); return; }
       pointer.current = sample;
+      // Leave a clicked object still long enough for a second click. Real
+      // strokes/drags keep their immediate pointerup-to-hover continuation.
+      if (event.type === "pointerup" && !canPan(sample)) clickPauseUntil.current = performance.now() + CLICK_PAUSE_MS;
       schedule();
     };
     const lostCapture = (event: PointerEvent) => {
@@ -94,10 +105,14 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
     const visibility = () => { if (document.hidden) { spacePressed.current = false; reset(); } };
     const blur = () => { spacePressed.current = false; reset(); };
     const keydown = (event: KeyboardEvent) => {
+      if (pointer.current) pointer.current = { ...pointer.current, shiftKey: event.shiftKey };
       if (event.code === "Space" || event.key === " ") spacePressed.current = true;
       if (spacePressed.current || event.key === "Escape") reset();
     };
-    const keyup = (event: KeyboardEvent) => { if (event.code === "Space" || event.key === " ") spacePressed.current = false; };
+    const keyup = (event: KeyboardEvent) => {
+      if (pointer.current) pointer.current = { ...pointer.current, shiftKey: event.shiftKey };
+      if (event.code === "Space" || event.key === " ") spacePressed.current = false;
+    };
     document.addEventListener("pointermove", move, true);
     document.addEventListener("pointerdown", button, true);
     document.addEventListener("pointerup", button, true);
