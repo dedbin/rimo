@@ -136,7 +136,7 @@ test("a captured object drag keeps its anchor outside the window and commits one
   await page.mouse.down();
   let beforeRelease = initial;
   try {
-    await page.mouse.move(right.point.x, right.point.y, { steps: 4 });
+    await page.mouse.move(right.point.x, right.point.y, { steps: 1 });
     await expectMotion(page, initial, right.direction, 120);
     await expect.poll(async () => {
       const center = await screenCenter(shape);

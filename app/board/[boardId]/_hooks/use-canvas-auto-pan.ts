@@ -29,7 +29,7 @@ function snapshot(event: PointerEvent): CanvasPointerSample {
     clientY: event.clientY, pressure: event.pressure, buttons: event.buttons, shiftKey: event.shiftKey };
 }
 
-function outsideBounds(sample: CanvasPointerSample, rect: DOMRect): boolean {
+function outsideBounds(sample: CanvasPointerSample, rect: Pick<DOMRect, "left" | "top" | "width" | "height">): boolean {
   return sample.clientX < rect.left || sample.clientX >= rect.left + rect.width ||
     sample.clientY < rect.top || sample.clientY >= rect.top + rect.height;
 }
@@ -125,7 +125,10 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
         !svgRef.current?.hasPointerCapture(event.pointerId)) reset();
     };
     const leave = (event: PointerEvent) => {
-      if (event.relatedTarget !== null) return;
+      // During a fast, uncaptured drag Chromium may report HTML as the next
+      // target even when the raw pointer has already crossed the viewport.
+      if (event.relatedTarget !== null && !outsideBounds(event,
+        { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight })) return;
       if (event.pointerType !== "mouse") { reset(); return; }
       if (pointer.current && pointer.current.pointerId !== event.pointerId) return;
       const sample = snapshot(event);
@@ -158,6 +161,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
     document.addEventListener("keyup", keyup, true);
     document.addEventListener("visibilitychange", visibility);
     window.addEventListener("blur", blur);
+    window.addEventListener("resize", reset);
     return () => {
       document.removeEventListener("pointermove", move, true);
       document.removeEventListener("pointerdown", button, true);
@@ -170,6 +174,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
       document.removeEventListener("keyup", keyup, true);
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("blur", blur);
+      window.removeEventListener("resize", reset);
       reset();
     };
   }, [svgRef, eligible, overCanvas, reset, schedule, isPanAllowed, notifyExit]);

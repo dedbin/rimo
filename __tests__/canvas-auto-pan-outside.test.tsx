@@ -157,6 +157,24 @@ describe("auto-pan across browser and monitor boundaries", () => {
     expect(fixture.cameraRef.current.x).toBeLessThan(stoppedAt);
   });
 
+  it("resets a latched outside direction on window resize and waits for a fresh mousemove", () => {
+    fixture.setup();
+    fixture.pointer();
+    leave();
+    fixture.runFrames();
+    fixture.svg.getBoundingClientRect = (): DOMRect => new DOMRect(20, 30, 1600, 700);
+    act(() => window.dispatchEvent(new Event("resize")));
+    const stoppedAt = fixture.cameraRef.current.x;
+    fixture.pointer("pointerenter");
+    fixture.runFrames();
+    expect(fixture.cameraRef.current.x).toBe(stoppedAt);
+    expect(fixture.frames.size).toBe(0);
+    fixture.hit = fixture.body;
+    fixture.pointer("pointermove", { clientX: 40 });
+    fixture.runFrames();
+    expect(fixture.cameraRef.current.x).toBeGreaterThan(stoppedAt);
+  });
+
   it("accepts a fresh physical SVG exit after reset without requiring a prior hover movement", () => {
     const { result } = fixture.setup();
     fixture.pointer();
@@ -219,6 +237,44 @@ describe("auto-pan across browser and monitor boundaries", () => {
     fixture.runFrames();
     expect(fixture.cameraRef.current.x).toBeLessThan(releasedAt);
     expect(fixture.onCameraMoved).toHaveBeenCalledTimes(refreshed);
+  });
+
+  it("captures a fast drag leaving the viewport even when native relatedTarget is the document element", () => {
+    fixture.onPointerExit.mockImplementation((sample) => {
+      fixture.calls.push("exit");
+      fixture.captured.add(sample.pointerId);
+    });
+    fixture.setup();
+    fixture.pointer("pointermove", { clientX: 520, buttons: 1 });
+    fixture.hit = null;
+    const rawX = window.innerWidth + 100;
+    fixture.pointer("pointerout", { clientX: rawX, buttons: 1, pressure: 0.7,
+      shiftKey: true, relatedTarget: document.documentElement });
+    expect(fixture.onPointerExit).toHaveBeenCalledOnce();
+    expect(fixture.onPointerExit).toHaveBeenLastCalledWith(expect.objectContaining({
+      pointerId: 7, pointerType: "mouse", clientX: rawX, clientY: 380, buttons: 1,
+    }));
+    expect(fixture.calls).toEqual(["exit"]);
+    expect(fixture.captured.has(7)).toBe(true);
+    fixture.runFrames(2);
+    expect(fixture.cameraRef.current.x).toBeLessThan(10);
+    expect(fixture.calls.slice(0, 3)).toEqual(["exit", "camera", "refresh"]);
+    expect(fixture.onCameraMoved).toHaveBeenLastCalledWith(expect.objectContaining({
+      pointerId: 7, clientX: rawX, clientY: 380, buttons: 1, pressure: 0.7, shiftKey: true,
+    }));
+  });
+
+  it("does not latch on a DOM sibling inside the viewport even if it lies past the SVG boundary", () => {
+    fixture.setup();
+    fixture.pointer("pointermove", { clientX: 520, buttons: 1 });
+    const sibling = document.createElement("div");
+    document.body.append(sibling);
+    fixture.hit = sibling;
+    fixture.pointer("pointerout", { clientX: window.innerWidth - 1, buttons: 1, relatedTarget: sibling });
+    fixture.runFrames();
+    expect(fixture.onPointerExit).not.toHaveBeenCalled();
+    expect(fixture.updateCamera).not.toHaveBeenCalled();
+    expect(fixture.frames.size).toBe(0);
   });
 
   it("stops an outside drag if active pointer capture is unexpectedly lost", () => {

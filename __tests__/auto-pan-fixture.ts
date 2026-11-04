@@ -24,6 +24,7 @@ export class AutoPanFixture {
     this.calls.push("refresh");
     this.refreshedCameras.push({ ...this.cameraRef.current });
   });
+  readonly onPointerExit = vi.fn<(sample: CanvasPointerSample) => void>();
   readonly captured = new Set<number>();
   readonly hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
   hit: Element | null = this.body;
@@ -54,6 +55,7 @@ export class AutoPanFixture {
     return renderHook(({ enabled, blocked }: Switches) => useCanvasAutoPan({
       svgRef, cameraRef: this.cameraRef, enabled, blocked,
       canPan: this.canPan, updateCamera: this.updateCamera, onCameraMoved: this.onCameraMoved,
+      onPointerExit: this.onPointerExit,
     }), { initialProps: initial });
   }
 
