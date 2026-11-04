@@ -138,9 +138,7 @@
   },
   "zoomControls": {
     "fitToScreen": "Fit to screen",
-    "autoPan": "Edge auto-pan",
-    "autoPanEnabled": "Edge auto-pan is on",
-    "autoPanDisabled": "Edge auto-pan is off"
+    "autoPan": "Edge auto-pan"
   },
   "selectionTools": {
     "objectStyle": "Object style",

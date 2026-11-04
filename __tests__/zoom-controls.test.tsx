@@ -20,16 +20,16 @@ function Controls({ onFit }: { onFit: () => void }) {
 }
 
 describe("edge auto-pan switch beside zoom", () => {
-  it("announces its pressed state and switches its state and hint without fitting the board", () => {
+  it("announces its pressed state with a stable hint without fitting the board", () => {
     const onFit = vi.fn();
     render(<Controls onFit={onFit} />);
     const toggle = screen.getByRole("button", { name: "Автопрокрутка у края" });
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
-    expect(toggle.closest("[data-hint]")?.getAttribute("data-hint")).toBe("Автопрокрутка у края включена");
+    expect(toggle.closest("[data-hint]")?.getAttribute("data-hint")).toBe("Автопрокрутка у края");
     expect(screen.getByText("125%")).toBeTruthy();
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    expect(toggle.closest("[data-hint]")?.getAttribute("data-hint")).toBe("Автопрокрутка у края выключена");
+    expect(toggle.closest("[data-hint]")?.getAttribute("data-hint")).toBe("Автопрокрутка у края");
     expect(onFit).not.toHaveBeenCalled();
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-pressed")).toBe("true");

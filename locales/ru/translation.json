@@ -138,9 +138,7 @@
   },
   "zoomControls": {
     "fitToScreen": "Уместить все",
-    "autoPan": "Автопрокрутка у края",
-    "autoPanEnabled": "Автопрокрутка у края включена",
-    "autoPanDisabled": "Автопрокрутка у края выключена"
+    "autoPan": "Автопрокрутка у края"
   },
   "selectionTools": {
     "objectStyle": "Оформление объекта",

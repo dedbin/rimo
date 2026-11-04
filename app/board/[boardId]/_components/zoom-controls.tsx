@@ -20,7 +20,7 @@ export const ZoomControls = ({ scale, onFitToScreen, autoPanEnabled, onToggleAut
       <span className="text-sm font-medium select-none w-10 text-center">
         {Math.round(scale * 100)}%
       </span>
-      <Hint label={t(autoPanEnabled ? "zoomControls.autoPanEnabled" : "zoomControls.autoPanDisabled") as string}
+      <Hint label={t("zoomControls.autoPan") as string}
         side="top" sideOffset={10}>
         <Button variant={autoPanEnabled ? "boardActive" : "board"} size="icon"
           className="hidden [@media(any-pointer:fine)]:inline-flex"
