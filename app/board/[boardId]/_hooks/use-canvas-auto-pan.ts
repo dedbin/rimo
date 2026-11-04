@@ -127,12 +127,19 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
     const leave = (event: PointerEvent) => {
       // During a fast, uncaptured drag Chromium may report HTML as the next
       // target even when the raw pointer has already crossed the viewport.
-      if (event.relatedTarget !== null && !outsideBounds(event,
-        { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight })) return;
+      const beyondViewport = outsideBounds(event,
+        { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight });
+      if (event.relatedTarget !== null && !beyondViewport) return;
       if (event.pointerType !== "mouse") { reset(); return; }
       if (pointer.current && pointer.current.pointerId !== event.pointerId) return;
       const sample = snapshot(event);
-      if (!canvasOrigin(event) || !eligible(sample)) { reset(); return; }
+      if (!eligible(sample)) { reset(); return; }
+      if (!canvasOrigin(event)) {
+        // Capture transfer/release can emit HTML boundary events after the
+        // actual SVG exit. They neither arm nor cancel an existing exit.
+        if (outside.current && beyondViewport) return;
+        reset(); return;
+      }
       // Crossing the window boundary is enough intent; no edge dwell or
       // last-pixel hit is required, even after a fast movement from the center.
       clickPauseUntil.current = 0;
