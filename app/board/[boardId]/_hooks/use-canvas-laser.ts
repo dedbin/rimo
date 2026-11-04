@@ -8,6 +8,7 @@ import { useBoardRuntime } from "@/lib/collaboration/react";
 import { useEvent } from "@/lib/collaboration/use-event";
 import { pointerEventToCanvasPoint } from "@/lib/utils";
 import type { Camera, Point } from "@/types/board-canvas";
+import type { CanvasPointerSample } from "@/lib/board/pointer-sample";
 
 interface Options {
   active: boolean;
@@ -48,7 +49,7 @@ export function useCanvasLaser({ active, svgRef, cameraRef }: Options) {
     runtime.updatePresence({ laser, cursor: null });
   });
 
-  const sample = useEvent((event: PointerEvent<SVGSVGElement>) => {
+  const sample = useEvent((event: Pick<CanvasPointerSample, "clientX" | "clientY">) => {
     const svg = svgRef.current;
     if (!svg || !cameraRef.current) return;
     const now = performance.now();
@@ -79,7 +80,7 @@ export function useCanvasLaser({ active, svgRef, cameraRef }: Options) {
     event.preventDefault();
     sample(event);
   });
-  const onPointerMove = useEvent((event: PointerEvent<SVGSVGElement>) => {
+  const refreshPointer = useEvent((event: Pick<CanvasPointerSample, "pointerId" | "clientX" | "clientY">) => {
     if (!active || suppressed.current || pointer.current?.id !== event.pointerId) return;
     sample(event);
   });
@@ -111,5 +112,5 @@ export function useCanvasLaser({ active, svgRef, cameraRef }: Options) {
     };
   }, [active, runtime, reset]);
 
-  return { onPointerDown, onPointerMove, onPointerUp: finish, onPointerCancel: finish, onPointerLeave, clear };
+  return { onPointerDown, onPointerMove: refreshPointer, refreshPointer, onPointerUp: finish, onPointerCancel: finish, onPointerLeave, clear };
 }

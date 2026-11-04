@@ -39,6 +39,16 @@ function advanceFrame(milliseconds: number): void {
 }
 
 describe("manual navigation and camera animations", () => {
+  it("moves an auto-pan camera without resetting its own navigation loop", () => {
+    const manual = vi.fn();
+    const { result } = setup(manual);
+    act(() => result.current.updateCamera({ x: -15, y: 8, scale: 2 }, "auto-pan"));
+    expect(manual).not.toHaveBeenCalled();
+    expect(result.current.cameraRef.current).toEqual({ x: -15, y: 8, scale: 2 });
+    act(() => result.current.updateCamera({ x: -10, y: 8, scale: 2 }));
+    expect(manual).toHaveBeenCalledTimes(1);
+  });
+
   it("applies a followed camera without reporting manual navigation", () => {
     const manual = vi.fn();
     const { result } = setup(manual);

@@ -12,8 +12,9 @@ import { BoardCanvasMode, BoardCanvasState, Camera, Color, LayerType, Point, sid
 import { toast } from "sonner";
 import { useCanvasTouch } from "./use-canvas-touch";
 import { resizeGraphBounds } from "@/lib/board/graph/resize";
+import type { CanvasPointerSample } from "@/lib/board/pointer-sample";
 
-interface PointerSample { clientX: number; clientY: number; pressure: number; buttons: number; shiftKey?: boolean }
+type PointerSample = Pick<CanvasPointerSample, "clientX" | "clientY" | "pressure" | "buttons" | "shiftKey">;
 interface ActiveGesture {
   pointerId: number;
   pointerType: string;
@@ -137,6 +138,14 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
   };
   const processMoveRef = useRef(processMove);
   processMoveRef.current = processMove;
+  const refreshPointer = useEvent((sample: CanvasPointerSample) => {
+    const gesture = active.current;
+    if (gesture && (gesture.pointerId !== sample.pointerId || gesture.pointerType !== sample.pointerType)) return;
+    if (frame.current !== null) cancelAnimationFrame(frame.current);
+    frame.current = null;
+    latest.current = sample;
+    processMoveRef.current(sample);
+  });
 
   const clearGesture = useCallback((releaseCapture = true) => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -154,6 +163,17 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
     setCanvasState(initial.mode === BoardCanvasMode.Pencil || initial.mode === BoardCanvasMode.Eraser || initial.mode === BoardCanvasMode.Laser ||
       initial.mode === BoardCanvasMode.Inserting ? initial : { mode: BoardCanvasMode.None });
   } });
+  const canAutoPan = useEvent((sample: CanvasPointerSample): boolean => {
+    if (state.current.mode === BoardCanvasMode.Panning || touch.blocks(sample)) return false;
+    const gesture = active.current;
+    if (!gesture) return true;
+    if (gesture.pointerId !== sample.pointerId || gesture.pointerType !== sample.pointerType) return false;
+    const dx = sample.clientX - gesture.screen.x;
+    const dy = sample.clientY - gesture.screen.y;
+    if (state.current.mode === BoardCanvasMode.Pressing) return (Math.abs(dx) + Math.abs(dy)) / cameraRef.current!.scale > 5;
+    if (state.current.mode === BoardCanvasMode.Translating) return Math.hypot(dx, dy) >= 3 || !!svgRef.current?.hasPointerCapture(gesture.pointerId);
+    return true;
+  });
   const cancel = useEvent(() => {
     if (active.current?.pointerType === "pen") touch.finish(active.current);
     clearGesture();
@@ -339,7 +359,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
     touch.reset();
   }, [touch]);
 
-  return { canvasState, setCanvasState, preview, cancel, onPointerDown, onLayerPointerDown,
+  return { canvasState, setCanvasState, preview, cancel, refreshPointer, canAutoPan, onPointerDown, onLayerPointerDown,
     onPointerDownCapture: (event: PointerEvent<SVGSVGElement>) => touch.onPointerDownCapture(event, active.current?.pointerType),
     pencilStyle: { color: active.current?.penColor ?? penColor, size: active.current?.penSize ?? penSize },
     onResizeHandlePointerDown, onLineEndpointPointerDown, onPointerMove, onPointerUp, onPointerCancel,
