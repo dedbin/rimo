@@ -10,7 +10,7 @@ if (!process.env.RIMO_E2E_BASE_URL && existsSync(".env.local")) loadEnvFile(".en
 process.env.RIMO_E2E_RUN_ID ??= randomUUID();
 if (!/^[a-f0-9-]{36}$/.test(process.env.RIMO_E2E_RUN_ID)) throw new Error("Invalid internal E2E run ID");
 const runId = process.env.RIMO_E2E_RUN_ID;
-const external = process.env.RIMO_E2E_BASE_URL;
+const external = process.env.RIMO_E2E_BASE_URL || undefined;
 const mailEnvironment = external || process.argv.includes("--list") ? {} : prepareTestMail(runId);
 const baseURL = external ?? "http://localhost:3000";
 const authState = process.env.RIMO_E2E_STORAGE_STATE
