@@ -34,6 +34,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
   const lastTime = useRef<number | null>(null);
   const spacePressed = useRef(false);
   const clickPauseUntil = useRef(0);
+  const isPanAllowed = useEvent(canPan);
 
   const pause = useEvent(() => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -54,7 +55,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
     const sample = pointer.current;
     const svg = svgRef.current;
     if (!sample || !svg || !available(sample)) { reset(); return; }
-    if (!canPan(sample)) { pause(); return; }
+    if (!isPanAllowed(sample)) { pause(); return; }
     if (time < clickPauseUntil.current) {
       lastTime.current = null;
       frame.current = requestAnimationFrame(tick);
@@ -92,7 +93,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
       pointer.current = sample;
       // Leave a clicked object still long enough for a second click. Real
       // strokes/drags keep their immediate pointerup-to-hover continuation.
-      if (event.type === "pointerup" && !canPan(sample)) clickPauseUntil.current = performance.now() + CLICK_PAUSE_MS;
+      if (event.type === "pointerup" && !isPanAllowed(sample)) clickPauseUntil.current = performance.now() + CLICK_PAUSE_MS;
       schedule();
     };
     const lostCapture = (event: PointerEvent) => {
@@ -138,7 +139,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
       window.removeEventListener("blur", blur);
       reset();
     };
-  }, [svgRef, available, reset, schedule]);
+  }, [svgRef, available, reset, schedule, isPanAllowed]);
 
   return { reset };
 }
