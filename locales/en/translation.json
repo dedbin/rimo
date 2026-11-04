@@ -137,7 +137,10 @@
   "minusFive": "-5 min"
   },
   "zoomControls": {
-    "fitToScreen": "Fit to screen"
+    "fitToScreen": "Fit to screen",
+    "autoPan": "Edge auto-pan",
+    "autoPanEnabled": "Edge auto-pan is on",
+    "autoPanDisabled": "Edge auto-pan is off"
   },
   "selectionTools": {
     "objectStyle": "Object style",
