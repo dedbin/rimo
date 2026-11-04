@@ -58,21 +58,28 @@ test("a fast center-to-exit mouse move keeps scrolling outside every focused bou
 });
 
 test("real window blur stops outside scrolling and focus alone does not restart it", async ({ page, scenario, context }) => {
-  await focusBoard(page, await scenario.createBoard("E2E автопрокрутка: фокус окна"));
-  const [right] = await exits(page);
-  const initial = await camera(page);
-  await page.mouse.move(right.point.x, right.point.y, { steps: 1 });
-  await expectMotion(page, initial, right.direction, 80);
   const other = await context.newPage();
+  const sessions = await Promise.all([context.newCDPSession(page), context.newCDPSession(other)]);
   try {
+    // Playwright forces every Chromium page to appear focused by default.
+    // Cross-origin navigation may create a renderer and reapply that override.
+    await focusBoard(page, await scenario.createBoard("E2E автопрокрутка: фокус окна"));
+    await Promise.all(sessions.map((session) => session.send("Emulation.setFocusEmulationEnabled", { enabled: false })));
+    await page.bringToFront();
+    await expect.poll(() => page.evaluate(() => document.hasFocus()), { timeout: 2000 }).toBe(true);
+    const [right] = await exits(page);
+    const initial = await camera(page);
+    await page.mouse.move(right.point.x, right.point.y, { steps: 1 });
+    await expectMotion(page, initial, right.direction, 80);
     await other.bringToFront();
-    await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false);
+    await expect.poll(() => other.evaluate(() => document.hasFocus()), { timeout: 2000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.hasFocus()), { timeout: 2000 }).toBe(false);
     const blurred = await camera(page);
     // The board's RAF may be suspended in a background tab; observe elapsed time in the foreground instead.
     await other.waitForTimeout(240);
     expect(await camera(page)).toEqual(blurred);
     await page.bringToFront();
-    await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true);
+    await expect.poll(() => page.evaluate(() => document.hasFocus()), { timeout: 2000 }).toBe(true);
     await expectIdle(page);
     expect(await camera(page)).toEqual(blurred);
     await centerMouse(page);
@@ -81,7 +88,14 @@ test("real window blur stops outside scrolling and focus alone does not restart 
     await expectMotion(page, resumed, right.direction, 80);
     await centerMouse(page);
     await expectIdle(page);
-  } finally { await other.close(); }
+  } finally {
+    const restored = await Promise.allSettled(sessions.map((session) =>
+      session.send("Emulation.setFocusEmulationEnabled", { enabled: true })));
+    const detached = await Promise.allSettled(sessions.map((session) => session.detach()));
+    await other.close();
+    expect.soft([...restored, ...detached].every((result) => result.status === "fulfilled"),
+      "Chromium focus overrides are restored and protocol sessions are detached").toBe(true);
+  }
   await expect(layers(page)).toHaveCount(0);
 });
 
