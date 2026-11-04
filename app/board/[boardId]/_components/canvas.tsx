@@ -74,6 +74,7 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
     blocked: !connection.connected || !connection.synced || !!connection.error || follow.followingId !== null ||
       textEditor.activeId !== null || graphEditor.navigationId !== null,
     canPan: gestures.canAutoPan,
+    onPointerExit: gestures.refreshPointer,
     updateCamera: (next) => updateCamera(next, "auto-pan"),
     onCameraMoved: (sample) => { gestures.refreshPointer(sample); laser.refreshPointer(sample); },
   });

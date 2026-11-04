@@ -25,6 +25,7 @@ export class AutoPanFixture {
     this.refreshedCameras.push({ ...this.cameraRef.current });
   });
   readonly captured = new Set<number>();
+  readonly hasFocus = vi.spyOn(document, "hasFocus").mockReturnValue(true);
   hit: Element | null = this.body;
   now = 0;
   private sequence = 0;

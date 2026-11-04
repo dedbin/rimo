@@ -47,6 +47,24 @@ beforeEach(() => {
 afterEach(() => { cleanup(); board.destroy(); vi.unstubAllGlobals(); });
 
 describe("stationary cursor while the board camera moves", () => {
+  it("captures a fast translation on window exit before React can cancel it on leave", () => {
+    const [id] = board.insert([createLayer(LayerType.Rectangle, { x: 100, y: 100 }, { r: 0, g: 0, b: 0 })]);
+    board.undoManager.stopCapturing();
+    const { result } = setup();
+    act(() => result.current.onLayerPointerDown(pointer(120, 120), id));
+    expect(svg.hasPointerCapture(1)).toBe(false);
+    act(() => result.current.refreshPointer(pointer(1200, 120)));
+    act(() => result.current.onPointerLeave(pointer(1200, 120)));
+    expect(svg.hasPointerCapture(1)).toBe(true);
+    expect(result.current.canvasState.mode).toBe(BoardCanvasMode.Translating);
+    cameraRef.current = { x: -50, y: 0, scale: 1 };
+    act(() => result.current.refreshPointer(pointer(1200, 120)));
+    act(() => result.current.onPointerUp(pointer(1200, 120)));
+    expect(board.getLayer(id)).toMatchObject({ x: 1230, y: 100 });
+    act(() => board.undo());
+    expect(board.getLayer(id)).toMatchObject({ x: 100, y: 100 });
+  });
+
   it("waits for real drag movement before allowing clicks to auto-pan", () => {
     const [id] = board.insert([createLayer(LayerType.Rectangle, { x: 100, y: 100 }, { r: 0, g: 0, b: 0 })]);
     const { result } = setup();

@@ -1,6 +1,6 @@
 import type { Camera, Point } from "@/types/board-canvas";
 
-export const AUTO_PAN_EDGE_PX = 48;
+export const AUTO_PAN_EDGE_PX = 96;
 export const AUTO_PAN_MAX_SPEED = 480;
 export const AUTO_PAN_MAX_FRAME_MS = 32;
 
@@ -20,6 +20,26 @@ export function edgePanVelocity(point: Point, bounds: Bounds): Point {
   const velocity = { x: speed(x, bounds.width), y: speed(y, bounds.height) };
   const limit = Math.max(1, Math.hypot(velocity.x, velocity.y) / AUTO_PAN_MAX_SPEED);
   return { x: velocity.x / limit, y: velocity.y / limit };
+}
+
+export function outsidePanVelocity(point: Point, bounds: Bounds): Point {
+  const x = point.x - bounds.left;
+  const y = point.y - bounds.top;
+  if (![x, y, bounds.width, bounds.height].every(Number.isFinite) || bounds.width <= 0 || bounds.height <= 0) {
+    return { x: 0, y: 0 };
+  }
+  let horizontal = x <= 0 ? -1 : x >= bounds.width ? 1 : 0;
+  let vertical = y <= 0 ? -1 : y >= bounds.height ? 1 : 0;
+  if (!horizontal && !vertical) {
+    // A native leave event can still contain the last position inside the window.
+    const right = bounds.width - x;
+    const bottom = bounds.height - y;
+    const nearest = Math.min(x, y, right, bottom);
+    horizontal = x === nearest ? -1 : right === nearest ? 1 : 0;
+    vertical = y === nearest ? -1 : bottom === nearest ? 1 : 0;
+  }
+  const speed = AUTO_PAN_MAX_SPEED / Math.hypot(horizontal, vertical);
+  return { x: horizontal * speed, y: vertical * speed };
 }
 
 export function stepEdgePan(camera: Camera, velocity: Point, deltaMs: number): Camera {

@@ -138,9 +138,17 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
   };
   const processMoveRef = useRef(processMove);
   processMoveRef.current = processMove;
+  const captureTranslation = useCallback((sample: PointerSample & { pointerId: number }) => {
+    const gesture = active.current;
+    const svg = svgRef.current;
+    if (!gesture || !svg || !(sample.buttons & 1) || state.current.mode !== BoardCanvasMode.Translating ||
+      svg.hasPointerCapture(gesture.pointerId)) return;
+    if (Math.hypot(sample.clientX - gesture.screen.x, sample.clientY - gesture.screen.y) >= 3) svg.setPointerCapture(gesture.pointerId);
+  }, [svgRef]);
   const refreshPointer = useEvent((sample: CanvasPointerSample) => {
     const gesture = active.current;
     if (gesture && (gesture.pointerId !== sample.pointerId || gesture.pointerType !== sample.pointerType)) return;
+    captureTranslation(sample);
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
     latest.current = sample;
@@ -272,13 +280,7 @@ export function useCanvasGestures({ svgRef, cameraRef, updateCamera, color, penC
     if (touch.onPointerMove(event)) return;
     const gesture = active.current;
     if (gesture && gesture.pointerId !== event.pointerId) return;
-    const svg = svgRef.current;
-    if (gesture && svg && state.current.mode === BoardCanvasMode.Translating && !svg.hasPointerCapture(event.pointerId)) {
-      const point = toPoint(event);
-      if (Math.hypot(point.x - gesture.origin.x, point.y - gesture.origin.y) * cameraRef.current!.scale >= 3) {
-        svg.setPointerCapture(event.pointerId);
-      }
-    }
+    captureTranslation(event);
     latest.current = { clientX: event.clientX, clientY: event.clientY, pressure: event.pressure, buttons: event.buttons, shiftKey: event.shiftKey };
     if (frame.current !== null) return;
     frame.current = requestAnimationFrame(() => {

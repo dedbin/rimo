@@ -3,10 +3,10 @@
 import { useEffect, useRef } from "react";
 import type { RefObject } from "react";
 
-import { edgePanVelocity, stepEdgePan } from "@/lib/board/auto-pan";
+import { edgePanVelocity, outsidePanVelocity, stepEdgePan } from "@/lib/board/auto-pan";
 import type { CanvasPointerSample } from "@/lib/board/pointer-sample";
 import { useEvent } from "@/lib/collaboration/use-event";
-import type { Camera } from "@/types/board-canvas";
+import type { Camera, Point } from "@/types/board-canvas";
 
 interface Options {
   svgRef: RefObject<SVGSVGElement | null>;
@@ -16,6 +16,7 @@ interface Options {
   canPan: (sample: CanvasPointerSample) => boolean;
   updateCamera: (camera: Camera) => void;
   onCameraMoved: (sample: CanvasPointerSample) => void;
+  onPointerExit?: (sample: CanvasPointerSample) => void;
 }
 
 const TEXT_INPUT = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]';
@@ -28,46 +29,57 @@ function snapshot(event: PointerEvent): CanvasPointerSample {
     clientY: event.clientY, pressure: event.pressure, buttons: event.buttons, shiftKey: event.shiftKey };
 }
 
-export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, updateCamera, onCameraMoved }: Options) {
+function outsideBounds(sample: CanvasPointerSample, rect: DOMRect): boolean {
+  return sample.clientX < rect.left || sample.clientX >= rect.left + rect.width ||
+    sample.clientY < rect.top || sample.clientY >= rect.top + rect.height;
+}
+
+export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, updateCamera, onCameraMoved, onPointerExit }: Options) {
   const pointer = useRef<CanvasPointerSample | null>(null);
+  const outside = useRef<Point | null>(null);
   const frame = useRef<number | null>(null);
   const lastTime = useRef<number | null>(null);
   const spacePressed = useRef(false);
   const clickPauseUntil = useRef(0);
   const isPanAllowed = useEvent(canPan);
+  const notifyExit = useEvent((sample: CanvasPointerSample) => onPointerExit?.(sample));
 
   const pause = useEvent(() => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
     frame.current = null;
     lastTime.current = null;
   });
-  const reset = useEvent(() => { pause(); pointer.current = null; clickPauseUntil.current = 0; });
-  const available = useEvent((sample: CanvasPointerSample): boolean => {
+  const reset = useEvent(() => { pause(); pointer.current = null; outside.current = null; clickPauseUntil.current = 0; });
+  const eligible = useEvent((sample: CanvasPointerSample): boolean => {
     const svg = svgRef.current;
-    if (!enabled || blocked || spacePressed.current || document.hidden || !svg || (sample.buttons & ~1) !== 0) return false;
-    if (document.querySelector(MODAL) || document.activeElement?.closest(TEXT_INPUT)) return false;
+    return enabled && !blocked && !spacePressed.current && !document.hidden && document.hasFocus() && !!svg &&
+      (sample.buttons & ~1) === 0 && !document.querySelector(MODAL) && !document.activeElement?.closest(TEXT_INPUT);
+  });
+  const overCanvas = useEvent((sample: CanvasPointerSample): boolean => {
     const target = document.elementFromPoint(sample.clientX, sample.clientY);
-    return !!target && svg.contains(target) && !target.closest(INTERACTIVE);
+    return !!target && !!svgRef.current?.contains(target) && !target.closest(INTERACTIVE);
   });
 
   const tick = useEvent((time: number) => {
     frame.current = null;
     const sample = pointer.current;
     const svg = svgRef.current;
-    if (!sample || !svg || !available(sample)) { reset(); return; }
+    if (!sample || !svg || !eligible(sample) || (!outside.current && !overCanvas(sample))) { reset(); return; }
     if (!isPanAllowed(sample)) { pause(); return; }
     if (time < clickPauseUntil.current) {
       lastTime.current = null;
       frame.current = requestAnimationFrame(tick);
       return;
     }
-    const velocity = edgePanVelocity({ x: sample.clientX, y: sample.clientY }, svg.getBoundingClientRect());
+    const velocity = outside.current ?? edgePanVelocity({ x: sample.clientX, y: sample.clientY }, svg.getBoundingClientRect());
     if (!velocity.x && !velocity.y) { pause(); return; }
     const elapsed = lastTime.current === null ? 0 : time - lastTime.current;
     lastTime.current = time;
     if (elapsed > 0 && cameraRef.current) {
       updateCamera(stepEdgePan(cameraRef.current, velocity, elapsed));
-      onCameraMoved(sample);
+      // A departed hovering mouse has no board cursor. Only a captured editing
+      // gesture needs its raw pointer coordinates refreshed outside the window.
+      if (!outside.current || (sample.buttons === 1 && svg.hasPointerCapture(sample.pointerId))) onCameraMoved(sample);
     }
     frame.current = requestAnimationFrame(tick);
   });
@@ -77,31 +89,52 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
 
   useEffect(() => { reset(); }, [enabled, blocked, reset]);
   useEffect(() => {
+    const canvasOrigin = (event: PointerEvent): boolean =>
+      event.target instanceof Element && !!svgRef.current?.contains(event.target) && !event.target.closest(INTERACTIVE);
+    const record = (sample: CanvasPointerSample, isOutside: boolean) => {
+      pointer.current = sample;
+      outside.current = isOutside && svgRef.current
+        ? outsidePanVelocity({ x: sample.clientX, y: sample.clientY }, svgRef.current.getBoundingClientRect()) : null;
+      schedule();
+    };
     const move = (event: PointerEvent) => {
       if (event.pointerType !== "mouse") { reset(); return; }
       const sample = snapshot(event);
-      if (!available(sample)) { reset(); return; }
-      pointer.current = sample;
+      const svg = svgRef.current;
+      if (!svg || !eligible(sample)) { reset(); return; }
+      const isOutside = outsideBounds(sample, svg.getBoundingClientRect());
+      if (isOutside ? !canvasOrigin(event) && !outside.current : !overCanvas(sample)) { reset(); return; }
       clickPauseUntil.current = 0;
-      schedule();
+      record(sample, isOutside);
     };
     const button = (event: PointerEvent) => {
       if (event.pointerType !== "mouse") { reset(); return; }
       if (pointer.current?.pointerId !== event.pointerId) return;
       const sample = snapshot(event);
-      if (!available(sample)) { reset(); return; }
-      pointer.current = sample;
+      const svg = svgRef.current;
+      if (!svg || !eligible(sample)) { reset(); return; }
+      const isOutside = outsideBounds(sample, svg.getBoundingClientRect());
+      if (isOutside ? !outside.current && !canvasOrigin(event) : !overCanvas(sample)) { reset(); return; }
       // Leave a clicked object still long enough for a second click. Real
       // strokes/drags keep their immediate pointerup-to-hover continuation.
       if (event.type === "pointerup" && !isPanAllowed(sample)) clickPauseUntil.current = performance.now() + CLICK_PAUSE_MS;
-      schedule();
+      record(sample, isOutside);
     };
     const lostCapture = (event: PointerEvent) => {
       if (pointer.current?.pointerId === event.pointerId && pointer.current.buttons !== 0 &&
         !svgRef.current?.hasPointerCapture(event.pointerId)) reset();
     };
     const leave = (event: PointerEvent) => {
-      if (event.relatedTarget === null) reset();
+      if (event.relatedTarget !== null) return;
+      if (event.pointerType !== "mouse") { reset(); return; }
+      if (pointer.current && pointer.current.pointerId !== event.pointerId) return;
+      const sample = snapshot(event);
+      if (!canvasOrigin(event) || !eligible(sample)) { reset(); return; }
+      // Crossing the window boundary is enough intent; no edge dwell or
+      // last-pixel hit is required, even after a fast movement from the center.
+      clickPauseUntil.current = 0;
+      if (sample.buttons === 1 && isPanAllowed(sample) && !svgRef.current?.hasPointerCapture(sample.pointerId)) notifyExit(sample);
+      record(sample, true);
     };
     const visibility = () => { if (document.hidden) { spacePressed.current = false; reset(); } };
     const blur = () => { spacePressed.current = false; reset(); };
@@ -139,7 +172,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
       window.removeEventListener("blur", blur);
       reset();
     };
-  }, [svgRef, available, reset, schedule, isPanAllowed]);
+  }, [svgRef, eligible, overCanvas, reset, schedule, isPanAllowed, notifyExit]);
 
   return { reset };
 }

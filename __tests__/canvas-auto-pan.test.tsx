@@ -281,7 +281,7 @@ describe("canvas edge auto-pan lifecycle", () => {
     expect(fixture.frames.size).toBe(0);
   });
 
-  it.each(["cancel", "blur", "escape", "wheel", "hidden", "leave"])("clears on %s until a fresh mousemove", (reason) => {
+  it.each(["cancel", "blur", "escape", "wheel", "hidden"])("clears on %s until a fresh mousemove", (reason) => {
     fixture.setup();
     fixture.pointer();
     fixture.runFrames();
@@ -294,7 +294,6 @@ describe("canvas edge auto-pan lifecycle", () => {
         vi.spyOn(document, "hidden", "get").mockReturnValue(true);
         document.dispatchEvent(new Event("visibilitychange"));
       }
-      if (reason === "leave") fixture.pointer("pointerout", { relatedTarget: null });
     });
     const stoppedAt = fixture.cameraRef.current.x;
     fixture.runFrames();
