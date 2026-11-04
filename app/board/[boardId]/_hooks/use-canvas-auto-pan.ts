@@ -18,7 +18,8 @@ interface Options {
   onCameraMoved: (sample: CanvasPointerSample) => void;
 }
 
-const INTERACTIVE = 'input, textarea, select, [contenteditable="true"], [role="textbox"], [data-graph-interaction="true"]';
+const TEXT_INPUT = 'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]';
+const INTERACTIVE = `${TEXT_INPUT}, a[href], button, [role="button"], [data-graph-interaction="true"]`;
 const MODAL = '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [role="menu"][data-state="open"], dialog[open]';
 
 function snapshot(event: PointerEvent): CanvasPointerSample {
@@ -41,7 +42,7 @@ export function useCanvasAutoPan({ svgRef, cameraRef, enabled, blocked, canPan, 
   const available = useEvent((sample: CanvasPointerSample): boolean => {
     const svg = svgRef.current;
     if (!enabled || blocked || spacePressed.current || document.hidden || !svg || (sample.buttons & ~1) !== 0) return false;
-    if (document.querySelector(MODAL) || document.activeElement?.closest(INTERACTIVE)) return false;
+    if (document.querySelector(MODAL) || document.activeElement?.closest(TEXT_INPUT)) return false;
     const target = document.elementFromPoint(sample.clientX, sample.clientY);
     return !!target && svg.contains(target) && !target.closest(INTERACTIVE);
   });

@@ -182,6 +182,28 @@ describe("canvas edge auto-pan lifecycle", () => {
     expect(fixture.updateCamera).not.toHaveBeenCalled();
   });
 
+  it.each(["a", "button"])("leaves clickable %s controls inside the board stationary", (tag) => {
+    fixture.setup();
+    const control = document.createElement(tag);
+    if (tag === "a") control.setAttribute("href", "https://example.org");
+    fixture.body.append(control);
+    fixture.hit = control;
+    fixture.pointer();
+    fixture.pointer("pointerdown", { buttons: 1 }, control);
+    fixture.runFrames();
+    expect(fixture.updateCamera).not.toHaveBeenCalled();
+  });
+
+  it("allows hover after a toolbar button was focused", () => {
+    fixture.setup();
+    const button = document.createElement("button");
+    document.body.append(button);
+    button.focus();
+    fixture.pointer();
+    fixture.runFrames();
+    expect(fixture.updateCamera).toHaveBeenCalled();
+  });
+
   it("stops when a text input gains focus without moving a parked mouse", () => {
     fixture.setup();
     fixture.pointer();
