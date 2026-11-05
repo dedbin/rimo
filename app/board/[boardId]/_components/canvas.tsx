@@ -12,6 +12,8 @@ import { useCanvasGestures } from "../_hooks/use-canvas-gestures";
 import { usePenPreferences } from "../_hooks/use-pen-preferences";
 import { useCanvasFollow } from "../_hooks/use-canvas-follow";
 import { useCanvasLaser } from "../_hooks/use-canvas-laser";
+import { useCanvasAutoPan } from "../_hooks/use-canvas-auto-pan";
+import { useAutoPanPreference } from "../_hooks/use-auto-pan-preference";
 import { BoardInfo } from "./info";
 import { BoardParticipants } from "./participants";
 import { BoardToolbar } from "./toolbar";
@@ -26,7 +28,7 @@ import { SessionTimer } from "./session-timer";
 import { ZoomControls } from "./zoom-controls";
 import { CanvasLoading } from "./canvas-loading";
 import { SaveStatus } from "./save-status";
-import { BoardTextProvider } from "@/components/board-text/provider";
+import { BoardTextProvider, useBoardText } from "@/components/board-text/provider";
 import { Line } from "./line";
 import { LaserPresence } from "./laser-presence";
 import { GraphEditorProvider, useGraphEditor } from "@/components/board-graph/provider";
@@ -42,6 +44,7 @@ export function BoardCanvas({ boardId }: { boardId: string }) {
 function BoardCanvasContent({ boardId }: { boardId: string }) {
   const runtime = useBoardRuntime();
   const graphEditor = useGraphEditor();
+  const textEditor = useBoardText();
   const snapshot = useBoardSnapshot();
   const connection = useConnectionState();
   const selection = useSelection();
@@ -52,10 +55,12 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [lastUsedColor, setLastUsedColor] = useState<Color>({ r: 0, g: 0, b: 0 });
   const pen = usePenPreferences(runtime.session.user.id);
+  const autoPanPreference = useAutoPanPreference();
   const [viewport, setViewport] = useState({ width: 1920, height: 1080 });
   const stopFollowingRef = useRef<() => void>(() => undefined);
+  const resetAutoPanRef = useRef<() => void>(() => undefined);
   const { camera, cameraRef, updateCamera, animateCameraTo, applyRemoteCamera, fitToScreen } = useCanvasCamera(svgRef,
-    () => stopFollowingRef.current());
+    () => { stopFollowingRef.current(); resetAutoPanRef.current(); });
   const follow = useCanvasFollow({ camera, viewport, applyRemoteCamera });
   stopFollowingRef.current = follow.stopFollowing;
   const gestures = useCanvasGestures({ svgRef, cameraRef, updateCamera,
@@ -64,6 +69,16 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
   const { canvasState, preview } = gestures;
   const laserMode = canvasState.mode === BoardCanvasMode.Laser;
   const laser = useCanvasLaser({ active: laserMode, svgRef, cameraRef });
+  const autoPan = useCanvasAutoPan({ svgRef, cameraRef,
+    enabled: autoPanPreference.loaded && autoPanPreference.enabled,
+    blocked: !connection.connected || !connection.synced || !!connection.error || follow.followingId !== null ||
+      textEditor.activeId !== null || graphEditor.navigationId !== null,
+    canPan: gestures.canAutoPan,
+    onPointerExit: gestures.refreshPointer,
+    updateCamera: (next) => updateCamera(next, "auto-pan"),
+    onCameraMoved: (sample) => { gestures.refreshPointer(sample); laser.refreshPointer(sample); },
+  });
+  resetAutoPanRef.current = autoPan.reset;
   const canEdit = runtime.board.canEdit && connection.synced && !connection.error;
   const previousGraphIds = useRef(new Set(snapshot.layerIds));
   const visibleBounds = useMemo(() => ({ x: -camera.x / camera.scale, y: -camera.y / camera.scale,
@@ -226,7 +241,8 @@ function BoardCanvasContent({ boardId }: { boardId: string }) {
           fill={rgbToCss(gestures.pencilStyle.color)} size={gestures.pencilStyle.size} />}
       </g>
     </svg>
-    <ZoomControls scale={camera.scale} onFitToScreen={fitToScreen} />
+    <ZoomControls scale={camera.scale} onFitToScreen={fitToScreen}
+      autoPanEnabled={autoPanPreference.enabled} onToggleAutoPan={() => autoPanPreference.setEnabled(!autoPanPreference.enabled)} />
     <SaveStatus />
     {!connection.synced && !connection.error && <div className="absolute inset-0 z-20"><CanvasLoading /></div>}
   </main>;

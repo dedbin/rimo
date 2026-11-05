@@ -3,14 +3,16 @@
 import { Button } from "@/components/ui/button";
 import { Hint } from "@/components/hint";
 import { useTranslation } from "@/hooks/use-translation";
-import { Maximize } from "lucide-react";
+import { Maximize, Move } from "lucide-react";
 
 interface ZoomControlsProps {
   scale: number;
   onFitToScreen: () => void;
+  autoPanEnabled: boolean;
+  onToggleAutoPan: () => void;
 }
 
-export const ZoomControls = ({ scale, onFitToScreen }: ZoomControlsProps) => {
+export const ZoomControls = ({ scale, onFitToScreen, autoPanEnabled, onToggleAutoPan }: ZoomControlsProps) => {
   const { t } = useTranslation();
 
   return (
@@ -18,8 +20,17 @@ export const ZoomControls = ({ scale, onFitToScreen }: ZoomControlsProps) => {
       <span className="text-sm font-medium select-none w-10 text-center">
         {Math.round(scale * 100)}%
       </span>
+      <Hint label={t("zoomControls.autoPan") as string}
+        side="top" sideOffset={10}>
+        <Button variant={autoPanEnabled ? "boardActive" : "board"} size="icon"
+          className="hidden [@media(any-pointer:fine)]:inline-flex"
+          aria-label={t("zoomControls.autoPan") as string} aria-pressed={autoPanEnabled}
+          onClick={onToggleAutoPan}>
+          <Move className="w-4 h-4" />
+        </Button>
+      </Hint>
       <Hint label={t("zoomControls.fitToScreen") as string} side="top" sideOffset={10}>
-        <Button variant="board" size="icon" onClick={onFitToScreen}>
+        <Button variant="board" size="icon" aria-label={t("zoomControls.fitToScreen") as string} onClick={onFitToScreen}>
           <Maximize className="w-4 h-4" />
         </Button>
       </Hint>

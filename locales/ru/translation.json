@@ -137,7 +137,8 @@
   "minusFive": "-5 мин"
   },
   "zoomControls": {
-    "fitToScreen": "Уместить все"
+    "fitToScreen": "Уместить все",
+    "autoPan": "Автопрокрутка у края"
   },
   "selectionTools": {
     "objectStyle": "Оформление объекта",

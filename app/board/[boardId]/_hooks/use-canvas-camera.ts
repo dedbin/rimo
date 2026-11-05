@@ -20,8 +20,8 @@ export function useCanvasCamera(svgRef: RefObject<SVGSVGElement | null>, onManua
     animation.current = null;
     applyCamera(next);
   }, [applyCamera]);
-  const updateCamera = useCallback((next: Camera) => {
-    notifyManualNavigation();
+  const updateCamera = useCallback((next: Camera, source: "manual" | "auto-pan" = "manual") => {
+    if (source === "manual") notifyManualNavigation();
     applyRemoteCamera(next);
   }, [applyRemoteCamera, notifyManualNavigation]);
   const animateCameraTo = useCallback((target: Camera, duration = 250) => {

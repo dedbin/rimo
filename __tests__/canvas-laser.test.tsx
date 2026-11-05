@@ -12,6 +12,7 @@ let now: number;
 const cameraRef = { current: { x: 20, y: 10, scale: 2 } };
 
 beforeEach(() => {
+  cameraRef.current = { x: 20, y: 10, scale: 2 };
   runtime = new PresentationRuntime();
   svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   const captured = new Set<number>();
@@ -34,6 +35,24 @@ function setup() {
 function advance(milliseconds: number): void { now += milliseconds; act(() => vi.advanceTimersByTime(milliseconds)); }
 
 describe("laser gesture lifecycle", () => {
+  it("keeps an active laser under a stationary mouse after the camera moves, without creating one on hover", () => {
+    const { result } = setup();
+    act(() => result.current.refreshPointer(event()));
+    expect(runtime.self.presence.laser).toBeUndefined();
+    act(() => result.current.onPointerDown(event()));
+    cameraRef.current = { x: -20, y: 10, scale: 2 };
+    act(() => result.current.refreshPointer(event(100, 2)));
+    advance(50);
+    expect(runtime.self.presence.laser?.points.at(-1)).toEqual({ x: 35, y: 60 });
+    act(() => result.current.refreshPointer(event()));
+    advance(50);
+    expect(runtime.self.presence.laser?.points.at(-1)).toEqual({ x: 55, y: 60 });
+    act(() => result.current.onPointerUp(event()));
+    act(() => result.current.refreshPointer(event()));
+    expect(runtime.self.presence.laser).toBeNull();
+    expect(runtime.board.undoManager.undoStack).toHaveLength(0);
+  });
+
   it("transmits bounded board-space samples at most twenty times per second without document edits", () => {
     const { result } = setup();
     const updates = vi.fn(); runtime.board.doc.on("update", updates);
